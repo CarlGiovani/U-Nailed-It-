@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>U NAILed It</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-view="login">
+  <header>
+    <button id="backBtn" onclick="goBack()" aria-label="Back">Back</button>
+    <h1 id="headerTitle">
+      <span class="logo-badge" aria-hidden="true">UN</span>
+      <span class="header-text">U NAILed It by Aliiyah</span>
+    </h1>
+  </header>
+
+  <main id="mainScroll" aria-live="polite">
+    <!-- LOGIN VIEW -->
+    <section id="loginView" class="view view-active" aria-label="Login">
+      <div class="login-card" role="region" aria-label="Login form">
+        <div class="avatar" aria-hidden="true"></div>
+
+        <p class="login-welcome">Welcome to U NAILed It by Aliiyah!</p>
+
+        <form id="loginForm" novalidate>
+          <label class="sr-only" for="loginUser">Email or Username</label>
+          <input
+            id="loginUser"
+            type="text"
+            inputmode="email"
+            autocomplete="username"
+            placeholder="Enter Username"
+          />
+
+          <label class="sr-only" for="loginPass">Password</label>
+          <input
+            id="loginPass"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Enter Password"
+          />
+
+          <p id="loginError" class="form-error" role="alert" aria-live="polite"></p>
+
+          <button type="submit" class="btn btn-solid">Login</button>
+          <button type="button" id="forgotBtn" class="btn btn-solid">Forgot Password</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- "DASHBOARD" VIEW CONTAINER (kept for existing logic), but ONLY SETTINGS SECTION remains -->
+    <section id="dashboardView" class="view" aria-label="User Settings">
+
+      <!-- SECTION: SETTINGS -->
+      <section id="section-settings" class="dash-section" aria-label="Settings section">
+        <div class="dash-titlebar">Admin Settings</div>
+
+        <div class="dash-surface">
+          <div class="settings-wrap">
+
+            <section class="settings-card" aria-label="Account settings">
+              <h2 class="settings-title">Account</h2>
+
+              <div class="field-grid">
+                <label class="field">
+                  <span>Display Name</span>
+                  <input id="setDisplayName" type="text" placeholder="e.g., Aliiyah (Admin)" />
+                </label>
+
+                <label class="field">
+                  <span>Email / Username</span>
+                  <input id="setEmailUser" type="text" placeholder="e.g., admin@unailedit.demo" />
+                </label>
+
+                <label class="field">
+                  <span>Mobile No.</span>
+                  <input id="setPhone" type="tel" placeholder="e.g., 0917-555-0101" />
+                </label>
+              </div>
+
+              <div class="settings-actions">
+                <button type="button" class="btn btn-solid" id="saveProfileBtn">Save Profile</button>
+                <button type="button" class="btn btn-solid" id="resetProfileBtn">Reset</button>
+              </div>
+
+              <p id="profileMsg" class="settings-msg" role="status" aria-live="polite"></p>
+            </section>
+
+            <section class="settings-card" aria-label="Appearance settings">
+              <h2 class="settings-title">Appearance</h2>
+
+              <div class="toggle-row">
+                <div class="toggle-text">
+                  <strong>Dark Mode</strong>
+                  <div class="muted">Reduces brightness and uses dark surfaces.</div>
+                </div>
+                <label class="switch">
+                  <input id="toggleDarkMode" type="checkbox" aria-label="Dark Mode" title="Dark Mode" />
+                  <span class="slider" aria-hidden="true"></span>
+                </label>
+              </div>
+
+              <div class="toggle-row">
+                <div class="toggle-text">
+                  <strong>Compact Layout</strong>
+                  <div class="muted">Tighter spacing for tables and cards.</div>
+                </div>
+                <label class="switch">
+                  <input id="toggleCompact" type="checkbox" aria-label="Compact Layout" title="Compact Layout" />
+                  <span class="slider" aria-hidden="true"></span>
+                </label>
+              </div>
+            </section>
+
+            <section class="settings-card" aria-label="Notification settings">
+              <h2 class="settings-title">Notifications</h2>
+
+              <div class="toggle-row">
+                <div class="toggle-text">
+                  <strong>New Booking Alerts</strong>
+                  <div class="muted">Show alerts when a new request appears.</div>
+                </div>
+                <label class="switch">
+                  <input id="toggleNewBooking" type="checkbox" aria-label="New Booking Alerts" title="New Booking Alerts" />
+                  <span class="slider" aria-hidden="true"></span>
+                </label>
+              </div>
+
+              <div class="toggle-row">
+                <div class="toggle-text">
+                  <strong>Appointment Reminders</strong>
+                  <div class="muted">Remind you before upcoming services.</div>
+                </div>
+                <label class="switch">
+                  <input id="toggleReminders" type="checkbox" aria-label="Appointment Reminders" title="Appointment Reminders" />
+                  <span class="slider" aria-hidden="true"></span>
+                </label>
+              </div>
+
+              <div class="toggle-row">
+                <div class="toggle-text">
+                  <strong>Daily Summary</strong>
+                  <div class="muted">Show a daily overview in the Status card.</div>
+                </div>
+                <label class="switch">
+                  <input id="toggleDailySummary" type="checkbox" aria-label="Daily Summary" title="Daily Summary" />
+                  <span class="slider" aria-hidden="true"></span>
+                </label>
+              </div>
+            </section>
+
+            <section class="settings-card" aria-label="Security settings">
+              <h2 class="settings-title">Security</h2>
+
+              <div class="toggle-row">
+                <div class="toggle-text">
+                  <strong>Require PIN on Open</strong>
+                  <div class="muted">Demo-only: prompts a quick PIN when opening dashboard.</div>
+                </div>
+                <label class="switch">
+                  <input id="togglePin" type="checkbox" aria-label="Require PIN on Open" title="Require PIN on Open" />
+                  <span class="slider" aria-hidden="true"></span>
+                </label>
+              </div>
+
+              <div class="field-grid">
+                <label class="field">
+                  <span>New Password</span>
+                  <input id="newPass" type="password" placeholder="At least 6 characters" />
+                </label>
+                <label class="field">
+                  <span>Confirm Password</span>
+                  <input id="confirmPass" type="password" placeholder="Re-type password" />
+                </label>
+              </div>
+
+              <div class="settings-actions">
+                <button type="button" class="btn btn-solid" id="changePassBtn">Change Password (Demo)</button>
+              </div>
+
+              <p id="securityMsg" class="settings-msg" role="status" aria-live="polite"></p>
+            </section>
+
+            <section class="settings-card" aria-label="App preferences">
+              <h2 class="settings-title">App Preferences</h2>
+
+              <label class="field">
+                <span>Default Start Section</span>
+                <select id="defaultSection" aria-label="Default Start Section" title="Default Start Section">
+                  <option value="section-dashboard">Dashboard</option>
+                  <option value="section-pending">Pending</option>
+                  <option value="section-schedules">Schedules</option>
+                  <option value="section-edit">Edit Page</option>
+                  <option value="section-settings">Settings</option>
+                </select>
+              </label>
+
+              <div class="settings-actions">
+                <button type="button" class="btn btn-solid" id="savePrefsBtn">Save Preferences</button>
+              </div>
+
+              <p id="prefsMsg" class="settings-msg" role="status" aria-live="polite"></p>
+            </section>
+
+            <section class="settings-card" aria-label="Session settings">
+              <h2 class="settings-title">Session</h2>
+
+              <div class="settings-actions">
+                <button type="button" class="btn btn-solid" id="logoutSettingsBtn">Logout</button>
+                <button type="button" class="btn btn-solid" id="clearSettingsBtn">Clear Saved Settings</button>
+              </div>
+
+              <p class="muted">
+                Clearing settings removes saved toggles and profile details from this browser only.
+              </p>
+
+              <p id="sessionMsg" class="settings-msg" role="status" aria-live="polite"></p>
+            </section>
+
+          </div>
+        </div>
+      </section>
+
+    </section>
+  </main>
+
+  <!-- Bottom nav kept, but ONLY Settings remains (others removed with their sections) -->
+  <nav id="bottomNav" aria-label="Bottom navigation">
+    <button class="icon" data-target="section-settings" aria-label="Settings">⚙️<span>Settings</span></button>
+  </nav>
+
+  <script src="script.js"></script>
+</body>
+</html>
