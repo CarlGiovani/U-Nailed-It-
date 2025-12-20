@@ -3,13 +3,6 @@ function goBack() {
   window.history.back();
 }
 
-/**
- * IMPORTANT FIXES:
- * 1) Settings are now normalized (merged with defaults) so missing keys won't crash.
- * 2) applySettingsToUI/persistFromUI guard null elements safely.
- * 3) init runs after DOM is ready (extra safety).
- */
-
 const STORAGE_KEYS = {
   session: "unailedit_session",
   settings: "unailedit_settings",
@@ -29,7 +22,6 @@ function defaultSettings() {
   };
 }
 
-// Deep-ish merge for our known structure
 function normalizeSettings(raw) {
   const d = defaultSettings();
   const r = raw && typeof raw === "object" ? raw : {};
@@ -191,7 +183,10 @@ function scrollToSection(sectionId, behavior = "smooth") {
 
 function scrollToDefaultSection(isInitial = false) {
   const s = loadSettings();
-  const target = s.prefs?.defaultSection || "section-dashboard";
+  const preferred = s.prefs?.defaultSection || "section-dashboard";
+
+  // If preferences point to removed sections, safely fall back.
+  const target = document.getElementById(preferred) ? preferred : "section-dashboard";
   scrollToSection(target, isInitial ? "auto" : "smooth");
 }
 
@@ -241,33 +236,12 @@ setInterval(() => {
   if (document.body.dataset.view === "dashboard") updateStatusPanel();
 }, 1000);
 
-// ---------- Demo actions ----------
-document.addEventListener("click", (e) => {
-  const actionBtn = e.target && e.target.closest && e.target.closest("[data-action]");
-  if (!actionBtn) return;
-
-  const action = actionBtn.getAttribute("data-action");
-  const row = actionBtn.closest(".table-row");
-  const nameCell = row ? row.querySelector(".td:nth-child(5)") : null;
-  const who = nameCell ? nameCell.textContent : "client";
-
-  const s = loadSettings();
-  const notify = s.notifications?.newBooking !== false;
-
-  if (!notify) return;
-
-  if (action === "approve") alert(`Approved booking request for ${who}. (demo)`);
-  if (action === "decline") alert(`Declined booking request for ${who}. (demo)`);
-});
-
 // ---------- Settings UI ----------
 function applySettingsToUI(s) {
-  // Profile
   if (elements.setDisplayName) elements.setDisplayName.value = s.profile.displayName || "";
   if (elements.setEmailUser) elements.setEmailUser.value = s.profile.emailUser || "";
   if (elements.setPhone) elements.setPhone.value = s.profile.phone || "";
 
-  // Toggles
   if (elements.toggleDarkMode) elements.toggleDarkMode.checked = !!s.appearance.darkMode;
   if (elements.toggleCompact) elements.toggleCompact.checked = !!s.appearance.compact;
 
@@ -277,10 +251,8 @@ function applySettingsToUI(s) {
 
   if (elements.togglePin) elements.togglePin.checked = !!s.security.requirePin;
 
-  // Prefs
   if (elements.defaultSection) elements.defaultSection.value = s.prefs.defaultSection || "section-dashboard";
 
-  // Apply classes (always safe)
   elements.body.classList.toggle("dark", !!s.appearance.darkMode);
   elements.body.classList.toggle("compact", !!s.appearance.compact);
 }
@@ -288,7 +260,6 @@ function applySettingsToUI(s) {
 function persistFromUI() {
   const s = loadSettings();
 
-  // If any setting element doesn't exist, just skip it safely.
   if (elements.setDisplayName) s.profile.displayName = (elements.setDisplayName.value || "").trim();
   if (elements.setEmailUser) s.profile.emailUser = (elements.setEmailUser.value || "").trim();
   if (elements.setPhone) s.profile.phone = (elements.setPhone.value || "").trim();
@@ -469,7 +440,9 @@ function bindCoreEvents() {
       saveSettings(s);
     }
 
+    // After login -> Dashboard (requirement)
     setView("dashboard");
+    scrollToSection("section-dashboard", "auto");
   });
 
   elements.forgotBtn?.addEventListener("click", () => {
