@@ -1,0 +1,16 @@
+{
+  "name": "u-nailed-it-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vanilla frontend for U NAILed It",
+  "type": "commonjs",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:ci": "jest --ci --runInBand"
+  },
+  "devDependencies": {
+    "jest": "^30.0.0",
+    "jest-environment-jsdom": "^30.2.0"
+  }
+}

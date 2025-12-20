@@ -460,3 +460,10 @@ document.addEventListener("DOMContentLoaded", () => {
   bindSettingsEvents();
   hydrateInitialView();
 });
+
+// Expose functions for Jest unit tests (no behavior change in browser)
+globalThis.validateLogin = validateLogin;
+globalThis.normalizeSettings = normalizeSettings;
+globalThis.applySettingsToUI = applySettingsToUI;
+globalThis.updateStatusPanel = updateStatusPanel;
+globalThis.wireDomRefs = wireDomRefs;
