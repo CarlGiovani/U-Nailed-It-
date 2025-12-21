@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
-import * as ServiceModel from "../models/serviceModel.js";
 import { supabase } from "../config/db.js";
+import * as ServiceModel from "../models/ServiceModel.js";
 
 // Public: get all active services
 export async function getActiveServices(req, res) {
