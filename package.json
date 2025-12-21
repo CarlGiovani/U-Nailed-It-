@@ -1,0 +1,37 @@
+{
+  "name": "nailart-booking-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Nail Art Booking System",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon BACKEND/server.js",
+    "start": "node BACKEND/server.js",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "date-fns": "^3.6.0",
+    "dotenv": "^16.4.0",
+    "express": "^4.19.0",
+    "express-fileupload": "^1.4.3",
+    "helmet": "^7.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "nodemailer": "^7.0.9",
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0",
+    "vitest": "^4.0.16"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
