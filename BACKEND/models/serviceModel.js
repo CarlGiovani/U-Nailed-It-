@@ -32,7 +32,3 @@ export async function remove(id) {
   if (error) throw error;
   return true;
 }
-
-
-
-// `

@@ -1,18 +1,22 @@
 import * as AvailabilityModel from "../models/availabilityModel.js";
 import * as BookingModel from "../models/bookingModel.js";
-import * as ServiceModel from "../models/ServiceModel.js";
+import * as ServiceModel from "../models/serviceModel.js";
+
 import { addMinutes, format, parseISO } from "date-fns";
 
 export async function getAvailableSlot(req, res) {
   try {
     const { service_id, date } = req.query;
+
     if (!service_id || !date) {
       return res.status(400).json({ message: "missing service id or date" });
     }
 
+    // ✅ get services
     const services = await ServiceModel.getAll();
+
     const selectedService = services.find(
-      (s) => s.id == service_id
+      (s) => String(s.id) === String(service_id)
     );
 
     if (!selectedService) {
