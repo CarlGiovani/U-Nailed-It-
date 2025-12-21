@@ -1,10 +1,8 @@
+import { addMinutes, format, parseISO } from "date-fns";
 import * as AvailabilityModel from "../models/availabilityModel.js";
 import * as BookingModel from "../models/bookingModel.js";
 import * as ServiceModel from "../models/ServiceModel.js";
 
-import { addMinutes, format, parseISO } from "date-fns";
-
-// get available slot for a service and date
 export async function getAvailableSlot(req, res) {
   try {
     const { service_id, date } = req.query;
@@ -12,14 +10,18 @@ export async function getAvailableSlot(req, res) {
       return res.status(400).json({ message: "missing service id or date" });
     }
 
-    // get all services
-    const service = await ServiceModel.getAll();
-    const selectedService = service.find(() => service.id == service_id);
+    const services = await ServiceModel.getAll();
+
+    const selectedService = services.find(
+      (s) => String(s.id) === String(service_id)
+    );
+
     if (!selectedService) {
       return res.status(400).json({ message: "Service not found" });
     }
 
-    const { duration_minutes } = selected;
+    const { duration_minutes } = selectedService;
+
     const settings = await AvailabilityModel.getSettings();
     const appointments = await BookingModel.getBookingsBydate(date);
 
@@ -35,7 +37,6 @@ export async function getAvailableSlot(req, res) {
         duration_minutes + settings.buffer_minutes
       );
 
-      // check overlaps
       const overlap = appointments.some((a) => {
         const booked = parseISO(a.appointment_time);
         return (
