@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getAvailableSlot } from "../controllers/bookingController.js";
 
-// ✅ EXACT same paths as controller
 import * as AvailabilityModel from "../models/availabilityModel.js";
 import * as BookingModel from "../models/bookingModel.js";
 import * as ServiceModel from "../models/serviceModel.js";
 
-// ✅ Proper mocks
+
 vi.mock("../models/serviceModel.js", () => ({
   getAll: vi.fn(),
 }));
