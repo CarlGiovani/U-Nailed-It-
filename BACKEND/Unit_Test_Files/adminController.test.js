@@ -121,7 +121,7 @@ describe("Admin Controller Unit Tests", () => {
 
       const fakeAdmin = {
         id: 1,
-        username: "osda",
+        username: "owner",
         password_hash: "hashed",
         role: "superadmin",
       };
