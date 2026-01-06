@@ -1,0 +1,383 @@
+.check-booking {
+  padding: 80px 0;
+  background-color: var(--light-gray);
+}
+
+.check-booking-container {
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  box-shadow: var(--shadow);
+}
+
+.email-lookup {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 30px;
+  align-items: flex-end;
+}
+
+.email-lookup .form-group {
+  flex: 1;
+}
+
+.email-lookup label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.email-lookup input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  transition: var(--transition);
+}
+
+.email-lookup input:focus {
+  outline: none;
+  border-color: var(--primary-pink);
+  box-shadow: 0 0 0 3px rgba(255, 105, 180, 0.1);
+}
+
+.form-note {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+.loading-state {
+  text-align: center;
+  padding: 40px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary-pink);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 15px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.booking-results {
+  margin: 30px 0;
+}
+
+.no-bookings {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-light);
+}
+
+.no-bookings i {
+  font-size: 3rem;
+  color: var(--light-pink);
+  margin-bottom: 15px;
+}
+
+.no-bookings h3 {
+  color: var(--text-dark);
+  margin-bottom: 10px;
+}
+
+.small-text {
+  font-size: 0.9rem;
+  margin-top: 15px;
+}
+
+.small-text a {
+  color: var(--primary-pink);
+  font-weight: 600;
+}
+
+/* Booking Cards */
+.booking-card {
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 15px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.booking-card:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
+}
+
+.booking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.booking-title {
+  font-size: 1.2rem;
+  color: var(--primary-pink);
+  margin: 0;
+}
+
+.booking-status {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-approved {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-completed {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-cancelled {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.booking-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-label {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  margin-bottom: 5px;
+}
+
+.detail-value {
+  font-size: 1rem;
+  color: var(--text-dark);
+  font-weight: 500;
+}
+
+.booking-actions {
+  display: flex;
+  gap: 10px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border-color);
+}
+
+.booking-actions .btn {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+}
+
+/* Status Legend */
+.status-legend {
+  background-color: var(--pale-pink);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-top: 30px;
+}
+
+.status-legend h4 {
+  color: var(--primary-pink);
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+}
+
+.legend-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.pending {
+  background-color: #ffc107;
+}
+
+.status-dot.approved {
+  background-color: #28a745;
+}
+
+.status-dot.completed {
+  background-color: #17a2b8;
+}
+
+.status-dot.cancelled {
+  background-color: #dc3545;
+}
+
+/* Error State */
+.error-state {
+  text-align: center;
+  padding: 30px;
+  background-color: #f8d7da;
+  border-radius: var(--radius);
+  color: #721c24;
+}
+
+.error-state i {
+  font-size: 2.5rem;
+  margin-bottom: 15px;
+}
+
+/* Responsive for Check Booking */
+@media (max-width: 768px) {
+  .check-booking-container {
+    padding: 25px;
+  }
+
+  .email-lookup {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .booking-details {
+    grid-template-columns: 1fr;
+  }
+
+  .legend-items {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-actions {
+    flex-direction: column;
+  }
+
+  .booking-actions .btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* ===== RESPONSIVE STYLES ===== */
+@media (max-width: 992px) {
+  .hero-content h1 {
+    font-size: 2.8rem;
+  }
+
+  .section-title h2 {
+    font-size: 2.2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav-menu {
+    position: fixed;
+    top: 70px;
+    left: -100%;
+    width: 80%;
+    height: calc(100vh - 70px);
+    background-color: var(--white);
+    flex-direction: column;
+    padding: 30px;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    z-index: 999;
+  }
+
+  .nav-menu.active {
+    left: 0;
+  }
+
+  .mobile-menu-btn {
+    display: block;
+  }
+
+  .hero-content h1 {
+    font-size: 2.3rem;
+  }
+
+  .section-title h2 {
+    font-size: 1.8rem;
+  }
+
+  .booking-form-section {
+    padding: 25px;
+  }
+
+  .booking-actions {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .booking-actions .btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 576px) {
+  .hero-content h1 {
+    font-size: 1.8rem;
+  }
+
+  .hero {
+    padding: 70px 0;
+  }
+
+  .services,
+  .booking,
+  .reviews {
+    padding: 60px 0;
+  }
+
+  .service-options {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-grid {
+    gap: 5px;
+  }
+
+  .calendar-day {
+    padding: 10px 5px;
+    font-size: 0.9rem;
+  }
+}

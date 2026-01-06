@@ -1,0 +1,61 @@
+header {
+  background-color: var(--white);
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 0;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon { color: var(--gold); font-size: 1.8rem; }
+
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(to right, var(--primary-pink), var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.nav-menu { display: flex; gap: 30px; }
+
+.nav-menu a {
+  font-weight: 600;
+  transition: var(--transition);
+  position: relative;
+}
+
+.nav-menu a:hover { color: var(--primary-pink); }
+
+.nav-menu a:after {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 2px;
+  background: var(--primary-pink);
+  bottom: -5px;
+  left: 0;
+  transition: var(--transition);
+}
+
+.nav-menu a:hover:after { width: 100%; }
+
+.mobile-menu-btn {
+  display: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--primary-pink);
+}

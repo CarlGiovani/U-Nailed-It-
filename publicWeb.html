@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UNailedIt</title>
+
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <!-- External CSS -->
+    <link rel="stylesheet" href="./CSS/about-us.css" />
+    <link rel="stylesheet" href="./CSS/global.css" />
+    <link rel="stylesheet" href="./CSS/hero.css" />
+    <link rel="stylesheet" href="./CSS/booking-system.css" />
+    <link rel="stylesheet" href="./CSS/header.css" />
+    <link rel="stylesheet" href="./CSS/services-section.css" />
+    <link rel="stylesheet" href="./CSS/check-booking.css" />
+    <link rel="stylesheet" href="./CSS/review-section.css" />
+    <link rel="stylesheet" href="./CSS/footer.css" />
+  </head>
+  <body>
+    <!-- Header & Navigation -->
+    <header>
+      <div class="container header-container">
+        <div class="logo">
+          <div class="logo-icon">
+            <i class="fas fa-spa"></i>
+          </div>
+          <div class="logo-text">LOGO</div>
+        </div>
+
+        <div class="mobile-menu-btn" id="mobileMenuBtn">
+          <i class="fas fa-bars"></i>
+        </div>
+
+        <nav class="nav-menu" id="navMenu">
+          <a href="#home">Home</a>
+          <a href="#services">Services</a>
+          <a href="#portfolio">Portfolio</a>
+          <a href="#promos">Promos</a>
+          <a href="#policies">Policies</a>
+          <a href="#booking">Book Now</a>
+          <a href="#reviews">Reviews</a>
+          <a href="#check-booking">Check Booking</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+      <div class="container hero-content">
+        <h1>Transform Your Nails Into Art</h1>
+        <p>
+          Experience premium nail design artistry with personalized attention to
+          detail. Our studio combines creativity with hygiene standards to give
+          you stunning nails that reflect your unique style.
+        </p>
+        <a href="#booking" class="btn btn-primary">Book Appointment Now</a>
+      </div>
+    </section>
+
+    <!-- About Us Section -->
+<section class="about-us" id="about-us">
+  <div class="container">
+    <div class="section-title">
+      <h2>About Us</h2>
+      <p>Learn more about our founder and what makes our studio special</p>
+    </div>
+
+    <div class="about-grid">
+      <!-- Owner Info -->
+      <div class="owner-profile">
+        <div class="owner-photo">
+          <img src="images/owner.jpg" alt="Liana - Founder & Nail Artist" />
+        </div>
+        <div class="owner-info">
+          <h3>Liana Santos</h3>
+          <p><strong>Founder & Lead Nail Artist</strong></p>
+          <p>
+            Liana has over 8 years of experience in professional nail artistry, specializing in
+            gel manicures, custom nail designs, and nail care education. She is certified by the
+            Philippine Nail Technicians Association (PNTA) and has attended multiple international
+            nail art workshops in Japan and Korea.
+          </p>
+          <p>
+            <strong>Credentials:</strong>
+            <ul>
+              <li>Certified Nail Technician (PNTA)</li>
+              <li>Diploma in Nail Art & Design, Creative Beauty Institute</li>
+              <li>Workshops: Advanced Nail Art (Tokyo, Japan), Creative Nail Design (Seoul, Korea)</li>
+              <li>Featured in local fashion magazines & TV segments for nail artistry</li>
+            </ul>
+          </p>
+          <div class="social-links">
+            <a href="#" target="_blank"><i class="fab fa-facebook-f"></i></a>
+            <a href="#" target="_blank"><i class="fab fa-instagram"></i></a>
+          </div>
+        </div>
+      </div>
+
+
+
+
+      <!-- Business Info -->
+      <div class="business-info">
+        <h3>About Our Studio</h3>
+        <p>
+          Nail Artistry by Liana is a premium nail design studio located in Makati City, Philippines.
+          We focus on providing personalized nail services using the highest hygiene standards, quality
+          products, and innovative designs. Our mission is to make every client feel confident and beautiful.
+        </p>
+        <p>
+          <strong>Studio Highlights:</strong>
+          <ul>
+            <li>Established: 2018</li>
+            <li>Fully licensed and certified beauty studio</li>
+            <li>Professional team trained in modern nail art techniques</li>
+            <li>Eco-friendly and high-quality nail products</li>
+            <li>Custom nail art designs tailored to client preferences</li>
+          </ul>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+
+
+    <!-- POLICIES -->
+    <section class="policies" id="policies">
+      <div class="container">
+        <div class="section-title">
+          <h2>Our Policies</h2>
+        </div>
+        <div class="policies-grid">
+          <div class="policy-card">
+            <h3><i class="fas fa-calendar-check"></i> Booking Policy</h3>
+            <p>
+              Downpayment required to secure slot. Book at least 24 hours in
+              advance.
+            </p>
+          </div>
+          <!-- Add 2 more policies -->
+        </div>
+      </div>
+    </section>
+
+    <!-- SERVICES SECTION-->
+    <section class="services" id="services">
+      <div class="container">
+        <div class="section-title">
+          <h2>Our Services</h2>
+        </div>
+
+        <div class="services-grid" id="servicesGrid">
+          <!-- Services will be loaded dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!--PORTFOLIO -->
+    <section class="portfolio" id="portfolio">
+      <div class="container">
+        <div class="section-title">
+          <h2>Our Portfolio</h2>
+        </div>
+        <!-- Gallery grid here -->
+      </div>
+    </section>
+
+    <!-- PROMOS -->
+    <section class="promos" id="promos">
+      <div class="container">
+        <div class="section-title">
+          <h2>Promos & Announcements</h2>
+        </div>
+        <!-- Admin posts will appear here -->
+      </div>
+    </section>
+
+    <!-- BOOKING SYSTEM -->
+    <section class="booking" id="booking">
+      <div class="container">
+        <div class="section-title">
+          <h2>Book Your Appointment</h2>
+          <p>Easy 4-step booking process</p>
+        </div>
+
+        <div class="booking-steps">
+          <div class="step active" id="step1">
+            <div class="step-circle">1</div>
+            <div class="step-label">Select Service</div>
+          </div>
+          <div class="step" id="step2">
+            <div class="step-circle">2</div>
+            <div class="step-label">Date & Time</div>
+          </div>
+          <div class="step" id="step3">
+            <div class="step-circle">3</div>
+            <div class="step-label">Your Details</div>
+          </div>
+          <div class="step" id="step4">
+            <div class="step-circle">4</div>
+            <div class="step-label">Confirmation</div>
+          </div>
+        </div>
+
+        <div class="booking-form-container">
+          <!-- Step 1: Service Selection -->
+          <div class="booking-form-section active" id="bookingStep1">
+            <h3 class="form-title">Select Your Service</h3>
+            <p>Choose from our premium nail art services below:</p>
+
+            <div class="service-options" id="serviceOptions">
+              <!-- Service options will be loaded dynamically -->
+            </div>
+
+            <div class="booking-actions">
+              <button class="btn btn-secondary" disabled>Previous</button>
+              <button class="btn btn-primary" id="nextToStep2">
+                Next: Select Date & Time
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2: Date & Time Selection -->
+          <div class="booking-form-section" id="bookingStep2">
+            <h3 class="form-title">Select Date & Time</h3>
+            <p>Choose an available date and time for your appointment:</p>
+
+            <div class="calendar-container">
+              <div class="calendar-header">
+                <button class="btn btn-secondary" id="prevMonth">
+                  <i class="fas fa-chevron-left"></i>
+                </button>
+                <h4 id="currentMonth">June 2023</h4>
+                <button class="btn btn-secondary" id="nextMonth">
+                  <i class="fas fa-chevron-right"></i>
+                </button>
+              </div>
+
+              <div class="calendar-grid" id="calendarGrid">
+                <!-- Calendar will be generated dynamically -->
+              </div>
+
+              <div class="time-slots" id="timeSlots">
+                <!-- Time slots will be loaded dynamically -->
+              </div>
+            </div>
+
+            <div class="booking-actions">
+              <button class="btn btn-secondary" id="backToStep1">
+                Previous
+              </button>
+              <button class="btn btn-primary" id="nextToStep3">
+                Next: Your Details
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 3: Customer Information -->
+          <div class="booking-form-section" id="bookingStep3">
+            <h3 class="form-title">Your Information</h3>
+            <p>Please provide your details for the appointment:</p>
+
+            <form id="customerForm">
+              <div class="form-group">
+                <label for="fullName">Full Name *</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="fullName"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="email">Email (Gmail) *</label>
+                <input
+                  type="email"
+                  class="form-control"
+                  id="email"
+                  required
+                  placeholder="example@gmail.com"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="phone">Phone Number *</label>
+                <input type="tel" class="form-control" id="phone" required />
+              </div>
+
+              <div class="form-group">
+                <label for="facebook">Facebook Profile Link *</label>
+                <input
+                  type="url"
+                  class="form-control"
+                  id="facebook"
+                  required
+                  placeholder="https://facebook.com/yourprofile"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="notes">Additional Notes (Optional)</label>
+                <textarea
+                  class="form-control"
+                  id="notes"
+                  rows="3"
+                  placeholder="Any specific design ideas, allergies, or special requests..."
+                ></textarea>
+              </div>
+            </form>
+
+            <div class="booking-actions">
+              <button class="btn btn-secondary" id="backToStep2">
+                Previous
+              </button>
+              <button class="btn btn-primary" id="nextToStep4">
+                Next: Confirm Booking
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 4: Confirmation & Payment -->
+          <div class="booking-form-section" id="bookingStep4">
+            <h3 class="form-title">Confirm Your Booking</h3>
+            <p>
+              Please review your booking details before proceeding to payment:
+            </p>
+
+            <div class="booking-summary" id="bookingSummary">
+              <!-- Booking summary will be loaded dynamically -->
+            </div>
+
+            <div class="payment-instructions">
+              <h4>Downpayment Instructions</h4>
+              <p>
+                To secure your appointment, please pay the downpayment via GCash
+                using the QR code below. Upload your proof of payment after
+                completing the transaction.
+              </p>
+
+              <div class="qr-code-container">
+                <div class="qr-code">
+                  <!-- In a real system, this would be a QR code image -->
+                  <p>GCash QR Code</p>
+                  <p>0999-123-4567</p>
+                </div>
+                <p>
+                  Scan to pay ₱<span id="downpaymentAmount">0</span> downpayment
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label for="proofPayment">Upload Proof of Payment *</label>
+                <input
+                  type="file"
+                  class="form-control"
+                  id="proofPayment"
+                  accept="image/*,.pdf"
+                />
+                <small>Accepted formats: JPG, PNG, PDF (Max: 5MB)</small>
+              </div>
+            </div>
+
+            <div class="booking-actions">
+              <button class="btn btn-secondary" id="backToStep3">
+                Previous
+              </button>
+              <button class="btn btn-primary" id="submitBooking">
+                Submit Booking
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+
+
+    <!-- REVIEWS SECTION -->
+    <section class="reviews" id="reviews">
+      <div class="container">
+        <div class="section-title">
+          <h2>Customer Reviews</h2>
+          <p>See what our clients say about our nail art services</p>
+        </div>
+
+        <div class="reviews-slider">
+          <div class="review-card">
+            <div class="review-header">
+              <div class="review-avatar">M</div>
+              <div>
+                <div class="review-name">Maria Santos</div>
+                <div class="review-date">June 5, 2023</div>
+              </div>
+            </div>
+            <div class="review-stars">
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+            </div>
+            <p>
+              "Liana is incredibly talented! My wedding nails were absolutely
+              stunning and lasted perfectly through my entire honeymoon. Highly
+              recommended!"
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- Check Booking Section -->
+    <section class="check-booking" id="check-booking">
+      <div class="container">
+        <div class="section-title">
+          <h2>Check My Booking</h2>
+          <p>View your booking history and status using your email</p>
+        </div>
+
+        <div class="check-booking-container">
+          <!-- Email Input -->
+          <div class="email-lookup">
+            <div class="form-group">
+              <label for="lookupEmail">Enter Your Email (Gmail)</label>
+              <input
+                type="email"
+                id="lookupEmail"
+                placeholder="example@gmail.com"
+                required
+              />
+              <small class="form-note"
+                >Use the same email you used for booking</small
+              >
+            </div>
+            <button class="btn btn-primary" id="searchBookingBtn">
+              <i class="fas fa-search"></i> Search Bookings
+            </button>
+          </div>
+
+          <!-- Loading State -->
+          <div class="loading-state" id="loadingState" style="display: none">
+            <div class="loading-spinner"></div>
+            <p>Searching for bookings...</p>
+          </div>
+
+          <!-- Results Container -->
+          <div class="booking-results" id="bookingResults">
+            <!-- Results will appear here -->
+            <div class="no-bookings">
+              <i class="fas fa-calendar-alt"></i>
+              <h3>No Bookings Yet</h3>
+              <p>Enter your email to search for existing bookings</p>
+              <p class="small-text">
+                Or <a href="#booking">book your first appointment</a>
+              </p>
+            </div>
+          </div>
+
+          <!-- Status Legend -->
+          <div class="status-legend">
+            <h4>Booking Status Guide</h4>
+            <div class="legend-items">
+              <div class="legend-item">
+                <span class="status-dot pending"></span>
+                <span>Pending - Awaiting payment verification</span>
+              </div>
+              <div class="legend-item">
+                <span class="status-dot approved"></span>
+                <span>Approved - Confirmed appointment</span>
+              </div>
+              <div class="legend-item">
+                <span class="status-dot completed"></span>
+                <span>Completed - Service done</span>
+              </div>
+              <div class="legend-item">
+                <span class="status-dot cancelled"></span>
+                <span>Cancelled - Booking cancelled</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER-->
+    <footer>
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-about">
+            <div class="footer-logo">Nail Artistry by Liana</div>
+            <p>
+              Premium nail design studio specializing in custom nail art, gel
+              manicures, nail extensions, and nail care services. We transform
+              your nails into beautiful works of art.
+            </p>
+            <div class="social-icons">
+              <a href="#" class="social-icon"
+                ><i class="fab fa-facebook-f"></i
+              ></a>
+              <a href="#" class="social-icon"
+                ><i class="fab fa-instagram"></i
+              ></a>
+              <a href="#" class="social-icon"><i class="fab fa-tiktok"></i></a>
+              <a href="#" class="social-icon"
+                ><i class="fab fa-pinterest-p"></i
+              ></a>
+            </div>
+          </div>
+
+          <div class="footer-links">
+            <h3>Quick Links</h3>
+            <ul>
+              <li><a href="#home">Home</a></li>
+              <li><a href="#services">Services</a></li>
+              <li><a href="#booking">Book Appointment</a></li>
+              <li><a href="#reviews">Reviews</a></li>
+              <li><a href="#check-booking">Check My Booking</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-contact">
+            <h3>Contact Us</h3>
+            <p>
+              <i class="fas fa-map-marker-alt"></i> 123 Beauty Street, Makati
+              City, Philippines
+            </p>
+            <p><i class="fas fa-phone"></i> (02) 8123-4567</p>
+            <p><i class="fas fa-envelope"></i> hello@nailartistrybyliana.com</p>
+            <p><i class="fas fa-clock"></i> Open Tue-Sun: 10:00 AM - 7:00 PM</p>
+          </div>
+        </div>
+
+        <div class="copyright">
+          <p>
+            &copy; 2023 Nail Artistry by Liana. All rights reserved. |
+            <a href="#" style="color: #ccc">Privacy Policy</a> |
+            <a href="#" style="color: #ccc">Terms & Conditions</a>
+          </p>
+        </div>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
