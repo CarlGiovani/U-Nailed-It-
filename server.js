@@ -7,6 +7,7 @@ import express from "express";
 import calendarRoutes from "./routes/Calendar_Feature/calendarRoutes.js";
 import servicesRouter from "./routes/Services_Feature/serviceRoutes.js";
 import authRoutes from "./routes/Authentication_Feature/authRoutes.js";
+import bookingRoutes from "./routes/Booking_Feature/bookingRoutes.js";
 
 dotenv.config();
 
@@ -21,7 +22,7 @@ app.use(express.urlencoded({ extended: true })); // for parsing application/x-ww
 app.use("/api/services", servicesRouter);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/auth" ,authRoutes);
-
+app.use("/api/booking", bookingRoutes);
 
 
 // db or supabaseclienr
