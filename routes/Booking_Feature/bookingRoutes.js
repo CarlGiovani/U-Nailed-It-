@@ -1,14 +1,14 @@
-import express, { Router } from "express";
+import express from "express";
 import * as BookingController from "../../controllers/Booking_Feature/bookingController.js";
-import {verifyAdmin} from "../../middlewares/Authentication/authMiddleware.js";
+import { verifyAdmin } from "../../middlewares/Authentication/authMiddleware.js";
 
 const router = express.Router();
 
-// PUBLIC 
+// PUBLIC
 router.post("/", BookingController.createBooking);
 
-// ADMIN 
+// ADMIN
 router.get("/", verifyAdmin, BookingController.getAllBookings);
-router.put("./:id/status" , verifyAdmin , BookingController.updateBookingStatus);
+router.put("/:id/status", verifyAdmin, BookingController.updateBookingStatus);
 
 export default router;

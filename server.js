@@ -4,11 +4,11 @@ import dotenv from "dotenv";
 import express from "express";
 
 //ENDPOINTS IMPORT
-import calendarRoutes from "./routes/Calendar_Feature/calendarRoutes.js";
-import servicesRouter from "./routes/Services_Feature/serviceRoutes.js";
 import authRoutes from "./routes/Authentication_Feature/authRoutes.js";
-import bookingRoutes from "./routes/Booking_Feature/bookingRoutes.js";
-
+import bookingRouter from "./routes/Booking_Feature/bookingRoutes.js";
+import calendarRoutes from "./routes/Calendar_Feature/calendarRoutes.js";
+import customerRouter from "./routes/Customer_Feature/customerRoutes.js";
+import servicesRouter from "./routes/Services_Feature/serviceRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -19,11 +19,11 @@ app.use(cors());
 app.use(express.json()); // for parsing application/json
 app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 
+app.use("/api/auth", authRoutes);
+app.use("/api/customers", customerRouter);
 app.use("/api/services", servicesRouter);
+app.use("/api/bookings", bookingRouter);
 app.use("/api/calendar", calendarRoutes);
-app.use("/api/auth" ,authRoutes);
-app.use("/api/booking", bookingRoutes);
-
 
 // db or supabaseclienr
 const supabase = createClient(
