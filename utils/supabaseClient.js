@@ -4,8 +4,10 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
+// Palitan ang SUPABASE_KEY ng SUPABASE_SERVICE_ROLE_KEY
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY; 
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Ang client na ito ay may "Master Access" na sa lahat ng files mo
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export default supabase;

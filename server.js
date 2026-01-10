@@ -9,6 +9,7 @@ import bookingRouter from "./routes/Booking_Feature/bookingRoutes.js";
 import calendarRoutes from "./routes/Calendar_Feature/calendarRoutes.js";
 import customerRouter from "./routes/Customer_Feature/customerRoutes.js";
 import servicesRouter from "./routes/Services_Feature/serviceRoutes.js";
+import paymentRouter from "./routes/Payment_Feature/paymentRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -24,6 +25,7 @@ app.use("/api/customers", customerRouter);
 app.use("/api/services", servicesRouter);
 app.use("/api/bookings", bookingRouter);
 app.use("/api/calendar", calendarRoutes);
+app.use("/api/payments", paymentRouter);
 
 // db or supabaseclienr
 const supabase = createClient(
