@@ -33,5 +33,32 @@ export const updateBookingStatus = async (req, res) => {
 };
 
 
+// ADMIN: approve booking
+export const approveBooking = async (req, res) => {
+  try {
+    const result = await booking.approveBooking(req.params.id);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
 
+// ADMIN: reject booking
+export const rejectBooking = async (req, res) => {
+  try {
+    const result = await booking.rejectBooking(req.params.id);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
 
+// PUBLIC: cancel booking
+export const cancelBooking = async (req, res) => {
+  try {
+    const result = await booking.cancelBooking(req.params.id);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
