@@ -74,18 +74,31 @@ export const updateBookingStatus = async (id, status) => {
 
 // ADMIN: approve booking
 export const approveBooking = async (id) => {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("bookings")
     .update({
       status: "approved",
       approved_at: new Date(),
     })
     .eq("id", id)
-    .eq("status", "pending")
-    .select()
-    .single();
+    .eq("status", "pending");
 
   if (error) throw new Error(error.message);
+
+  const { data, error: fetchError } = await supabase
+    .from("bookings")
+    .select(
+      `
+      *,
+      services(name),
+      customers(full_name,email)
+    `
+    )
+    .eq("id", id)
+    .single();
+
+  if (fetchError) throw new Error(fetchError.message);
+
   return data;
 };
 

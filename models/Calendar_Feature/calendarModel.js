@@ -39,7 +39,7 @@ export const getAvailableSlots = async (service_id, date) => {
     query = query.eq("date", date);
   }
   if(!service_id){
-    return res.status(400).json({ error: "service_id is required" });
+    throw new Error("service_id is required");
   }
   const { data, error } = await query;
   if (error) throw new Error(error.message);
@@ -80,4 +80,16 @@ export const blockSlot = async (service_id, date, time) => {
 
   if (error) throw new Error(error.message);
   return data[0];
+};
+
+// ADMIN/PUBLIC: unblock slot
+export const unblockSlot = async (service_id, date, time) => {
+  const { error } = await supabase
+    .from("calendar_slots")
+    .update({ is_available: true })
+    .eq("service_id", service_id)
+    .eq("date", date)
+    .eq("time", time);
+
+  if (error) throw new Error(error.message);
 };
