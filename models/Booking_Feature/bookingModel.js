@@ -107,10 +107,13 @@ export const createBookingWithCustomer = async (bookingData) => {
 
   await blockSlot(service_id, booking_date, booking_time);
 
+  // ETO FOR GLOBAL 
+  // Block slot globally
+// await blockSlotGlobally(booking_date, booking_time);
+
+
   return booking;
 };
-
-
 
 // ADMIN: get all bookings
 // GUMAGANA NA TO

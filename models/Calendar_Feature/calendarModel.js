@@ -99,3 +99,48 @@ export const unblockSlot = async (service_id, date, time) => {
 
   if (error) throw new Error(error.message);
 };
+
+
+
+//BLOCK SLOT per service
+// export const blockSlot = async (service_id, date, time) => {
+//   const { data, error } = await supabase
+//     .from("calendar_slots")
+//     .update({ is_available: false })
+//     .eq("service_id", service_id)
+//     .eq("date", date)
+//     .eq("time", time)
+//     .select();
+
+//   if (error) throw new Error(error.message);
+//   return data[0];
+// };
+
+
+//BLOCK SLOT GLOBALLY IF MAY BAGONG BOOKING
+
+// export const blockSlotGlobally = async (date, time) => {
+//   const { data, error } = await supabase
+//     .from("calendar_slots")
+//     .update({ is_available: false })
+//     .eq("date", date)
+//     .eq("time", time)
+//     .select();
+
+//   if (error) throw new Error(error.message);
+//   return data; // lahat ng affected slots
+// };
+
+
+
+// UNBLOCK SLOT GLOBAL IF MAY NA REJECT OR CANCEL
+// export const unblockSlotGlobally = async (date, time) => {
+//   const { data, error } = await supabase
+//     .from("calendar_slots")
+//     .update({ is_available: true })
+//     .eq("date", date)
+//     .eq("time", time);
+
+//   if (error) throw new Error(error.message);
+//   return data;
+// };
