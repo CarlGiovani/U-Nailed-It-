@@ -7,12 +7,21 @@ const router = express.Router();
 // PUBLIC
 router.post("/", BookingController.createBooking);
 
+
+
+
+
+
+
+
+
+
 // ADMIN
 router.get("/", verifyAdmin, BookingController.getAllBookings);
 router.put("/:id/status", verifyAdmin, BookingController.updateBookingStatus);
 
 // ADMIN
-router.put("/:id/approve", verifyAdmin, BookingController.approveBooking);
+router.patch("/:id/approve", verifyAdmin, BookingController.approveBooking);
 router.put("/:id/reject", verifyAdmin, BookingController.rejectBooking);
 
 // PUBLIC

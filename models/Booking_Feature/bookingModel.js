@@ -1,5 +1,6 @@
 import supabase from "../../utils/supabaseClient.js";
 import { blockSlot } from "../Calendar_Feature/calendarModel.js";
+import { getOrCreateCustomer } from "../Customer_Feature/customerModel.js";
 
 // PUBLIC : create booking
 export const createBooking = async (booking) => {
@@ -42,6 +43,82 @@ export const createBooking = async (booking) => {
 
   return data[0];
 };
+ 
+// PUBLIC: create booking with customer info (create customer if not exists)
+export const createBookingWithCustomer = async (bookingData) => {
+  const {
+    service_id,
+    booking_date,
+    booking_time,
+    total_price,
+    downpayment,
+    notes,
+    full_name,
+    email,
+    phone,
+    facebook_link,
+  } = bookingData;
+
+  const customer = await getOrCreateCustomer({
+    full_name,
+    email,
+    phone,
+    facebook_link,
+  });
+
+  const { data: slot, error: slotError } = await supabase
+    .from("calendar_slots")
+    .select("*")
+    .eq("service_id", service_id)
+    .eq("date", booking_date)
+    .eq("time", booking_time)
+    .eq("is_available", true)
+    .single();
+
+  if (slotError || !slot) {
+    throw new Error("Selected slot is no longer available");
+  }
+
+  const { data: booking, error: bookingError } = await supabase
+    .from("bookings")
+    .insert([
+      {
+        customer_id: customer.id,
+        service_id,
+        booking_date,
+        booking_time,
+        total_price,
+        downpayment,
+        notes,
+        status: "pending",
+      },
+    ])
+    .select(
+      `
+      *,
+      customers(*),
+      services(name)  
+    `
+    )
+    .single();
+
+  if (bookingError) throw new Error(bookingError.message);
+
+  await blockSlot(service_id, booking_date, booking_time);
+
+  return booking;
+};
+
+
+
+
+
+
+
+
+
+
+
 
 // ADMIN: get all bookings
 export const getAllBookings = async () => {

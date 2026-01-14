@@ -4,24 +4,39 @@ import sendEmail from "../../services/Email_Feature/emailService.js";
 import { bookingApprovedTemplate } from "../../templates/emails/bookingApproved.js";
 import { bookingSubmittedTemplate } from "../../templates/emails/bookingSubmitted.js";
 
-//PUBLIC : create booking
+//PUBLIC : create booking (updated to create customer if not exists all in one sya)
 export const createBooking = async (req, res) => {
   try {
-    const newBooking = await booking.createBooking(req.body);
-    await sendEmail({
-      to: req.body.email,
+    const newBooking = await booking.createBookingWithCustomer(req.body);
+    if(newBooking.customers && newBooking.customers.email){
+      await sendEmail({
+      to: newBooking.customers.email,
       subject: "BOOKING SUBMITTED",
 
       html: bookingSubmittedTemplate({
-        name: req.body.full_name,
-        service: "Selected Service",
+        name: newBooking.customers.full_name,
+         service: newBooking.services ? newBooking.services.name : "Selected Service",
       }),
     });
+    }
     res.status(201).json(newBooking);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ADMIN : get all bookings
 export const getAllBookings = async (req, res) => {
@@ -33,6 +48,16 @@ export const getAllBookings = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+
+
+
+
+
+
+
+
+
 
 // ADMIN: update booking status (approve / reject / completed)
 export const updateBookingStatus = async (req, res) => {
