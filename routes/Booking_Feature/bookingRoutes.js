@@ -22,7 +22,7 @@ router.put("/:id/status", verifyAdmin, BookingController.updateBookingStatus);
 
 // ADMIN
 router.patch("/:id/approve", verifyAdmin, BookingController.approveBooking);
-router.put("/:id/reject", verifyAdmin, BookingController.rejectBooking);
+router.patch("/:id/reject", verifyAdmin, BookingController.rejectBooking);
 
 // PUBLIC
 router.put("/:id/cancel", BookingController.cancelBooking);

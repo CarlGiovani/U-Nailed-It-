@@ -3,7 +3,7 @@ import { unblockSlot } from "../../models/Calendar_Feature/calendarModel.js";
 import sendEmail from "../../services/Email_Feature/emailService.js";
 import { bookingApprovedTemplate } from "../../templates/emails/bookingApproved.js";
 import { bookingSubmittedTemplate } from "../../templates/emails/bookingSubmitted.js";
-
+import { bookingRejectedTemplate } from "../../templates/emails/bookingRejected.js";
 //PUBLIC : create booking (updated to create customer if not exists all in one sya)
 export const createBooking = async (req, res) => {
   try {
@@ -71,6 +71,7 @@ export const updateBookingStatus = async (req, res) => {
 };
 
 // ADMIN: approve booking
+// GUMAGANA NA TO
 export const approveBooking = async (req, res) => {
   try {
     const result = await booking.approveBooking(req.params.id);
@@ -93,10 +94,24 @@ export const approveBooking = async (req, res) => {
   }
 };
 
+
+
+
 // ADMIN: reject booking
+// GUMAGANA NA TO
 export const rejectBooking = async (req, res) => {
   try {
     const result = await booking.rejectBooking(req.params.id);
+
+
+     await sendEmail({
+      to: result.customers.email,
+      subject: "Booking Rejected",
+      html: bookingRejectedTemplate({
+        name: result.customers.full_name,
+        service: result.services.name,
+      }),
+    });
 
     await unblockSlot(
       result.service_id,
@@ -111,6 +126,7 @@ export const rejectBooking = async (req, res) => {
 };
 
 // PUBLIC: cancel booking
+// TODO: send email notification upon cancellation IMPLAMENTATION
 export const cancelBooking = async (req, res) => {
   try {
     const result = await booking.cancelBooking(req.params.id);

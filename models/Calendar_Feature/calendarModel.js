@@ -68,6 +68,12 @@ export const deleteSlot = async (id) => {
   return data;
 };
 
+
+
+
+
+
+
 // ADMIN: block slot after booking Later, kapag booking approved, tawagin ito para hindi ma-double book.
 export const blockSlot = async (service_id, date, time) => {
   const { data, error } = await supabase

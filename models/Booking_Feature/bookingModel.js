@@ -43,8 +43,9 @@ export const createBooking = async (booking) => {
 
   return data[0];
 };
- 
-// PUBLIC: create booking with customer info (create customer if not exists)
+
+// PUBLIC: create booking with customer info (create customer if not exists) ALL IN ONE
+// GUMAGANA NA TO
 export const createBookingWithCustomer = async (bookingData) => {
   const {
     service_id,
@@ -111,16 +112,8 @@ export const createBookingWithCustomer = async (bookingData) => {
 
 
 
-
-
-
-
-
-
-
-
-
 // ADMIN: get all bookings
+// GUMAGANA NA TO
 export const getAllBookings = async () => {
   const { data, error } = await supabase
     .from("bookings")
@@ -137,6 +130,7 @@ export const getAllBookings = async () => {
   return data;
 };
 
+
 // ADMIN: update booking status
 export const updateBookingStatus = async (id, status) => {
   const { data, error } = await supabase
@@ -149,7 +143,10 @@ export const updateBookingStatus = async (id, status) => {
   return data[0];
 };
 
+
+
 // ADMIN: approve booking
+// GUMAGANA NA TO
 export const approveBooking = async (id) => {
   const { error } = await supabase
     .from("bookings")
@@ -180,22 +177,37 @@ export const approveBooking = async (id) => {
 };
 
 // ADMIN: reject booking
+//GUMAGANA NA TO
 export const rejectBooking = async (id) => {
-  const { data, error } = await supabase
+  // STEP 1: update status
+  const { error } = await supabase
     .from("bookings")
     .update({
       status: "rejected",
     })
     .eq("id", id)
-    .eq("status", "pending")
-    .select()
-    .single();
+    .eq("status", "pending");
 
   if (error) throw new Error(error.message);
+
+  // STEP 2: fetch full booking info
+  const { data, error: fetchError } = await supabase
+    .from("bookings")
+    .select(`
+      *,
+      services(name),
+      customers(full_name, email)
+    `)
+    .eq("id", id)
+    .single();
+
+  if (fetchError) throw new Error(fetchError.message);
+
   return data;
 };
 
 // PUBLIC: cancel booking (24-hour rule)
+// TODO: send email notification upon cancellation IMPLAMENTATION
 export const cancelBooking = async (id) => {
   // get booking
   const { data: booking, error } = await supabase
