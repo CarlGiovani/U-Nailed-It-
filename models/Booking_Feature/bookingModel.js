@@ -1,5 +1,8 @@
 import supabase from "../../utils/supabaseClient.js";
-import { blockSlot } from "../Calendar_Feature/calendarModel.js";
+import {
+  blockSlotGlobally,
+  unblockSlotGlobally,
+} from "../Calendar_Feature/calendarModel.js";
 import { getOrCreateCustomer } from "../Customer_Feature/customerModel.js";
 
 // PUBLIC : create booking
@@ -44,6 +47,12 @@ export const createBooking = async (booking) => {
   return data[0];
 };
 
+
+
+
+
+
+
 // PUBLIC: create booking with customer info (create customer if not exists) ALL IN ONE
 // GUMAGANA NA TO
 export const createBookingWithCustomer = async (bookingData) => {
@@ -60,6 +69,7 @@ export const createBookingWithCustomer = async (bookingData) => {
     facebook_link,
   } = bookingData;
 
+  // 1️⃣ Get or create customer
   const customer = await getOrCreateCustomer({
     full_name,
     email,
@@ -67,6 +77,7 @@ export const createBookingWithCustomer = async (bookingData) => {
     facebook_link,
   });
 
+  // 2️⃣ Check slot availability (specific service)
   const { data: slot, error: slotError } = await supabase
     .from("calendar_slots")
     .select("*")
@@ -80,6 +91,7 @@ export const createBookingWithCustomer = async (bookingData) => {
     throw new Error("Selected slot is no longer available");
   }
 
+  // 3️⃣ Create booking with status = pending
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
     .insert([
@@ -98,19 +110,15 @@ export const createBookingWithCustomer = async (bookingData) => {
       `
       *,
       customers(*),
-      services(name)  
+      services(name)
     `
     )
     .single();
 
   if (bookingError) throw new Error(bookingError.message);
 
-  await blockSlot(service_id, booking_date, booking_time);
-
-  // ETO FOR GLOBAL 
-  // Block slot globally
-// await blockSlotGlobally(booking_date, booking_time);
-
+  // 4️⃣ Block all slots globally for this date & time
+  await blockSlotGlobally(booking_date, booking_time);
 
   return booking;
 };
@@ -133,7 +141,6 @@ export const getAllBookings = async () => {
   return data;
 };
 
-
 // ADMIN: update booking status
 export const updateBookingStatus = async (id, status) => {
   const { data, error } = await supabase
@@ -145,8 +152,6 @@ export const updateBookingStatus = async (id, status) => {
   if (error) throw new Error(error.message);
   return data[0];
 };
-
-
 
 // ADMIN: approve booking
 // GUMAGANA NA TO
@@ -175,7 +180,6 @@ export const approveBooking = async (id) => {
     .single();
 
   if (fetchError) throw new Error(fetchError.message);
-
   return data;
 };
 
@@ -196,15 +200,19 @@ export const rejectBooking = async (id) => {
   // STEP 2: fetch full booking info
   const { data, error: fetchError } = await supabase
     .from("bookings")
-    .select(`
+    .select(
+      `
       *,
       services(name),
       customers(full_name, email)
-    `)
+    `
+    )
     .eq("id", id)
     .single();
 
   if (fetchError) throw new Error(fetchError.message);
+
+  await unblockSlotGlobally(data.booking_date, data.booking_time);
 
   return data;
 };
@@ -245,5 +253,7 @@ export const cancelBooking = async (id) => {
     .single();
 
   if (cancelError) throw new Error(cancelError.message);
+
+  await unblockSlotGlobally(booking.booking_date, booking.booking_time);
   return data;
 };

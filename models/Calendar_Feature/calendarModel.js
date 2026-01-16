@@ -70,35 +70,34 @@ export const deleteSlot = async (id) => {
 
 
 
-
-
-
-
-// ADMIN: block slot after booking Later, kapag booking approved, tawagin ito para hindi ma-double book.
-export const blockSlot = async (service_id, date, time) => {
+//BLOCK SLOT GLOBALLY IF MAY BAGONG BOOKING
+export const blockSlotGlobally = async (date, time) => {
   const { data, error } = await supabase
     .from("calendar_slots")
     .update({ is_available: false })
-    .eq("service_id", service_id)
     .eq("date", date)
     .eq("time", time)
     .select();
 
   if (error) throw new Error(error.message);
-  return data[0];
+  return data; // lahat ng affected slots
 };
 
-// ADMIN/PUBLIC: unblock slot
-export const unblockSlot = async (service_id, date, time) => {
-  const { error } = await supabase
+// UNBLOCK SLOT GLOBAL IF MAY NA REJECT OR CANCEL
+export const unblockSlotGlobally = async (date, time) => {
+  const { data, error } = await supabase
     .from("calendar_slots")
     .update({ is_available: true })
-    .eq("service_id", service_id)
     .eq("date", date)
     .eq("time", time);
 
   if (error) throw new Error(error.message);
+  return data;
 };
+
+
+
+
 
 
 
@@ -117,30 +116,29 @@ export const unblockSlot = async (service_id, date, time) => {
 // };
 
 
-//BLOCK SLOT GLOBALLY IF MAY BAGONG BOOKING
 
-// export const blockSlotGlobally = async (date, time) => {
+// ADMIN: block slot after booking Later, kapag booking approved, tawagin ito para hindi ma-double book.
+// export const blockSlot = async (service_id, date, time) => {
 //   const { data, error } = await supabase
 //     .from("calendar_slots")
 //     .update({ is_available: false })
+//     .eq("service_id", service_id)
 //     .eq("date", date)
 //     .eq("time", time)
 //     .select();
 
 //   if (error) throw new Error(error.message);
-//   return data; // lahat ng affected slots
+//   return data[0];
 // };
 
-
-
-// UNBLOCK SLOT GLOBAL IF MAY NA REJECT OR CANCEL
-// export const unblockSlotGlobally = async (date, time) => {
-//   const { data, error } = await supabase
+// // ADMIN/PUBLIC: unblock slot
+// export const unblockSlot = async (service_id, date, time) => {
+//   const { error } = await supabase
 //     .from("calendar_slots")
 //     .update({ is_available: true })
+//     .eq("service_id", service_id)
 //     .eq("date", date)
 //     .eq("time", time);
 
 //   if (error) throw new Error(error.message);
-//   return data;
 // };

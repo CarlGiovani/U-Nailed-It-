@@ -1,9 +1,13 @@
 import * as booking from "../../models/Booking_Feature/bookingModel.js";
-import { unblockSlot } from "../../models/Calendar_Feature/calendarModel.js";
+
 import sendEmail from "../../services/Email_Feature/emailService.js";
 import { bookingApprovedTemplate } from "../../templates/emails/bookingApproved.js";
 import { bookingSubmittedTemplate } from "../../templates/emails/bookingSubmitted.js";
 import { bookingRejectedTemplate } from "../../templates/emails/bookingRejected.js";
+import { unblockSlotGlobally } from "../../models/Calendar_Feature/calendarModel.js";
+
+
+
 //PUBLIC : create booking (updated to create customer if not exists all in one sya)
 export const createBooking = async (req, res) => {
   try {
@@ -33,11 +37,6 @@ export const createBooking = async (req, res) => {
 
 
 
-
-
-
-
-
 // ADMIN : get all bookings
 export const getAllBookings = async (req, res) => {
   try {
@@ -48,16 +47,6 @@ export const getAllBookings = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
-
-
-
-
-
-
-
-
-
 
 // ADMIN: update booking status (approve / reject / completed)
 export const updateBookingStatus = async (req, res) => {
@@ -94,9 +83,6 @@ export const approveBooking = async (req, res) => {
   }
 };
 
-
-
-
 // ADMIN: reject booking
 // GUMAGANA NA TO
 export const rejectBooking = async (req, res) => {
@@ -113,11 +99,7 @@ export const rejectBooking = async (req, res) => {
       }),
     });
 
-    await unblockSlot(
-      result.service_id,
-      result.booking_date,
-      result.booking_time
-    );
+   await unblockSlotGlobally(result.booking_date, result.booking_time);
 
     res.json(result);
   } catch (err) {

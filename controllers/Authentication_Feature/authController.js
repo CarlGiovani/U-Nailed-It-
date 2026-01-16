@@ -2,6 +2,7 @@ import supabase from "../../utils/supabaseClient.js";
 
 
 // ADMIN LOGIN
+//DONE GUMAGANA NA
 export const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;

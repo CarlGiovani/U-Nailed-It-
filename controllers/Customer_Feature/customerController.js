@@ -4,7 +4,8 @@ import * as Customer from "../../models/Customer_Feature/customerModel.js";
 export const createOrGetCustomer = async (req, res) => {
   try {
     const customer = await Customer.getOrCreateCustomer(req.body);
-    res.status(201).json(customer);
+    const wasCreated = !customer.id;
+    res.status(wasCreated ? 201 : 200).json({ customer, created: wasCreated });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
