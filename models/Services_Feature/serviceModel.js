@@ -43,6 +43,7 @@ export const updateService = async (id, service) => {
     .select();
 
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Service not found");
   return data[0];
 };
 
@@ -55,5 +56,6 @@ export const deleteService = async (id) => {
     .select();
 
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Service not found");
   return data[0];
 };
