@@ -33,13 +33,13 @@ describe("Calendar Controller", () => {
   });
 
   // createSlot failure
-  it("createSlot - returns 500 on error", async () => {
+  it("createSlot - returns 400 on error", async () => {
     req.body = { time: "10:00 AM" };
     calendarModel.createSlot.mockRejectedValue(new Error("DB error"));
 
     await calendarController.createSlot(req, res);
 
-    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ error: "DB error" });
   });
 
@@ -78,14 +78,14 @@ describe("Calendar Controller", () => {
   });
 
   // updateSlot failure
-  it("updateSlot - returns 500 on error", async () => {
+  it("updateSlot - returns 400 on error", async () => {
     req.body = { time: "11:00 AM" };
     req.params = { id: "1" };
     calendarModel.updateSlot.mockRejectedValue(new Error("DB error"));
 
     await calendarController.updateSlot(req, res);
 
-    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ error: "DB error" });
   });
 

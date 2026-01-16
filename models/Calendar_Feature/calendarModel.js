@@ -9,7 +9,7 @@ export const createSlot = async (slot) => {
     .eq("service_id", slot.service_id)
     .eq("date", slot.date)
     .eq("time", slot.time)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     throw new Error("Slot already exists for this service, date and time");
