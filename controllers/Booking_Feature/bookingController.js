@@ -113,12 +113,7 @@ export const cancelBooking = async (req, res) => {
   try {
     const result = await booking.cancelBooking(req.params.id);
 
-    await unblockSlot(
-      result.service_id,
-      result.booking_date,
-      result.booking_time
-    );
-
+   await unblockSlotGlobally(result.booking_date, result.booking_time); 
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
