@@ -23,7 +23,7 @@ export const getServiceById = async (id) => {
   return data;
 };
 
-// CREATE new service
+// ADMIN:  CREATE new service
 
 // helper function para i-upload image sa Supabase bucket
 const uploadServiceImage = async (file) => {
@@ -78,6 +78,12 @@ export const createService = async ({ file, ...service }) => {
   if (error) throw new Error(error.message);
   return data[0];
 };
+
+
+
+
+
+
 
 // UPDATE service
 export const updateService = async (id, { file, ...service }) => {

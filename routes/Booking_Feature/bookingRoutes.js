@@ -8,14 +8,6 @@ const router = express.Router();
 router.post("/", BookingController.createBooking);
 
 
-
-
-
-
-
-
-
-
 // ADMIN
 router.get("/", verifyAdmin, BookingController.getAllBookings);
 router.put("/:id/status", verifyAdmin, BookingController.updateBookingStatus);

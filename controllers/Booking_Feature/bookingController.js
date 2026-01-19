@@ -4,7 +4,7 @@ import sendEmail from "../../services/Email_Feature/emailService.js";
 import { bookingApprovedTemplate } from "../../templates/emails/bookingApproved.js";
 import { bookingSubmittedTemplate } from "../../templates/emails/bookingSubmitted.js";
 import { bookingRejectedTemplate } from "../../templates/emails/bookingRejected.js";
-import { unblockSlotGlobally } from "../../models/Calendar_Feature/calendarModel.js";
+
 
 
 
@@ -98,9 +98,6 @@ export const rejectBooking = async (req, res) => {
         service: result.services.name,
       }),
     });
-
-   await unblockSlotGlobally(result.booking_date, result.booking_time);
-
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -112,8 +109,6 @@ export const rejectBooking = async (req, res) => {
 export const cancelBooking = async (req, res) => {
   try {
     const result = await booking.cancelBooking(req.params.id);
-
-   await unblockSlotGlobally(result.booking_date, result.booking_time); 
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });

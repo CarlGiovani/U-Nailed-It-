@@ -28,8 +28,6 @@ export const getAvailableSlots = async (req, res) => {
 export const updateSlot = async (req, res) => {
   try {
     const updated = await calendar.updateSlot(req.params.id, req.body);
-
-    
     if (!updated) {
       return res.status(404).json({ error: "Slot not found" });
     }
@@ -52,3 +50,57 @@ export const deleteSlot = async (req, res) => {
 
 
 
+
+
+//TODO : TO BE TEST PA TONG ADDED FUNCTION NA TO
+
+// ------------------------- BULK SLOT -------------------------
+
+export const createSlotsBulk = async (req, res) => {
+  try {
+    const slots = await calendar.createSlotsBulk(req.body);
+    res.status(201).json(slots);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+export const blockDayGlobally = async (req, res) => {
+  try {
+    const { date } = req.body;
+    const data = await calendar.blockDayGlobally(date, false);
+    res.json(data);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+export const unblockDayGlobally = async (req, res) => {
+  try {
+    const { date } = req.body;
+    const data = await calendar.blockDayGlobally(date, true);
+    res.json(data);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+export const blockDayForService = async (req, res) => {
+  try {
+    const { service_id, date } = req.body;
+    const data = await calendar.blockDayForService(service_id, date, false);
+    res.json(data);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+export const unblockDayForService = async (req, res) => {
+  try {
+    const { service_id, date } = req.body;
+    const data = await calendar.blockDayForService(service_id, date, true);
+    res.json(data);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
