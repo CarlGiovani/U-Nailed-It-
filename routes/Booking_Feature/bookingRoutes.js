@@ -7,7 +7,6 @@ const router = express.Router();
 // PUBLIC
 router.post("/", BookingController.createBooking);
 
-
 // ADMIN
 router.get("/", verifyAdmin, BookingController.getAllBookings);
 router.put("/:id/status", verifyAdmin, BookingController.updateBookingStatus);
@@ -18,6 +17,5 @@ router.patch("/:id/reject", verifyAdmin, BookingController.rejectBooking);
 
 // PUBLIC
 router.put("/:id/cancel", BookingController.cancelBooking);
-
 
 export default router;

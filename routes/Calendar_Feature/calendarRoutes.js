@@ -9,6 +9,7 @@ const router = express.Router();
 // PUBLIC
 router.get("/slots", CalendarController.getAvailableSlots);
 
+router.get("/availability", CalendarController.getMonthlyAvailability);
 // ADMIN
 router.post("/slots", verifyAdmin , CalendarController.createSlot);
 router.put("/slots/:id", verifyAdmin , CalendarController.updateSlot);
