@@ -1,6 +1,6 @@
 import * as calendar from "../../models/Calendar_Feature/calendarModel.js";
 
-// ================= ADMIN: CREATE SLOT =================
+// ADMIN: CREATE SLOT 
 export const createSlot = async (req, res) => {
   console.log("[CREATE SLOT] body:", req.body);
 
@@ -15,7 +15,7 @@ export const createSlot = async (req, res) => {
   }
 };
 
-// ================= PUBLIC: GET AVAILABLE SLOTS =================
+// PUBLIC: GET AVAILABLE SLOTS 
 export const getAvailableSlots = async (req, res) => {
   const { service_id, date } = req.query;
   console.log("[GET AVAILABLE SLOTS] query:", req.query);
@@ -36,7 +36,7 @@ export const getAvailableSlots = async (req, res) => {
   }
 };
 
-// ================= PUBLIC: GET MONTHLY AVAILABILITY =================
+// PUBLIC: GET MONTHLY AVAILABILITY 
 export const getMonthlyAvailability = async (req, res) => {
   console.log("[GET MONTHLY AVAILABILITY] query:", req.query);
 
@@ -52,7 +52,7 @@ export const getMonthlyAvailability = async (req, res) => {
   }
 };
 
-// ================= ADMIN: UPDATE SLOT =================
+// ADMIN: UPDATE SLOT
 export const updateSlot = async (req, res) => {
   console.log("[UPDATE SLOT] id:", req.params.id);
   console.log("[UPDATE SLOT] body:", req.body);
@@ -73,7 +73,7 @@ export const updateSlot = async (req, res) => {
   }
 };
 
-// ================= ADMIN: DELETE SLOT =================
+// ADMIN: DELETE SLOT 
 export const deleteSlot = async (req, res) => {
   console.log("[DELETE SLOT] id:", req.params.id);
 
@@ -88,7 +88,7 @@ export const deleteSlot = async (req, res) => {
   }
 };
 
-// ================= BULK CREATE SLOTS =================
+// ADMIN: BULK CREATE SLOTS
 export const createSlotsBulk = async (req, res) => {
   console.log("[CREATE SLOTS BULK] body:", req.body);
 
@@ -103,7 +103,7 @@ export const createSlotsBulk = async (req, res) => {
   }
 };
 
-// ================= ADMIN: BLOCK DAY GLOBALLY =================
+// ADMIN: BLOCK DAY GLOBALLY 
 export const blockDayGlobally = async (req, res) => {
   console.log("[BLOCK DAY GLOBALLY] body:", req.body);
 
@@ -119,7 +119,7 @@ export const blockDayGlobally = async (req, res) => {
   }
 };
 
-// ================= ADMIN: UNBLOCK DAY GLOBALLY =================
+// ADMIN: UNBLOCK DAY GLOBALLY
 export const unblockDayGlobally = async (req, res) => {
   console.log("[UNBLOCK DAY GLOBALLY] body:", req.body);
 
@@ -135,7 +135,7 @@ export const unblockDayGlobally = async (req, res) => {
   }
 };
 
-// ================= ADMIN: BLOCK DAY FOR SERVICE =================
+// ADMIN: BLOCK DAY FOR SERVICE 
 export const blockDayForService = async (req, res) => {
   console.log("[BLOCK DAY FOR SERVICE] body:", req.body);
 
@@ -151,7 +151,7 @@ export const blockDayForService = async (req, res) => {
   }
 };
 
-// ================= ADMIN: UNBLOCK DAY FOR SERVICE =================
+// ADMIN: UNBLOCK DAY FOR SERVICE 
 export const unblockDayForService = async (req, res) => {
   console.log("[UNBLOCK DAY FOR SERVICE] body:", req.body);
 

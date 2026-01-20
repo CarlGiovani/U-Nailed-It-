@@ -3,9 +3,6 @@ import * as CalendarController from "../../controllers/Calendar_Feature/calendar
 import { verifyAdmin } from "../../middlewares/Authentication/authMiddleware.js";
 const router = express.Router();
 
-
-
-
 // PUBLIC
 router.get("/slots", CalendarController.getAvailableSlots);
 

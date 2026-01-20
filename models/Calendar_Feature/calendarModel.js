@@ -54,7 +54,6 @@ export const getAvailableSlots = async (service_id, date) => {
 };
 
 // PUBLIC get montly availablity
-
 export const getMonthlyAvailability = async (service_id, year, month) => {
   if (!service_id || !year || !month) {
     throw new Error("Missing parameters");
@@ -141,10 +140,9 @@ export const unblockSlotGlobally = async (date, time) => {
   return data;
 };
 
-//TODO:  TO BE TEST PA TONG ADDED FUNCTION NA TO
 
-// ------------------------- BULK SLOT CREATION -------------------------
 
+// BULK SLOT CREATION 
 export const createSlotsBulk = async ({
   service_id,
   startDate,
@@ -184,7 +182,7 @@ export const createSlotsBulk = async ({
   return data;
 };
 
-// ------------------------- BULK BLOCK/UNBLOCK -------------------------
+// BULK BLOCK/UNBLOCK 
 
 // Block/unblock full day for all services
 export const blockDayGlobally = async (date, isAvailable = false) => {
