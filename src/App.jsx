@@ -35,7 +35,7 @@ function App() {
       <main>
         <Hero />
         <AboutUs />
-        <Services services={services} />
+        {/* <Services services={services} /> */}
         <Policies />
         <Portfolio />
         <Promos />
