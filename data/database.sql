@@ -45,9 +45,12 @@ CREATE TABLE portfolio (
     service_id BIGINT REFERENCES services(id) ON DELETE CASCADE,
     title TEXT,
     description TEXT,
-    image_url TEXT NOT NULL,
+  images TEXT[] NOT NULL;
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+
+
 
 -- =====================================
 -- 5️⃣ Promos / Announcements Table
