@@ -22,20 +22,47 @@ CREATE TABLE admins (
 );
 
 -- =====================================
--- 3️⃣ Services Table
+-- 3Services Table
 -- =====================================
 CREATE TABLE services (
     id BIGSERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT,
-    price NUMERIC(10,2) NOT NULL,
-    downpayment NUMERIC(10,2) NOT NULL,
     duration INTERVAL,
     image_url TEXT,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
+
+--=====================================
+-- Service Categories Table 
+-- =====================================
+CREATE TABLE service_categories (
+    id BIGSERIAL PRIMARY KEY,
+    service_id BIGINT REFERENCES services(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(service_id, name)
+);
+
+
+-- =====================================
+-- Service Variants Table
+-- =====================================
+CREATE TABLE service_variants (
+    id BIGSERIAL PRIMARY KEY,
+    category_id BIGINT REFERENCES service_categories(id) ON DELETE CASCADE,
+    body_part TEXT NOT NULL,     -- Hands / Feet
+    size TEXT,                  -- S / M / L / NULL
+    price NUMERIC(10,2) NOT NULL,
+    downpayment NUMERIC(10,2) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW()
+    updated_at TIMESTAMP DEFAULT NOW(),
+);
+
 
 -- =====================================
 -- 4️⃣ Portfolio / Sample Works Table

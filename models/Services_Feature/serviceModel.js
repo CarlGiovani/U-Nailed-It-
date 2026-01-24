@@ -4,12 +4,27 @@ import supabase from "../../utils/supabaseClient.js";
 export const getAllServices = async () => {
   const { data, error } = await supabase
     .from("services")
-    .select("*")
+    .select(`
+      *,
+      service_categories (
+        id,
+        name,
+        service_variants (
+          id,
+          body_part,
+          size,
+          price,
+          downpayment,
+          is_active
+        )
+      )
+    `)
     .eq("is_active", true);
 
   if (error) throw new Error(error.message);
   return data;
 };
+
 
 // GET single service by ID
 export const getServiceById = async (id) => {
@@ -22,6 +37,12 @@ export const getServiceById = async (id) => {
   if (error) throw new Error(error.message);
   return data;
 };
+
+
+
+
+
+
 
 // ADMIN:  CREATE new service
 
@@ -42,10 +63,8 @@ const uploadServiceImage = async (file) => {
 
   if (error) throw new Error(error.message);
 
-  // Debugging
+  // Debugging logs
   console.log("UPLOAD DATA:", data);
-
-  // Dito, siguraduhin may path
   if (!data || !data.path)
     throw new Error("Upload succeeded pero walang path.");
 
@@ -56,11 +75,12 @@ const uploadServiceImage = async (file) => {
 
   if (publicError) throw new Error(publicError.message);
 
-  // Debugging
+  // Debugging logs
   console.log("PUBLIC URL:", publicData.publicUrl);
 
   return publicData.publicUrl;
 };
+
 
 // CREATE new service with optional image
 export const createService = async ({ file, ...service }) => {
@@ -78,11 +98,6 @@ export const createService = async ({ file, ...service }) => {
   if (error) throw new Error(error.message);
   return data[0];
 };
-
-
-
-
-
 
 
 // UPDATE service
@@ -125,7 +140,6 @@ export const deleteService = async (id) => {
   return data[0];
 };
 
-
 // REACTIVATE service
 export const reactivateService = async (id) => {
   const { data, error } = await supabase
@@ -139,3 +153,89 @@ export const reactivateService = async (id) => {
 
   return data[0];
 };
+
+
+
+
+// SERVICE CATEGORIES
+export const createCategory = async (service_id, name) => {
+  const { data, error } = await supabase
+    .from("service_categories")
+    .insert([{ service_id, name }])
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+};
+
+// UPDATE category
+export const updateCategory = async (id, name) => {
+  const { data, error } = await supabase
+    .from("service_categories")
+    .update({ name, updated_at: new Date() })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+};
+
+// DELETE / deactivate category
+export const deleteCategory = async (id) => {
+  const { data, error } = await supabase
+    .from("service_categories")
+    .delete()
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+};
+
+
+
+
+
+
+// VARIANTS OF THE SERVICES
+export const createVariant = async (variant) => {
+  const { data, error } = await supabase
+    .from("service_variants")
+    .insert([variant])
+    .select()
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// UPDATE variant
+export const updateVariant = async (id, variant) => {
+  const { data, error } = await supabase
+    .from("service_variants")
+    .update({ ...variant, updated_at: new Date() })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data;
+};
+
+// DELETE / deactivate variant
+export const deleteVariant = async (id) => {
+  const { data, error } = await supabase
+    .from("service_variants")
+    .update({ is_active: false, updated_at: new Date() })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data;
+};
+
+

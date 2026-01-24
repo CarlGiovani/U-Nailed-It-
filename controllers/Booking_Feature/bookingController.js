@@ -5,8 +5,18 @@ import { bookingApprovedTemplate } from "../../templates/emails/bookingApproved.
 import { bookingRejectedTemplate } from "../../templates/emails/bookingRejected.js";
 import { bookingSubmittedTemplate } from "../../templates/emails/bookingSubmitted.js";
 
+import {
+  createBookingSchema,
+  updateBookingStatusSchema,
+  validate,
+} from "../../utils/validators/bookingValidation.js";
+
 //PUBLIC : create booking (updated to create customer if not exists all in one sya)
 export const createBooking = async (req, res) => {
+  // ---- VALIDATION ----
+  const errors = validate(createBookingSchema, req.body);
+  if (errors) return res.status(400).json({ errors });
+
   try {
     const newBooking = await booking.createBookingWithCustomer(req.body);
     // email config
@@ -41,9 +51,12 @@ export const getAllBookings = async (req, res) => {
 
 // ADMIN: update booking status (approve / reject / completed)
 export const updateBookingStatus = async (req, res) => {
-  const { status } = req.body;
+  // ---- VALIDATION ----
+  const errors = validate(updateBookingStatusSchema, req.body);
+  if (errors) return res.status(400).json({ errors });
+
   try {
-    const updated = await booking.updateBookingStatus(req.params.id, status);
+    const updated = await booking.updateBookingStatus(req.params.id, req.body.status);
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -95,7 +108,7 @@ export const rejectBooking = async (req, res) => {
 };
 
 // PUBLIC: cancel booking
-// TODO: send email notification upon cancellation IMPLAMENTATION
+// TODO: send email notification upon cancellation IMPLEMENTATION
 export const cancelBooking = async (req, res) => {
   try {
     const result = await booking.cancelBooking(req.params.id);

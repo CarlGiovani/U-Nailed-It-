@@ -33,4 +33,19 @@ router.delete("/:id", verifyAdmin, ServicesController.deleteService);
 // ADMIN: Reactivate service
 router.put("/:id/reactivate", verifyAdmin, ServicesController.reactivateService);
 
+
+
+
+// SERVICE CATEGORIES
+router.post("/categories", verifyAdmin, ServicesController.createCategory);
+router.put("/categories/:id", verifyAdmin, ServicesController.updateCategory);
+router.delete("/categories/:id", verifyAdmin, ServicesController.deleteCategory);
+
+// SERVICE VARIANTS
+router.post("/variants", verifyAdmin, ServicesController.createVariant);
+router.put("/variants/:id", verifyAdmin, ServicesController.updateVariant);
+router.delete("/variants/:id", verifyAdmin, ServicesController.deleteVariant);
+
+
+
 export default router;
