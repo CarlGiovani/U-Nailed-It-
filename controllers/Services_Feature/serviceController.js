@@ -4,7 +4,7 @@ import { serviceSchema, categorySchema, variantSchema, validate } from "../../ut
 // GET all services
 export const getServices = async (req, res) => {
   try {
-    const services = await Services.getAllServices();
+    const services = await Services.getAllServices(); // only active variants returned now
     res.json(services);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -15,7 +15,7 @@ export const getServices = async (req, res) => {
 export const getService = async (req, res) => {
   const { id } = req.params;
   try {
-    const service = await Services.getServiceById(id);
+    const service = await Services.getServiceById(id); // nested categories & active variants fetched
     if (!service) return res.status(404).json({ error: "Service not found" });
     res.json(service);
   } catch (err) {
@@ -35,8 +35,6 @@ export const createService = async (req, res) => {
       ...req.body,
     });
     res.json({ message: "Service created!", service: newService });
-
-    console.log("req.file:", req.file);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -64,7 +62,7 @@ export const updateService = async (req, res) => {
 export const deleteService = async (req, res) => {
   const { id } = req.params;
   try {
-    const deletedService = await Services.deleteService(id);
+    const deletedService = await Services.deleteService(id); // soft delete
     res.json({ message: "Service deactivated!", service: deletedService });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -118,8 +116,8 @@ export const updateCategory = async (req, res) => {
 export const deleteCategory = async (req, res) => {
   const { id } = req.params;
   try {
-    const category = await Services.deleteCategory(id);
-    res.json({ message: "category deleted!!", category });
+    const category = await Services.deleteCategory(id); // soft delete now
+    res.json({ message: "category deactivated!", category });
   } catch (error) {
     res.status(500).json({ error: error.message });  
   }
@@ -158,7 +156,7 @@ export const updateVariant = async (req, res) => {
 export const deleteVariant = async (req, res) => {
   const { id } = req.params;
   try {
-    const variant = await Services.deleteVariant(id);
+    const variant = await Services.deleteVariant(id); // soft delete
     res.json({ message: "Variant deactivated!", variant });
   } catch (err) {
     res.status(500).json({ error: err.message });

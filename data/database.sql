@@ -1,150 +1,125 @@
--- =====================================
--- 1️⃣ Customers Table
--- =====================================
-CREATE TABLE customers (
-    id BIGSERIAL PRIMARY KEY,
-    full_name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
-    phone TEXT,
-    facebook_link TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.admins (
+  id bigint NOT NULL DEFAULT nextval('admins_id_seq'::regclass),
+  username text NOT NULL UNIQUE,
+  email text NOT NULL UNIQUE,
+  password_hash text NOT NULL,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT admins_pkey PRIMARY KEY (id)
 );
-
--- =====================================
--- 2️⃣ Admins Table
--- =====================================
-CREATE TABLE admins (
-    id BIGSERIAL PRIMARY KEY,
-    username TEXT NOT NULL UNIQUE,
-    email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+CREATE TABLE public.bookings (
+  id bigint NOT NULL DEFAULT nextval('bookings_id_seq'::regclass),
+  customer_id bigint,
+  service_id bigint,
+  booking_date date NOT NULL,
+  booking_time time without time zone NOT NULL,
+  total_price numeric NOT NULL,
+  downpayment numeric NOT NULL,
+  notes text,
+  proof_payment_path text,
+  status text NOT NULL DEFAULT 'pending'::text,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  approved_at timestamp without time zone,
+  cancelled_at timestamp without time zone,
+  completed_at timestamp without time zone,
+  service_variant_id bigint,
+  CONSTRAINT bookings_pkey PRIMARY KEY (id),
+  CONSTRAINT bookings_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id),
+  CONSTRAINT bookings_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id),
+  CONSTRAINT bookings_service_variant_id_fkey FOREIGN KEY (service_variant_id) REFERENCES public.service_variants(id)
 );
-
--- =====================================
--- 3Services Table
--- =====================================
-CREATE TABLE services (
-    id BIGSERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT,
-    duration INTERVAL,
-    image_url TEXT,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+CREATE TABLE public.calendar_slots (
+  id bigint NOT NULL DEFAULT nextval('calendar_slots_id_seq'::regclass),
+  service_id bigint,
+  date date NOT NULL,
+  time time without time zone NOT NULL,
+  is_available boolean DEFAULT true,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT calendar_slots_pkey PRIMARY KEY (id),
+  CONSTRAINT calendar_slots_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id)
 );
-
---=====================================
--- Service Categories Table 
--- =====================================
-CREATE TABLE service_categories (
-    id BIGSERIAL PRIMARY KEY,
-    service_id BIGINT REFERENCES services(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(service_id, name)
+CREATE TABLE public.customers (
+  id bigint NOT NULL DEFAULT nextval('customers_id_seq'::regclass),
+  full_name text NOT NULL,
+  email text NOT NULL UNIQUE,
+  phone text,
+  facebook_link text,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT customers_pkey PRIMARY KEY (id)
 );
-
-
--- =====================================
--- Service Variants Table
--- =====================================
-CREATE TABLE service_variants (
-    id BIGSERIAL PRIMARY KEY,
-    category_id BIGINT REFERENCES service_categories(id) ON DELETE CASCADE,
-    body_part TEXT NOT NULL,     -- Hands / Feet
-    size TEXT,                  -- S / M / L / NULL
-    price NUMERIC(10,2) NOT NULL,
-    downpayment NUMERIC(10,2) NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT NOW()
-    updated_at TIMESTAMP DEFAULT NOW(),
+CREATE TABLE public.portfolio (
+  id bigint NOT NULL DEFAULT nextval('portfolio_id_seq'::regclass),
+  title text,
+  description text,
+  created_at timestamp without time zone DEFAULT now(),
+  images ARRAY NOT NULL,
+  CONSTRAINT portfolio_pkey PRIMARY KEY (id)
 );
-
-
--- =====================================
--- 4️⃣ Portfolio / Sample Works Table
--- =====================================
-CREATE TABLE portfolio (
-    id BIGSERIAL PRIMARY KEY,
-    service_id BIGINT REFERENCES services(id) ON DELETE CASCADE,
-    title TEXT,
-    description TEXT,
-  images TEXT[] NOT NULL;
-    created_at TIMESTAMP DEFAULT NOW()
+CREATE TABLE public.promos (
+  id bigint NOT NULL DEFAULT nextval('promos_id_seq'::regclass),
+  title text NOT NULL,
+  description text,
+  image_url text,
+  start_date date,
+  end_date date,
+  is_active boolean DEFAULT true,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT promos_pkey PRIMARY KEY (id)
 );
-
-
-
-
--- =====================================
--- 5️⃣ Promos / Announcements Table
--- =====================================
-CREATE TABLE promos (
-    id BIGSERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    image_url TEXT,
-    start_date DATE,
-    end_date DATE,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT NOW()
+CREATE TABLE public.revenue_logs (
+  id bigint NOT NULL DEFAULT nextval('revenue_logs_id_seq'::regclass),
+  booking_id bigint,
+  amount numeric NOT NULL,
+  note text,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT revenue_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT revenue_logs_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id)
 );
-
--- =====================================
--- 6️⃣ Bookings Table
--- =====================================
-CREATE TABLE bookings (
-    id BIGSERIAL PRIMARY KEY,
-    customer_id BIGINT REFERENCES customers(id) ON DELETE CASCADE,
-    service_id BIGINT REFERENCES services(id),
-    booking_date DATE NOT NULL,
-    booking_time TIME NOT NULL,
-    total_price NUMERIC(10,2) NOT NULL,
-    downpayment NUMERIC(10,2) NOT NULL,
-    notes TEXT,
-    proof_payment_path TEXT,
-    status TEXT NOT NULL DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+CREATE TABLE public.reviews (
+  id bigint NOT NULL DEFAULT nextval('reviews_id_seq'::regclass),
+  booking_id bigint,
+  rating smallint CHECK (rating >= 1 AND rating <= 5),
+  comment text,
+  image_url text,
+  is_approved boolean DEFAULT false,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT reviews_pkey PRIMARY KEY (id),
+  CONSTRAINT reviews_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id)
 );
-
--- =====================================
--- 7️⃣ Reviews Table
--- =====================================
-CREATE TABLE reviews (
-    id BIGSERIAL PRIMARY KEY,
-    booking_id BIGINT REFERENCES bookings(id) ON DELETE CASCADE,
-    rating SMALLINT CHECK (rating >= 1 AND rating <= 5),
-    comment TEXT,
-    image_url TEXT,
-    is_approved BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT NOW()
+CREATE TABLE public.service_categories (
+  id bigint NOT NULL DEFAULT nextval('service_categories_id_seq'::regclass),
+  service_id bigint,
+  name text NOT NULL,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT service_categories_pkey PRIMARY KEY (id),
+  CONSTRAINT service_categories_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id)
 );
-
--- =====================================
--- 8️⃣ Calendar / Availability Table
--- =====================================
-CREATE TABLE calendar_slots (
-    id BIGSERIAL PRIMARY KEY,
-    service_id BIGINT REFERENCES services(id),
-    date DATE NOT NULL,
-    time TIME NOT NULL,
-    is_available BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(service_id, date, time)
+CREATE TABLE public.service_variants (
+  id bigint NOT NULL DEFAULT nextval('service_variants_id_seq'::regclass),
+  category_id bigint,
+  body_part text NOT NULL,
+  size text,
+  price numeric NOT NULL,
+  downpayment numeric NOT NULL,
+  is_active boolean DEFAULT true,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT service_variants_pkey PRIMARY KEY (id),
+  CONSTRAINT service_variants_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.service_categories(id)
 );
-
--- =====================================
--- 9️⃣ Revenue Logs Table
--- =====================================
-CREATE TABLE revenue_logs (
-    id BIGSERIAL PRIMARY KEY,
-    booking_id BIGINT REFERENCES bookings(id),
-    amount NUMERIC(10,2) NOT NULL,
-    note TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+CREATE TABLE public.services (
+  id bigint NOT NULL DEFAULT nextval('services_id_seq'::regclass),
+  name text NOT NULL,
+  description text,
+  duration interval,
+  image_url text,
+  is_active boolean DEFAULT true,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT services_pkey PRIMARY KEY (id)
 );

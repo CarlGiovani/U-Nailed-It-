@@ -89,7 +89,7 @@ export const getMonthlyAvailability = async (service_id, year, month) => {
 
   return Object.keys(map).map((date) => ({
     date,
-    available: map[date].available > 0, // ✅ kahit 1 slot lang
+    available: map[date].available > 0, 
   }));
 };
 

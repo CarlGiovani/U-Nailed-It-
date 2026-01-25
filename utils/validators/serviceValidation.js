@@ -2,16 +2,10 @@ import Joi from "joi";
 
 // ------------------ SERVICE VALIDATION ------------------
 export const serviceSchema = Joi.object({
-  name: Joi.string().required().messages({
-    "any.required": "Service name is required",
-    "string.empty": "Service name cannot be empty",
-  }),
-  description: Joi.string().allow("").optional(),
-  price: Joi.number().precision(2).optional(),
-  downpayment: Joi.number().precision(2).optional(),
-  is_active: Joi.boolean().optional(),
+  name: Joi.string().required(),
+  description: Joi.string().allow(""),
+  duration: Joi.string().allow(null, ""), 
 });
-
 // ------------------ CATEGORY VALIDATION ------------------
 export const categorySchema = Joi.object({
   service_id: Joi.number().required().messages({
