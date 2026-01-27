@@ -6,6 +6,10 @@ const router = express.Router();
 
 // PUBLIC
 router.post("/", BookingController.createBooking);
+
+// PUBLIC: confirm booking (after payment proof)
+router.post("/confirm", BookingController.confirmBooking);
+
  
 // ADMIN
 router.get("/", verifyAdmin, BookingController.getAllBookings);

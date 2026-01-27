@@ -1,17 +1,16 @@
 import supabase from "../../utils/supabaseClient.js";
-import {
-  blockSlotGlobally,
-  unblockSlotGlobally,
-} from "../Calendar_Feature/calendarModel.js";
+import { unblockSlotGlobally } from "../Calendar_Feature/calendarModel.js";
 import { getOrCreateCustomer } from "../Customer_Feature/customerModel.js";
 
 // PUBLIC: create booking with customer info (create customer if not exists) ALL IN ONE
 // GUMAGANA NA TO, UPDATE: ngayon kasama na ang service_categories at variants
+
+// STEP 1: Create booking pending payment (Customer chooses service/date/time)
 export const createBookingWithCustomer = async (bookingData) => {
   const {
     service_id,
-    service_category_id, // NEW: category selected by customer
-    service_variant_id,  // variant selected by customer
+    service_category_id,
+    service_variant_id,
     booking_date,
     booking_time,
     total_price,
@@ -31,21 +30,8 @@ export const createBookingWithCustomer = async (bookingData) => {
     facebook_link,
   });
 
-  // Check slot availability (specific service)
-  const { data: slot, error: slotError } = await supabase
-    .from("calendar_slots")
-    .select("id")
-    .eq("service_id", service_id)
-    .eq("date", booking_date)
-    .eq("time", booking_time)
-    .eq("is_available", true)
-    .maybeSingle();
-
-  if (slotError || !slot) {
-    throw new Error("Selected slot is no longer available");
-  }
-
-  // Create booking with status = pending
+  // **Huwag muna i-check slot availability dito!**
+  // Status: pending_payment
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
     .insert([
@@ -80,7 +66,7 @@ export const createBookingWithCustomer = async (bookingData) => {
           )
         )
       )
-    `
+    `,
     )
     .single();
 
@@ -89,21 +75,88 @@ export const createBookingWithCustomer = async (bookingData) => {
   // Filter response to only include selected category and variant
   if (service_category_id && service_variant_id && booking.services) {
     booking.services.service_categories = booking.services.service_categories
-      .filter(cat => cat.id === service_category_id)
-      .map(cat => {
+      .filter((cat) => cat.id === service_category_id)
+      .map((cat) => {
         cat.service_variants = cat.service_variants.filter(
-          variant => variant.id === service_variant_id
+          (v) => v.id === service_variant_id,
         );
         return cat;
       });
   }
 
-  // Block all slots globally for this date & time
-  await blockSlotGlobally(booking_date, booking_time);
-
+  // **Hindi na magbblock ng slot dito**
   return booking;
 };
 
+// STEP 3: Confirm booking after payment proof
+export const createBookingWithPaymentIntent = async (intentId) => {
+  const { data: intent } = await supabase
+    .from("payment_intents")
+    .select("*")
+    .eq("id", intentId)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (!intent)
+    throw new Error("Payment intent not found or already used/expired");
+
+  // UTC-safe expiration check
+  if (new Date(intent.expires_at).getTime() < new Date().getTime()) {
+    await supabase
+      .from("payment_intents")
+      .update({ status: "expired" })
+      .eq("id", intentId);
+    throw new Error("Payment proof expired");
+  }
+
+  // **Check slot availability dito lang**
+  const { data: slot } = await supabase
+    .from("calendar_slots")
+    .select("id")
+    .eq("service_id", intent.service_id)
+    .eq("date", intent.booking_date)
+    .eq("time", intent.booking_time)
+    .eq("is_available", true)
+    .maybeSingle();
+
+  if (!slot) throw new Error("Selected slot is no longer available");
+
+  // Lock the slot
+  await supabase
+    .from("calendar_slots")
+    .update({ is_available: false })
+    .eq("id", slot.id);
+
+  // Get or create customer
+  const customer = await getOrCreateCustomer({ email: intent.email });
+
+  // Update booking created in Step 1
+  const { data: booking, error } = await supabase
+    .from("bookings")
+    .update({
+      status: "pending", // or approved if auto-approve
+      proof_payment_path: intent.proof_path,
+    })
+    .eq("id", intent.booking_id)
+    .select("*")
+    .single();
+
+  if (error) {
+    await supabase
+      .from("calendar_slots")
+      .update({ is_available: true })
+      .eq("id", slot.id);
+    throw new Error(error.message);
+  }
+
+  // Mark intent as used
+  await supabase
+    .from("payment_intents")
+    .update({ status: "used" })
+    .eq("id", intentId);
+
+  return booking;
+};
 
 // ADMIN: get all bookings
 // GUMAGANA NA TO
@@ -129,7 +182,7 @@ export const getAllBookings = async () => {
         )
       ),
       customers(full_name,email)
-    `
+    `,
     )
     .order("created_at", { ascending: false });
 
@@ -189,7 +242,7 @@ export const approveBooking = async (id) => {
         )
       ),
       customers(full_name,email)
-    `
+    `,
     )
     .eq("id", id)
     .single();
@@ -241,7 +294,7 @@ export const rejectBooking = async (id) => {
         )
       ),
       customers(full_name, email)
-    `
+    `,
     )
     .eq("id", id)
     .single();

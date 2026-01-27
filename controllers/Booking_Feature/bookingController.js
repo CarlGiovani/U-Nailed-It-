@@ -12,31 +12,61 @@ import {
 } from "../../utils/validators/bookingValidation.js";
 
 //PUBLIC : create booking (updated to create customer if not exists all in one sya)
+// PUBLIC : create booking (Step 1)
 export const createBooking = async (req, res) => {
-  // ---- VALIDATION ----
   const errors = validate(createBookingSchema, req.body);
   if (errors) return res.status(400).json({ errors });
 
   try {
+    // Step 1: Pending payment booking
     const newBooking = await booking.createBookingWithCustomer(req.body);
-    // email config
-    if (newBooking.customers && newBooking.customers.email) {
+
+    // Email: booking submitted
+    if (newBooking.customers?.email) {
       await sendEmail({
         to: newBooking.customers.email,
         subject: "BOOKING SUBMITTED",
         html: bookingSubmittedTemplate({
           name: newBooking.customers.full_name,
-          service: newBooking.services
-            ? newBooking.services.name
-            : "Selected Service",
+          service: newBooking.services?.name || "Selected Service",
         }),
       });
     }
+
     res.status(201).json(newBooking);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
+
+// PUBLIC: confirm booking (Step 3)
+export const confirmBooking = async (req, res) => {
+  const { payment_intent_id } = req.body;
+  if (!payment_intent_id)
+    return res.status(400).json({ error: "payment_intent_id required" });
+
+  try {
+    // Step 3: Check slot, lock, create final booking
+    const bookingData = await booking.createBookingWithPaymentIntent(payment_intent_id);
+
+    // Email: booking confirmed
+    if (bookingData.customers?.email) {
+      await sendEmail({
+        to: bookingData.customers.email,
+        subject: "Booking Confirmed",
+        html: bookingSubmittedTemplate({
+          name: bookingData.customers.full_name,
+          service: bookingData.services?.name || "Selected Service",
+        }),
+      });
+    }
+
+    res.status(201).json({ message: "Booking confirmed", booking: bookingData });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
 
 // ADMIN : get all bookings
 export const getAllBookings = async (req, res) => {
@@ -56,7 +86,10 @@ export const updateBookingStatus = async (req, res) => {
   if (errors) return res.status(400).json({ errors });
 
   try {
-    const updated = await booking.updateBookingStatus(req.params.id, req.body.status);
+    const updated = await booking.updateBookingStatus(
+      req.params.id,
+      req.body.status,
+    );
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });

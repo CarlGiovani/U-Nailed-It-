@@ -1,10 +1,11 @@
 import supabase from "../../utils/supabaseClient.js";
 
-// GET all active services with active variants and ordered
+// GET ALL SERVICES (public)
 export const getAllServices = async () => {
   const { data, error } = await supabase
     .from("services")
-    .select(`
+    .select(
+      `
       *,
       service_categories (
         id,
@@ -14,25 +15,24 @@ export const getAllServices = async () => {
           body_part,
           size,
           price,
-          downpayment,
-          is_active
-        ) 
-        .eq("is_active", true)
-        ORDER BY price ASC
-      ) 
-      ORDER BY name ASC
-    `)
-    .eq("is_active", true);
+          downpayment
+        )
+      )
+    `,
+    )
+    .order("name", { ascending: true });
 
   if (error) throw new Error(error.message);
+
   return data;
 };
 
-// GET single service by ID with nested categories & variants
+// GET SINGLE SERVICE BY ID (public)
 export const getServiceById = async (id) => {
   const { data, error } = await supabase
     .from("services")
-    .select(`
+    .select(
+      `
       *,
       service_categories (
         id,
@@ -42,18 +42,16 @@ export const getServiceById = async (id) => {
           body_part,
           size,
           price,
-          downpayment,
-          is_active
-        ) 
-        .eq("is_active", true)
-        ORDER BY price ASC
-      ) 
-      ORDER BY name ASC
-    `)
+          downpayment
+        )
+      )
+    `,
+    )
     .eq("id", id)
     .single();
 
   if (error) throw new Error(error.message);
+
   return data;
 };
 

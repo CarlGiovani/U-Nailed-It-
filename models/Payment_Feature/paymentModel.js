@@ -29,14 +29,25 @@ export const saveProofPath = async (booking_id, filePath) => {
   return data;
 };
 
+// NEW: create payment intent
+export const createPaymentIntent = async (intentData) => {
+  const { data, error } = await supabase
+    .from("payment_intents")
+    .insert([intentData])
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+};
+
 // ADMIN :signed url
-export const createSignedUrl = async (filePath) => {
+export const createSignedUrl = async (filePath, expiresIn = 1800) => {
+  // 1800s = 30 min
   const { data, error } = await supabase.storage
     .from("payment-proofs")
-    .createSignedUrl(filePath, 60);
+    .createSignedUrl(filePath, expiresIn);
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
   return data.signedUrl;
 };
