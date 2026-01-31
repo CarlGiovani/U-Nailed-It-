@@ -45,7 +45,7 @@ export const getMonthlyAvailability = async (serviceId, year, month) => {
     const response = await api.get("/calendar/availability", {
       params: {
         service_id: parsedServiceId,
-        year,
+        year, 
         month: String(month).padStart(2, "0"),
       },
     });

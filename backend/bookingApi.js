@@ -1,7 +1,19 @@
-// backend/bookingApi.js
 import api from "../config/axios.js";
 
-// UPLOAD PAYMENT PROOF
+// CREATE BOOKING (Step 1)
+export const createBooking = async (data) => {
+  try {
+    console.log("📝 Creating booking...", data);
+    const res = await api.post("/bookings", data);
+    console.log("✅ Booking created:", res.data);
+    return res.data;
+  } catch (error) {
+    console.error("❌ Booking error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// UPLOAD PAYMENT PROOF (Step 2)
 export const uploadPaymentProof = async (formData) => {
   try {
     console.log("📤 Uploading payment proof...");
@@ -16,49 +28,31 @@ export const uploadPaymentProof = async (formData) => {
   }
 };
 
-// CREATE BOOKING
-export const createBooking = async (data) => {
+// CONFIRM BOOKING (Step 3)
+export const confirmBooking = async (paymentIntentId) => {
   try {
-    console.log("📝 Creating booking...", data);
-    const res = await api.post("/bookings", data);
-    console.log("✅ Booking created:", res.data);
-    return res.data;
-  } catch (error) {
-    console.error("❌ Booking error:", error.response?.data || error.message);
-    throw error;
-  }
-};
+    console.log("✅ Confirming booking with payment intent:", paymentIntentId);
 
-// GET BOOKING BY ID
-export const getBookingById = async (id) => {
-  try {
-    console.log(`📋 Getting booking #${id}...`);
-    const res = await api.get(`/bookings/${id}`);
-    console.log("✅ Booking retrieved:", res.data);
-    return res.data;
-  } catch (error) {
-    console.error(
-      "❌ Get booking error:",
-      error.response?.data || error.message
-    );
-    throw error;
-  }
-};
+    // TRY DIFFERENT FIELD NAMES:
+    const payload = {
+      payment_intent_id: paymentIntentId,
+      // OR
+      paymentIntentId: paymentIntentId,
+      // OR
+      id: paymentIntentId,
+      // OR
+      reference_id: paymentIntentId,
+    };
 
-// GET USER BOOKINGS
-export const getUserBookings = async (email) => {
-  try {
-    console.log(`📋 Getting bookings for ${email}...`);
-    const res = await api.get("/bookings/user", {
-      params: { email },
-    });
-    console.log("✅ User bookings:", res.data);
+    console.log("Sending payload:", payload);
+    const res = await api.post("/bookings/confirm", payload);
+
+    console.log("✅ Booking confirmed:", res.data);
     return res.data;
   } catch (error) {
-    console.error(
-      "❌ Get user bookings error:",
-      error.response?.data || error.message
-    );
+    console.error("❌ Full confirmation error:", error);
+    console.error("Response data:", error.response?.data);
+    console.error("Status:", error.response?.status);
     throw error;
   }
 };
