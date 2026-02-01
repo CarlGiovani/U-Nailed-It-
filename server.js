@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import { scheduleSlotCleanup } from "./utils/slotCron.js";
 
 //ENDPOINTS IMPORT
 import authRoutes from "./routes/Authentication_Feature/authRoutes.js";
@@ -36,6 +37,9 @@ const supabase = createClient(
   process.env.SUPABASE_KEY
 );
 
+
+// start cron job
+scheduleSlotCleanup();
 // TEST SERVER ROUTES
 app.get("/", (req, res) => {
   res.send("YEHEY YOUR SERVER IS RUNNING!!!!!!");

@@ -1,5 +1,8 @@
 import supabase from "../../utils/supabaseClient.js";
-import { unblockSlotGlobally } from "../Calendar_Feature/calendarModel.js";
+import {
+  blockSlotGlobally,
+  unblockSlotGlobally,
+} from "../Calendar_Feature/calendarModel.js";
 import { getOrCreateCustomer } from "../Customer_Feature/customerModel.js";
 
 // PUBLIC: create booking with customer info (create customer if not exists) ALL IN ONE
@@ -89,6 +92,7 @@ export const createBookingWithCustomer = async (bookingData) => {
 };
 
 // STEP 3: Confirm booking after payment proof
+// STEP 3: Confirm booking after payment proof with global block
 export const createBookingWithPaymentIntent = async (intentId) => {
   const { data: intent } = await supabase
     .from("payment_intents")
@@ -109,7 +113,7 @@ export const createBookingWithPaymentIntent = async (intentId) => {
     throw new Error("Payment proof expired");
   }
 
-  // **Check slot availability dito lang**
+  // Check slot availability for this service
   const { data: slot } = await supabase
     .from("calendar_slots")
     .select("id")
@@ -121,11 +125,14 @@ export const createBookingWithPaymentIntent = async (intentId) => {
 
   if (!slot) throw new Error("Selected slot is no longer available");
 
-  // Lock the slot
+  // Lock the slot for this service
   await supabase
     .from("calendar_slots")
     .update({ is_available: false })
     .eq("id", slot.id);
+
+  // Global block: block same date/time for ALL services
+  await blockSlotGlobally(intent.booking_date, intent.booking_time);
 
   // Get or create customer
   const customer = await getOrCreateCustomer({ email: intent.email });
@@ -142,6 +149,7 @@ export const createBookingWithPaymentIntent = async (intentId) => {
     .single();
 
   if (error) {
+    // Undo slot lock kung may error
     await supabase
       .from("calendar_slots")
       .update({ is_available: true })

@@ -1,8 +1,10 @@
+import formatLocalDate from "../../utils/dateFormatter.js";
 import supabase from "../../utils/supabaseClient.js";
 
-// ADMIN : add SLOT
+/* =========================
+   ADMIN : CREATE SINGLE SLOT
+========================= */
 export const createSlot = async (slot) => {
-  // check if slot already exists
   const { data: existing } = await supabase
     .from("calendar_slots")
     .select("id")
@@ -11,93 +13,111 @@ export const createSlot = async (slot) => {
     .eq("time", slot.time)
     .maybeSingle();
 
-  if (existing) {
+  if (existing)
     throw new Error("Slot already exists for this service, date and time");
-  }
 
   if (slot.is_available === undefined) slot.is_available = true;
 
-  // insert if safe
   const { data, error } = await supabase
     .from("calendar_slots")
     .insert([slot])
     .select();
 
   if (error) throw new Error(error.message);
-
   return data[0];
 };
 
-// PUBLIC: get available slots per service
-// PUBLIC: get available slots (globally)
+/* =========================
+   PUBLIC : GET AVAILABLE SLOTS (DAY)
+========================= */
 export const getAvailableSlots = async (service_id, date) => {
-  if (!service_id) throw new Error("service_id is required");
+  if (!service_id || !date) throw new Error("Missing service_id or date");
 
-  service_id = Number(service_id); // convert sa number
+  const now = new Date();
+  const todayStr = formatLocalDate(now);
+  const currentTime = now.toTimeString().slice(0, 5);
 
   let query = supabase
     .from("calendar_slots")
     .select("*")
-    .eq("is_available", true) // global availability
-    .eq("service_id", service_id)
-    .order("time");
+    .eq("service_id", Number(service_id))
+    .eq("date", date)
+    .eq("is_available", true);
 
-  if (date) query = query.eq("date", date);
-
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-
-  // Filter by service_id only
-  const filtered = data.filter((slot) => slot.service_id === service_id);
-
-  return filtered;
-};
-
-// PUBLIC get montly availablity
-export const getMonthlyAvailability = async (service_id, year, month) => {
-  if (!service_id || !year || !month) {
-    throw new Error("Missing parameters");
+  if (date === todayStr) {
+    query = query.gt("time", currentTime);
   }
 
-  const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
-  const endDate = `${year}-${String(month).padStart(2, "0")}-31`;
+  const { data, error } = await query.order("time");
+
+  if (error) throw new Error(error.message);
+  return data;
+};
+
+/* =========================
+   PUBLIC : MONTHLY AVAILABILITY
+========================= */
+export const getMonthlyAvailability = async (service_id, year, month) => {
+  if (!service_id || !year || !month) throw new Error("Missing parameters");
+
+  const yearNum = parseInt(year);
+  const monthNum = parseInt(month);
+  if (monthNum < 1 || monthNum > 12)
+    throw new Error("Invalid month. Must be 1-12");
+
+  const lastDay = new Date(yearNum, monthNum, 0).getDate();
+  const startDate = `${yearNum}-${String(monthNum).padStart(2, "0")}-01`;
+  const endDate = `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+  const now = new Date();
+  const todayStr = formatLocalDate(now);
+  const currentTime = now.toTimeString().slice(0, 5);
 
   const { data, error } = await supabase
     .from("calendar_slots")
-    .select("date, is_available")
+    .select("date, time, is_available")
     .eq("service_id", service_id)
     .gte("date", startDate)
     .lte("date", endDate);
 
   if (error) throw new Error(error.message);
 
-  const map = {};
+  const dayMap = {};
 
   for (const row of data) {
-    if (!map[row.date]) {
-      map[row.date] = {
-        total: 0,
-        available: 0,
-      };
+    // ignore past
+    if (row.date < todayStr) continue;
+    if (row.date === todayStr && row.time <= currentTime) continue;
+
+    if (!dayMap[row.date]) {
+      dayMap[row.date] = false;
     }
 
-    map[row.date].total++;
+    // kahit isa lang na available → available day
     if (row.is_available) {
-      map[row.date].available++;
+      dayMap[row.date] = true;
     }
   }
 
-  return Object.keys(map).map((date) => ({
+  return Object.keys(dayMap).map((date) => ({
     date,
-    available: map[date].available > 0, 
+    available: dayMap[date],
   }));
 };
 
-// ADMIN: update slot (block / unblock)
+/* =========================
+   ADMIN : UPDATE SLOT (SAFE)
+========================= */
 export const updateSlot = async (id, updates) => {
+  const allowedUpdates = (({ date, time, is_available }) => ({
+    date,
+    time,
+    is_available,
+  }))(updates);
+
   const { data, error } = await supabase
     .from("calendar_slots")
-    .update(updates)
+    .update(allowedUpdates)
     .eq("id", id)
     .select();
 
@@ -105,17 +125,23 @@ export const updateSlot = async (id, updates) => {
   return data[0];
 };
 
-// ADMIN: delete slot
+/* =========================
+   ADMIN : DELETE SLOT
+========================= */
 export const deleteSlot = async (id) => {
   const { data, error } = await supabase
     .from("calendar_slots")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .select();
+
   if (error) throw new Error(error.message);
   return data;
 };
 
-//BLOCK SLOT GLOBALLY IF MAY BAGONG BOOKING
+/* =========================
+   GLOBAL BLOCK / UNBLOCK
+========================= */
 export const blockSlotGlobally = async (date, time) => {
   const { data, error } = await supabase
     .from("calendar_slots")
@@ -125,50 +151,77 @@ export const blockSlotGlobally = async (date, time) => {
     .select();
 
   if (error) throw new Error(error.message);
-  return data; // lahat ng affected slots
+  return data;
 };
 
-// UNBLOCK SLOT GLOBAL IF MAY NA REJECT OR CANCEL
 export const unblockSlotGlobally = async (date, time) => {
   const { data, error } = await supabase
     .from("calendar_slots")
     .update({ is_available: true })
     .eq("date", date)
-    .eq("time", time);
+    .eq("time", time)
+    .select();
 
   if (error) throw new Error(error.message);
   return data;
 };
 
+/* =========================
+   BULK SLOT CREATION
+========================= */
 
-
-// BULK SLOT CREATION 
 export const createSlotsBulk = async ({
   service_id,
   startDate,
   endDate,
   times,
 }) => {
-  if (!service_id || !startDate || !endDate || !times?.length) {
+  if (!service_id || !startDate || !endDate || !times?.length)
     throw new Error("Missing required parameters");
-  }
 
   const start = new Date(startDate);
   const end = new Date(endDate);
   const dates = [];
+
+  // Generate dates array
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     dates.push(new Date(d));
   }
 
   const slotsToInsert = [];
+
   for (const date of dates) {
-    const dateStr = date.toISOString().split("T")[0];
+    const dateStr = formatLocalDate(date);
+
     for (const time of times) {
+      // 🔹 Check if may booking sa kahit anong service sa parehong date+time
+      const { data: takenGlobal, error: checkError } = await supabase
+        .from("bookings")
+        .select("id")
+        .eq("booking_date", dateStr)
+        .eq("booking_time", time)
+        .neq("status", "cancelled")
+        .maybeSingle();
+
+      if (checkError) throw new Error(checkError.message);
+
+      const isBlocked = !!takenGlobal;
+
+      // 🔹 Block lahat ng existing slots sa parehong date+time kung may booking
+      if (isBlocked) {
+        await supabase
+          .from("calendar_slots")
+          .update({ is_available: false })
+          .eq("date", dateStr)
+          .eq("time", time);
+      }
+
+      // 🔹 Insert / upsert slot para sa bagong service
       slotsToInsert.push({
         service_id,
         date: dateStr,
         time,
-        is_available: true,
+        is_available: isBlocked ? false : true,
       });
     }
   }
@@ -179,12 +232,13 @@ export const createSlotsBulk = async ({
     .select();
 
   if (error) throw new Error(error.message);
+
   return data;
 };
 
-// BULK BLOCK/UNBLOCK 
-
-// Block/unblock full day for all services
+/* =========================
+   BULK DAY BLOCKING
+========================= */
 export const blockDayGlobally = async (date, isAvailable = false) => {
   const { data, error } = await supabase
     .from("calendar_slots")
@@ -196,11 +250,10 @@ export const blockDayGlobally = async (date, isAvailable = false) => {
   return data;
 };
 
-// Block/unblock full day for a specific service
 export const blockDayForService = async (
   service_id,
   date,
-  isAvailable = false
+  isAvailable = false,
 ) => {
   const { data, error } = await supabase
     .from("calendar_slots")
