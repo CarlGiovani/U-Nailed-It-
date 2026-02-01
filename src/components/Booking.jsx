@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   confirmBooking,
   createBooking,
@@ -10,6 +10,14 @@ import {
 } from "../../backend/calendarApi.js";
 import { getAllServices } from "../../backend/servicesApi.js";
 import "../styles/booking-system.css";
+
+// DATE FORTMATTER FUNCTION HELPER
+const formatLocalDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 const Booking = () => {
   // State management
@@ -55,6 +63,34 @@ const Booking = () => {
   }, []);
 
   // Fetch monthly availability when service or month changes
+  const fetchMonthlyAvailability = useCallback(async () => {
+    if (!formData.service_id) return;
+
+    setFetchingAvailability(true);
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth() + 1;
+
+    try {
+      const availabilityData = await getMonthlyAvailability(
+        formData.service_id,
+        year,
+        month,
+      );
+
+      const availabilityMap = {};
+      availabilityData.forEach((item) => {
+        availabilityMap[item.date] = item.available;
+      });
+
+      setMonthlyAvailability(availabilityMap);
+    } catch (error) {
+      console.error("Error fetching monthly availability:", error);
+      setMonthlyAvailability({});
+    } finally {
+      setFetchingAvailability(false);
+    }
+  }, [formData.service_id, currentMonth]);
+
   useEffect(() => {
     if (formData.service_id) {
       fetchMonthlyAvailability();
@@ -62,23 +98,136 @@ const Booking = () => {
       setMonthlyAvailability({});
       setCalendarDates([]);
     }
-  }, [formData.service_id, currentMonth]);
+  }, [formData.service_id, currentMonth, fetchMonthlyAvailability]);
 
   // Generate calendar when monthly availability changes
+  // Fix sa generateCalendar function:
+  const generateCalendar = useCallback(() => {
+    if (!formData.service_id) return;
+
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startDay = firstDay.getDay();
+
+    const dates = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Add previous month's days
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = startDay - 1; i >= 0; i--) {
+      const date = new Date(year, month - 1, prevMonthLastDay - i);
+      const dateStr = formatLocalDate(date);
+      dates.push({
+        date: date,
+        dateStr: dateStr,
+        isCurrentMonth: false,
+        isPast: date < today,
+        isSelected: selectedDate === dateStr,
+        isBlocked: true,
+        isAvailable: false,
+      });
+    }
+
+    // Add current month's days
+    for (let i = 1; i <= daysInMonth; i++) {
+      const date = new Date(year, month, i);
+      const dateStr = formatLocalDate(date);
+      const isPast = date < today;
+      const isAvailable = monthlyAvailability[dateStr] === true;
+      const isBlocked = isPast || !isAvailable;
+
+      dates.push({
+        date: date,
+        dateStr: dateStr,
+        isCurrentMonth: true,
+        isPast: isPast,
+        isSelected: selectedDate === dateStr,
+        isBlocked: isBlocked,
+        isAvailable: isAvailable,
+      });
+    }
+
+    // Add next month's days - FIXED VERSION
+    const totalCells = 42; // 6 weeks
+    const remainingCells = Math.max(0, totalCells - dates.length); // ← DITO ANG FIX
+
+    for (let i = 1; i <= remainingCells; i++) {
+      const date = new Date(year, month + 1, i);
+      const dateStr = formatLocalDate(date);
+      dates.push({
+        date: date,
+        dateStr: dateStr,
+        isCurrentMonth: false,
+        isPast: date < today,
+        isSelected: false,
+        isBlocked: true,
+        isAvailable: false,
+      });
+    }
+
+    setCalendarDates(dates);
+  }, [currentMonth, monthlyAvailability, selectedDate, formData.service_id]);
   useEffect(() => {
     if (formData.service_id) {
       generateCalendar();
     }
-  }, [currentMonth, monthlyAvailability]);
+  }, [formData.service_id, generateCalendar]);
 
   // Fetch available slots when date is selected
+  const fetchAvailableSlots = useCallback(async () => {
+    if (!formData.service_id || !selectedDate) return;
+
+    setFetchingSlots(true);
+    try {
+      const slots = await getAvailableSlots(formData.service_id, selectedDate);
+      setAvailableSlots(slots);
+    } catch (error) {
+      console.error("Error fetching slots:", error);
+      setAvailableSlots([]);
+    } finally {
+      setFetchingSlots(false);
+    }
+  }, [formData.service_id, selectedDate]);
+
   useEffect(() => {
     if (formData.service_id && selectedDate) {
       fetchAvailableSlots();
     } else {
       setAvailableSlots([]);
     }
-  }, [formData.service_id, selectedDate]);
+  }, [formData.service_id, selectedDate, fetchAvailableSlots]);
+
+  // Navigation functions
+  const prevMonth = () => {
+    setCurrentMonth(
+      (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
+    );
+    setSelectedDate("");
+    setAvailableSlots([]);
+    setFormData((prev) => ({ ...prev, booking_time: "" }));
+  };
+
+  const nextMonth = () => {
+    setCurrentMonth(
+      (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
+    );
+    setSelectedDate("");
+    setAvailableSlots([]);
+    setFormData((prev) => ({ ...prev, booking_time: "" }));
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+    setSelectedDate("");
+    setAvailableSlots([]);
+    setFormData((prev) => ({ ...prev, booking_time: "" }));
+  };
 
   // Fetch services
   const fetchServices = async () => {
@@ -174,149 +323,6 @@ const Booking = () => {
     }
   };
 
-  // Fetch monthly availability
-  const fetchMonthlyAvailability = async () => {
-    if (!formData.service_id) return;
-
-    setFetchingAvailability(true);
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth() + 1;
-
-    try {
-      const availabilityData = await getMonthlyAvailability(
-        formData.service_id,
-        year,
-        month,
-      );
-
-      const availabilityMap = {};
-      availabilityData.forEach((item) => {
-        availabilityMap[item.date] = item.available;
-      });
-
-      setMonthlyAvailability(availabilityMap);
-    } catch (error) {
-      console.error("Error fetching monthly availability:", error);
-      setMonthlyAvailability({});
-    } finally {
-      setFetchingAvailability(false);
-    }
-  };
-
-  // Fetch available slots
-  const fetchAvailableSlots = async () => {
-    if (!formData.service_id || !selectedDate) return;
-
-    setFetchingSlots(true);
-    try {
-      const slots = await getAvailableSlots(formData.service_id, selectedDate);
-      setAvailableSlots(slots);
-    } catch (error) {
-      console.error("Error fetching slots:", error);
-      setAvailableSlots([]);
-    } finally {
-      setFetchingSlots(false);
-    }
-  };
-
-  // Generate calendar
-  const generateCalendar = () => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-
-    const startDay = firstDay.getDay();
-
-    const dates = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Add previous month's days
-    const prevMonthLastDay = new Date(year, month, 0).getDate();
-    for (let i = startDay - 1; i >= 0; i--) {
-      const date = new Date(year, month - 1, prevMonthLastDay - i);
-      const dateStr = date.toISOString().split("T")[0];
-      dates.push({
-        date: date,
-        dateStr: dateStr,
-        isCurrentMonth: false,
-        isPast: date < today,
-        isSelected: selectedDate === dateStr,
-        isBlocked: true,
-        isAvailable: false,
-      });
-    }
-
-    // Add current month's days
-    for (let i = 1; i <= daysInMonth; i++) {
-      const date = new Date(year, month, i);
-      const dateStr = date.toISOString().split("T")[0];
-      const isPast = date < today;
-
-      const isAvailable = monthlyAvailability[dateStr] === true;
-      const isBlocked = isPast || !isAvailable;
-
-      dates.push({
-        date: date,
-        dateStr: dateStr,
-        isCurrentMonth: true,
-        isPast: isPast,
-        isSelected: selectedDate === dateStr,
-        isBlocked: isBlocked,
-        isAvailable: isAvailable,
-      });
-    }
-
-    // Add next month's days
-    const totalCells = 42;
-    const remainingCells = totalCells - dates.length;
-    for (let i = 1; i <= remainingCells; i++) {
-      const date = new Date(year, month + 1, i);
-      const dateStr = date.toISOString().split("T")[0];
-      dates.push({
-        date: date,
-        dateStr: dateStr,
-        isCurrentMonth: false,
-        isPast: date < today,
-        isSelected: false,
-        isBlocked: true,
-        isAvailable: false,
-      });
-    }
-
-    setCalendarDates(dates);
-  };
-
-  // Navigation functions
-  const prevMonth = () => {
-    setCurrentMonth(
-      (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
-    );
-    setSelectedDate("");
-    setAvailableSlots([]);
-    setFormData((prev) => ({ ...prev, booking_time: "" }));
-  };
-
-  const nextMonth = () => {
-    setCurrentMonth(
-      (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
-    );
-    setSelectedDate("");
-    setAvailableSlots([]);
-    setFormData((prev) => ({ ...prev, booking_time: "" }));
-  };
-
-  const goToToday = () => {
-    const today = new Date();
-    setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
-    setSelectedDate("");
-    setAvailableSlots([]);
-    setFormData((prev) => ({ ...prev, booking_time: "" }));
-  };
-
   // Handle service selection
   const handleServiceSelect = (service) => {
     setFormData({
@@ -364,7 +370,7 @@ const Booking = () => {
 
   // Handle date selection
   const handleDateSelect = (date) => {
-    const dateStr = date.toISOString().split("T")[0];
+    const dateStr = formatLocalDate(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -509,43 +515,46 @@ const Booking = () => {
   // STEP 5: Final confirmation
   const handleFinalConfirmation = async () => {
     console.log("🔍 Step 5: Starting final confirmation");
-    
+
     if (!paymentIntentId) {
       console.error("❌ paymentIntentId is null/undefined!");
       alert("Please upload payment proof first.");
       return;
     }
-    
+
     setConfirmationError(null);
-    
+
     setLoading(true);
     try {
       console.log("📞 Calling confirmBooking with:", paymentIntentId);
       const result = await confirmBooking(paymentIntentId);
       console.log("✅ Confirm booking result:", result);
-      
+
       setStep(6);
       alert("🎉 Booking confirmed successfully! Your slot is now secured.");
     } catch (error) {
       console.error("❌ Full error details:", error);
       console.error("Error response:", error.response?.data);
-      
+
       let errorType = "unknown";
       let errorMessage = "An error occurred. Please try again.";
       let showRetry = true;
-      
+
       if (error.response?.status === 404) {
         errorType = "payment_not_found";
-        errorMessage = "Payment record not found. Please upload payment proof again.";
+        errorMessage =
+          "Payment record not found. Please upload payment proof again.";
         showRetry = false;
       } else if (error.response?.status === 400) {
         if (error.response?.data?.message?.includes("expired")) {
           errorType = "payment_expired";
-          errorMessage = "Payment proof expired (30 minutes limit). Please restart booking.";
+          errorMessage =
+            "Payment proof expired (30 minutes limit). Please restart booking.";
           showRetry = false;
         } else if (error.response?.data?.message?.includes("slot")) {
           errorType = "slot_taken";
-          errorMessage = "Slot no longer available. Please choose another date/time.";
+          errorMessage =
+            "Slot no longer available. Please choose another date/time.";
           showRetry = false;
         } else {
           errorType = "invalid_payment";
@@ -558,13 +567,12 @@ const Booking = () => {
         errorType = "offline";
         errorMessage = "No internet connection. Please check your connection.";
       }
-      
+
       setConfirmationError({
         type: errorType,
         message: errorMessage,
-        retry: showRetry
+        retry: showRetry,
       });
-      
     } finally {
       setLoading(false);
     }
@@ -653,9 +661,7 @@ const Booking = () => {
               <span className="step-number">{stepItem.number}</span>
             </div>
             <div className="step-label">{stepItem.label}</div>
-            {stepItem.number < 6 && (
-              <div className="step-connector"></div>
-            )}
+            {stepItem.number < 6 && <div className="step-connector"></div>}
           </div>
         ))}
       </div>
@@ -711,8 +717,13 @@ const Booking = () => {
             <div className="empty-state premium">
               <div className="empty-icon">📭</div>
               <h3 className="empty-title">No Services Available</h3>
-              <p className="empty-description">There are no services available at the moment.</p>
-              <button className="btn btn-outline premium" onClick={fetchServices}>
+              <p className="empty-description">
+                There are no services available at the moment.
+              </p>
+              <button
+                className="btn btn-outline premium"
+                onClick={fetchServices}
+              >
                 Refresh Services
               </button>
             </div>
@@ -741,15 +752,25 @@ const Booking = () => {
                       <h3>{service.name}</h3>
                       <span className="service-badge premium">Available</span>
                     </div>
-                    <p className="service-description premium">{service.description}</p>
+                    <p className="service-description premium">
+                      {service.description}
+                    </p>
                     <div className="service-meta premium">
                       <div className="meta-item">
                         <span className="meta-icon">⏱️</span>
-                        <span>{service.duration} hour{service.duration !== 1 ? "s" : ""}</span>
+                        <span>
+                          {service.duration} hour
+                          {service.duration !== 1 ? "s" : ""}
+                        </span>
                       </div>
                       <div className="meta-item">
                         <span className="meta-icon">🏷️</span>
-                        <span>{service.service_categories?.length || 0} categor{service.service_categories?.length !== 1 ? "ies" : "y"}</span>
+                        <span>
+                          {service.service_categories?.length || 0} categor
+                          {service.service_categories?.length !== 1
+                            ? "ies"
+                            : "y"}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -759,11 +780,17 @@ const Booking = () => {
           )}
 
           <div className="step-footer premium">
-            <button className="btn btn-secondary premium" onClick={() => (window.location.href = "/")}>
+            <button
+              className="btn btn-secondary premium"
+              onClick={() => (window.location.href = "/")}
+            >
               Cancel
             </button>
             <div className="step-info">
-              <span className="info-text">Showing {services.length} service{services.length !== 1 ? "s" : ""}</span>
+              <span className="info-text">
+                Showing {services.length} service
+                {services.length !== 1 ? "s" : ""}
+              </span>
             </div>
           </div>
         </div>
@@ -775,15 +802,20 @@ const Booking = () => {
       return (
         <div className="premium-step">
           <div className="step-header with-back">
-            <button className="back-btn premium" onClick={() => {
-              setFormData({ ...formData, service_id: "" });
-              setSelectedCategory(null);
-            }}>
+            <button
+              className="back-btn premium"
+              onClick={() => {
+                setFormData({ ...formData, service_id: "" });
+                setSelectedCategory(null);
+              }}
+            >
               <span className="back-icon">←</span> Back to Services
             </button>
             <div>
               <h1 className="step-title">Select Category</h1>
-              <p className="step-subtitle">Choose a category for <strong>{selectedService?.name}</strong></p>
+              <p className="step-subtitle">
+                Choose a category for <strong>{selectedService?.name}</strong>
+              </p>
             </div>
           </div>
 
@@ -799,13 +831,26 @@ const Booking = () => {
                   <div className="category-meta premium">
                     <div className="meta-item">
                       <span className="meta-icon">📦</span>
-                      <span>{category.service_variants?.length || 0} variant{category.service_variants?.length !== 1 ? "s" : ""}</span>
+                      <span>
+                        {category.service_variants?.length || 0} variant
+                        {category.service_variants?.length !== 1 ? "s" : ""}
+                      </span>
                     </div>
                     <div className="meta-item price-range">
                       <span className="meta-icon">💰</span>
                       <span>
-                        ₱{Math.min(...(category.service_variants?.map((v) => v.price) || [0])).toLocaleString()} -
-                        ₱{Math.max(...(category.service_variants?.map((v) => v.price) || [0])).toLocaleString()}
+                        ₱
+                        {Math.min(
+                          ...(category.service_variants?.map(
+                            (v) => v.price,
+                          ) || [0]),
+                        ).toLocaleString()}{" "}
+                        - ₱
+                        {Math.max(
+                          ...(category.service_variants?.map(
+                            (v) => v.price,
+                          ) || [0]),
+                        ).toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -818,14 +863,23 @@ const Booking = () => {
           </div>
 
           <div className="step-footer premium">
-            <button className="btn btn-secondary premium" onClick={() => {
-              setFormData({ ...formData, service_id: "" });
-              setSelectedCategory(null);
-            }}>
+            <button
+              className="btn btn-secondary premium"
+              onClick={() => {
+                setFormData({ ...formData, service_id: "" });
+                setSelectedCategory(null);
+              }}
+            >
               Back to Services
             </button>
             <div className="step-info">
-              <span className="info-text">{selectedService?.service_categories?.length || 0} categor{selectedService?.service_categories?.length !== 1 ? "ies" : "y"} available</span>
+              <span className="info-text">
+                {selectedService?.service_categories?.length || 0} categor
+                {selectedService?.service_categories?.length !== 1
+                  ? "ies"
+                  : "y"}{" "}
+                available
+              </span>
             </div>
           </div>
         </div>
@@ -837,16 +891,20 @@ const Booking = () => {
       return (
         <div className="premium-step">
           <div className="step-header with-back">
-            <button className="back-btn premium" onClick={() => {
-              setFormData({ ...formData, service_category_id: "" });
-              setSelectedCategory(null);
-            }}>
+            <button
+              className="back-btn premium"
+              onClick={() => {
+                setFormData({ ...formData, service_category_id: "" });
+                setSelectedCategory(null);
+              }}
+            >
               <span className="back-icon">←</span> Back to Categories
             </button>
             <div>
               <h1 className="step-title">Select Variant</h1>
               <p className="step-subtitle">
-                Choose a specific variant for <strong>{selectedCategory?.name}</strong>
+                Choose a specific variant for{" "}
+                <strong>{selectedCategory?.name}</strong>
               </p>
             </div>
           </div>
@@ -865,12 +923,19 @@ const Booking = () => {
                   </div>
                   <div className="variant-details premium">
                     <div className="price-section">
-                      <div className="price-main">₱{variant.price.toLocaleString()}</div>
-                      <div className="price-sub">Downpayment: ₱{variant.downpayment.toLocaleString()}</div>
+                      <div className="price-main">
+                        ₱{variant.price.toLocaleString()}
+                      </div>
+                      <div className="price-sub">
+                        Downpayment: ₱{variant.downpayment.toLocaleString()}
+                      </div>
                     </div>
                     <div className="duration-badge">
                       <span className="duration-icon">⏱️</span>
-                      <span>{selectedService?.duration} hour{selectedService?.duration !== 1 ? "s" : ""}</span>
+                      <span>
+                        {selectedService?.duration} hour
+                        {selectedService?.duration !== 1 ? "s" : ""}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -883,14 +948,23 @@ const Booking = () => {
           </div>
 
           <div className="step-footer premium">
-            <button className="btn btn-secondary premium" onClick={() => {
-              setFormData({ ...formData, service_category_id: "" });
-              setSelectedCategory(null);
-            }}>
+            <button
+              className="btn btn-secondary premium"
+              onClick={() => {
+                setFormData({ ...formData, service_category_id: "" });
+                setSelectedCategory(null);
+              }}
+            >
               Back to Categories
             </button>
             <div className="step-info">
-              <span className="info-text">{selectedCategory?.service_variants?.length || 0} variant{selectedCategory?.service_variants?.length !== 1 ? "s" : ""} available</span>
+              <span className="info-text">
+                {selectedCategory?.service_variants?.length || 0} variant
+                {selectedCategory?.service_variants?.length !== 1
+                  ? "s"
+                  : ""}{" "}
+                available
+              </span>
             </div>
           </div>
         </div>
@@ -904,19 +978,32 @@ const Booking = () => {
   const renderDateTimeSelection = () => {
     const timeSlots = generateTimeSlots();
     const monthNames = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
     ];
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
     return (
       <div className="premium-step">
         <div className="step-header with-back">
-          <button className="back-btn premium" onClick={() => {
-            setStep(1);
-            setFormData({ ...formData, service_variant_id: "" });
-            setSelectedVariant(null);
-          }}>
+          <button
+            className="back-btn premium"
+            onClick={() => {
+              setStep(1);
+              setFormData({ ...formData, service_variant_id: "" });
+              setSelectedVariant(null);
+            }}
+          >
             <span className="back-icon">←</span> Back to Variants
           </button>
           <div>
@@ -928,7 +1015,9 @@ const Booking = () => {
         <div className="selected-service-summary premium">
           <div className="summary-header">
             <h4>Selected Service</h4>
-            <div className="price-tag">₱{formData.total_price.toLocaleString()}</div>
+            <div className="price-tag">
+              ₱{formData.total_price.toLocaleString()}
+            </div>
           </div>
           <div className="summary-details">
             <div className="detail-item">
@@ -941,11 +1030,15 @@ const Booking = () => {
             </div>
             <div className="detail-item">
               <span className="detail-label">Variant:</span>
-              <span className="detail-value">{selectedVariantObj?.body_part} ({selectedVariantObj?.size})</span>
+              <span className="detail-value">
+                {selectedVariantObj?.body_part} ({selectedVariantObj?.size})
+              </span>
             </div>
             <div className="detail-item">
               <span className="detail-label">Downpayment:</span>
-              <span className="detail-value highlight">₱{formData.downpayment.toLocaleString()}</span>
+              <span className="detail-value highlight">
+                ₱{formData.downpayment.toLocaleString()}
+              </span>
             </div>
           </div>
         </div>
@@ -959,14 +1052,17 @@ const Booking = () => {
                   <span className="nav-icon">←</span>
                   <span>Previous</span>
                 </button>
-                
+
                 <div className="calendar-title">
-                  <h3>{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</h3>
+                  <h3>
+                    {monthNames[currentMonth.getMonth()]}{" "}
+                    {currentMonth.getFullYear()}
+                  </h3>
                   <button className="today-btn premium" onClick={goToToday}>
                     Today
                   </button>
                 </div>
-                
+
                 <button className="nav-btn next premium" onClick={nextMonth}>
                   <span>Next</span>
                   <span className="nav-icon">→</span>
@@ -975,7 +1071,9 @@ const Booking = () => {
 
               <div className="weekdays premium">
                 {dayNames.map((day) => (
-                  <div key={day} className="weekday">{day}</div>
+                  <div key={day} className="weekday">
+                    {day}
+                  </div>
                 ))}
               </div>
             </div>
@@ -989,8 +1087,9 @@ const Booking = () => {
               <>
                 <div className="calendar-grid premium">
                   {calendarDates.map((dateObj, index) => {
-                    const isToday = new Date().toDateString() === dateObj.date.toDateString();
-                    
+                    const isToday =
+                      new Date().toDateString() === dateObj.date.toDateString();
+
                     return (
                       <div
                         key={index}
@@ -999,13 +1098,25 @@ const Booking = () => {
                           ${dateObj.isBlocked ? "blocked" : "available"}
                           ${dateObj.isSelected ? "selected" : ""}
                           ${isToday ? "today" : ""}`}
-                        onClick={() => !dateObj.isBlocked && handleDateSelect(dateObj.date)}
-                        title={dateObj.isBlocked ? "Not available" : "Click to select"}
+                        onClick={() =>
+                          !dateObj.isBlocked && handleDateSelect(dateObj.date)
+                        }
+                        title={
+                          dateObj.isBlocked
+                            ? "Not available"
+                            : "Click to select"
+                        }
                       >
                         <div className="day-content premium">
-                          <span className="day-number">{dateObj.date.getDate()}</span>
-                          {isToday && <span className="today-label">Today</span>}
-                          {dateObj.isSelected && <div className="selected-indicator"></div>}
+                          <span className="day-number">
+                            {dateObj.date.getDate()}
+                          </span>
+                          {isToday && (
+                            <span className="today-label">Today</span>
+                          )}
+                          {dateObj.isSelected && (
+                            <div className="selected-indicator"></div>
+                          )}
                         </div>
                         {!dateObj.isCurrentMonth && (
                           <div className="month-indicator">
@@ -1036,7 +1147,8 @@ const Booking = () => {
                     </div>
                   </div>
                   <div className="availability-count">
-                    {getAvailableDatesCount()} available date{getAvailableDatesCount() !== 1 ? "s" : ""} this month
+                    {getAvailableDatesCount()} available date
+                    {getAvailableDatesCount() !== 1 ? "s" : ""} this month
                   </div>
                 </div>
               </>
@@ -1055,7 +1167,7 @@ const Booking = () => {
                       weekday: "long",
                       month: "long",
                       day: "numeric",
-                      year: "numeric"
+                      year: "numeric",
                     })}
                   </span>
                 </div>
@@ -1079,7 +1191,10 @@ const Booking = () => {
                     <div className="no-slots-icon">📅</div>
                     <h4>No Available Slots</h4>
                     <p>All time slots are booked for this date</p>
-                    <button className="btn btn-outline premium" onClick={() => handleDateSelect(null)}>
+                    <button
+                      className="btn btn-outline premium"
+                      onClick={() => handleDateSelect(null)}
+                    >
                       Choose Another Date
                     </button>
                   </div>
@@ -1090,9 +1205,15 @@ const Booking = () => {
                         <button
                           key={slot.slotId || slot.value}
                           className={`timeslot-btn premium ${!slot.available ? "disabled" : ""} ${slot.isSelected ? "selected" : ""}`}
-                          onClick={() => slot.available && handleTimeSelect(slot.value)}
+                          onClick={() =>
+                            slot.available && handleTimeSelect(slot.value)
+                          }
                           disabled={!slot.available}
-                          title={!slot.available ? "This slot is booked" : "Select time slot"}
+                          title={
+                            !slot.available
+                              ? "This slot is booked"
+                              : "Select time slot"
+                          }
                         >
                           <span className="slot-time">{slot.display}</span>
                           <span className="slot-status">
@@ -1101,7 +1222,9 @@ const Booking = () => {
                             ) : slot.isSelected ? (
                               <span className="status-selected">Selected</span>
                             ) : (
-                              <span className="status-available">Available</span>
+                              <span className="status-available">
+                                Available
+                              </span>
                             )}
                           </span>
                         </button>
@@ -1112,13 +1235,15 @@ const Booking = () => {
                       <div className="info-row">
                         <span className="info-label">Available slots:</span>
                         <span className="info-value">
-                          {timeSlots.filter((s) => s.available).length} of {timeSlots.length}
+                          {timeSlots.filter((s) => s.available).length} of{" "}
+                          {timeSlots.length}
                         </span>
                       </div>
                       <div className="info-row">
                         <span className="info-label">Duration per slot:</span>
                         <span className="info-value">
-                          {selectedService?.duration || 1} hour{selectedService?.duration !== 1 ? "s" : ""}
+                          {selectedService?.duration} hour
+                          {selectedService?.duration !== 1 ? "s" : ""}
                         </span>
                       </div>
                     </div>
@@ -1142,11 +1267,14 @@ const Booking = () => {
         </div>
 
         <div className="step-footer premium">
-          <button className="btn btn-secondary premium" onClick={() => {
-            setStep(1);
-            setFormData({ ...formData, service_variant_id: "" });
-            setSelectedVariant(null);
-          }}>
+          <button
+            className="btn btn-secondary premium"
+            onClick={() => {
+              setStep(1);
+              setFormData({ ...formData, service_variant_id: "" });
+              setSelectedVariant(null);
+            }}
+          >
             Back to Variants
           </button>
           <button
@@ -1172,7 +1300,9 @@ const Booking = () => {
       <div className="booking-summary-card premium">
         <div className="summary-header">
           <h4>Booking Summary</h4>
-          <div className="total-amount">₱{formData.total_price.toLocaleString()}</div>
+          <div className="total-amount">
+            ₱{formData.total_price.toLocaleString()}
+          </div>
         </div>
         <div className="summary-grid premium">
           <div className="summary-item">
@@ -1185,7 +1315,9 @@ const Booking = () => {
           </div>
           <div className="summary-item">
             <span className="item-label">Variant:</span>
-            <span className="item-value">{selectedVariantObj?.body_part} ({selectedVariantObj?.size})</span>
+            <span className="item-value">
+              {selectedVariantObj?.body_part} ({selectedVariantObj?.size})
+            </span>
           </div>
           <div className="summary-item">
             <span className="item-label">Date:</span>
@@ -1193,7 +1325,7 @@ const Booking = () => {
               {new Date(formData.booking_date).toLocaleDateString("en-PH", {
                 weekday: "short",
                 month: "short",
-                day: "numeric"
+                day: "numeric",
               })}
             </span>
           </div>
@@ -1203,7 +1335,9 @@ const Booking = () => {
           </div>
           <div className="summary-item highlight">
             <span className="item-label">Downpayment:</span>
-            <span className="item-value">₱{formData.downpayment.toLocaleString()}</span>
+            <span className="item-value">
+              ₱{formData.downpayment.toLocaleString()}
+            </span>
           </div>
         </div>
       </div>
@@ -1211,7 +1345,7 @@ const Booking = () => {
       <div className="customer-form premium">
         <div className="form-section">
           <h4>Contact Information</h4>
-          
+
           <div className="form-group premium">
             <label className="form-label">
               Full Name <span className="required">*</span>
@@ -1241,7 +1375,9 @@ const Booking = () => {
                 placeholder="your.email@example.com"
                 required
               />
-              <div className="form-hint premium">Booking confirmation will be sent here</div>
+              <div className="form-hint premium">
+                Booking confirmation will be sent here
+              </div>
             </div>
 
             <div className="form-group premium">
@@ -1276,7 +1412,9 @@ const Booking = () => {
           </div>
 
           <div className="form-group premium">
-            <label className="form-label">Additional Notes <span className="optional">(Optional)</span></label>
+            <label className="form-label">
+              Additional Notes <span className="optional">(Optional)</span>
+            </label>
             <textarea
               name="notes"
               value={formData.notes}
@@ -1295,15 +1433,27 @@ const Booking = () => {
           <h5>Important Information</h5>
         </div>
         <ul className="notice-list">
-          <li>Booking will be created with status <strong>"Pending Payment"</strong></li>
-          <li>Slot is <strong>NOT reserved</strong> until payment proof is uploaded</li>
-          <li>Upload payment proof within <strong>30 minutes</strong> to secure your slot</li>
+          <li>
+            Booking will be created with status{" "}
+            <strong>"Pending Payment"</strong>
+          </li>
+          <li>
+            Slot is <strong>NOT reserved</strong> until payment proof is
+            uploaded
+          </li>
+          <li>
+            Upload payment proof within <strong>30 minutes</strong> to secure
+            your slot
+          </li>
           <li>Slot availability will be verified after payment upload</li>
         </ul>
       </div>
 
       <div className="step-footer premium">
-        <button className="btn btn-secondary premium" onClick={() => setStep(2)}>
+        <button
+          className="btn btn-secondary premium"
+          onClick={() => setStep(2)}
+        >
           Back to Schedule
         </button>
         <button
@@ -1317,7 +1467,7 @@ const Booking = () => {
               Creating Booking...
             </>
           ) : (
-            'Create Booking & Proceed to Payment'
+            "Create Booking & Proceed to Payment"
           )}
         </button>
       </div>
@@ -1334,7 +1484,9 @@ const Booking = () => {
           </button>
           <div>
             <h1 className="step-title">Payment Instructions</h1>
-            <p className="step-subtitle">Pay the downpayment to secure your appointment</p>
+            <p className="step-subtitle">
+              Pay the downpayment to secure your appointment
+            </p>
           </div>
         </div>
 
@@ -1345,7 +1497,8 @@ const Booking = () => {
               <span className="status-text">PENDING PAYMENT</span>
             </div>
             <p className="status-message">
-              ⏰ Upload payment proof within <strong>30 minutes</strong> to secure your slot
+              ⏰ Upload payment proof within <strong>30 minutes</strong> to
+              secure your slot
             </p>
           </div>
         </div>
@@ -1356,7 +1509,9 @@ const Booking = () => {
             <div className="qr-card premium">
               <div className="qr-header">
                 <h4>Scan to Pay via GCash</h4>
-                <div className="payment-amount">₱{formData.downpayment.toLocaleString()}</div>
+                <div className="payment-amount">
+                  ₱{formData.downpayment.toLocaleString()}
+                </div>
               </div>
               <div className="qr-container">
                 <img
@@ -1384,7 +1539,9 @@ const Booking = () => {
                 </div>
                 <div className="detail-row highlight">
                   <span className="detail-label">Amount:</span>
-                  <span className="detail-value amount">₱{formData.downpayment.toLocaleString()}</span>
+                  <span className="detail-value amount">
+                    ₱{formData.downpayment.toLocaleString()}
+                  </span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Account:</span>
@@ -1407,7 +1564,8 @@ const Booking = () => {
             <div className="upload-header">
               <h4>Upload Proof of Payment</h4>
               <p className="upload-subtitle">
-                <strong>Required:</strong> Upload payment proof to secure your slot
+                <strong>Required:</strong> Upload payment proof to secure your
+                slot
               </p>
             </div>
 
@@ -1420,7 +1578,10 @@ const Booking = () => {
                 disabled={uploading || paymentProofUploaded}
                 className="upload-input"
               />
-              <label htmlFor="payment-proof" className={`upload-dropzone premium ${paymentProofUploaded ? 'uploaded' : ''}`}>
+              <label
+                htmlFor="payment-proof"
+                className={`upload-dropzone premium ${paymentProofUploaded ? "uploaded" : ""}`}
+              >
                 {uploading ? (
                   <div className="upload-state">
                     <div className="spinner"></div>
@@ -1431,7 +1592,9 @@ const Booking = () => {
                     <span className="upload-icon">✓</span>
                     <div>
                       <p className="upload-title">Payment Proof Uploaded</p>
-                      <p className="upload-sub">Payment intent created successfully</p>
+                      <p className="upload-sub">
+                        Payment intent created successfully
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -1461,17 +1624,24 @@ const Booking = () => {
         <div className="important-note premium">
           <div className="note-icon">⚠️</div>
           <div className="note-content">
-            <strong>Important:</strong> Your slot is <span className="warning-text">NOT RESERVED</span> until payment proof is uploaded and booking is confirmed.
+            <strong>Important:</strong> Your slot is{" "}
+            <span className="warning-text">NOT RESERVED</span> until payment
+            proof is uploaded and booking is confirmed.
           </div>
         </div>
 
         <div className="step-footer premium">
-          <button className="btn btn-secondary premium" onClick={() => setStep(3)}>
+          <button
+            className="btn btn-secondary premium"
+            onClick={() => setStep(3)}
+          >
             Back to Information
           </button>
           {!paymentProofUploaded && (
             <div className="upload-required">
-              <span className="required-text">Upload payment proof to continue</span>
+              <span className="required-text">
+                Upload payment proof to continue
+              </span>
             </div>
           )}
         </div>
@@ -1489,7 +1659,9 @@ const Booking = () => {
           </button>
           <div>
             <h1 className="step-title">Final Review</h1>
-            <p className="step-subtitle">Verify all details before confirming your booking</p>
+            <p className="step-subtitle">
+              Verify all details before confirming your booking
+            </p>
           </div>
         </div>
 
@@ -1500,7 +1672,8 @@ const Booking = () => {
               <span className="status-text">SLOT NOT YET RESERVED</span>
             </div>
             <p className="status-message">
-              ⚠️ Slot will be checked and reserved when you click "Confirm Booking"
+              ⚠️ Slot will be checked and reserved when you click "Confirm
+              Booking"
             </p>
           </div>
         </div>
@@ -1511,11 +1684,11 @@ const Booking = () => {
             <div className="alert-content">
               <h5>Confirmation Failed</h5>
               <p>{confirmationError.message}</p>
-              
+
               {confirmationError.type === "slot_taken" && (
                 <div className="alert-actions">
-                  <button 
-                    className="btn btn-small premium" 
+                  <button
+                    className="btn btn-small premium"
                     onClick={() => {
                       setStep(2);
                       setConfirmationError(null);
@@ -1523,7 +1696,7 @@ const Booking = () => {
                   >
                     Choose Another Slot
                   </button>
-                  <button 
+                  <button
                     className="btn btn-small btn-outline premium"
                     onClick={() => window.location.reload()}
                   >
@@ -1531,10 +1704,10 @@ const Booking = () => {
                   </button>
                 </div>
               )}
-              
+
               {confirmationError.retry && (
-                <button 
-                  className="btn btn-small btn-primary premium" 
+                <button
+                  className="btn btn-small btn-primary premium"
                   onClick={retryConfirmation}
                 >
                   Try Again
@@ -1554,21 +1727,28 @@ const Booking = () => {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Category:</span>
-                <span className="detail-value">{selectedCategoryObj?.name}</span>
+                <span className="detail-value">
+                  {selectedCategoryObj?.name}
+                </span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Variant:</span>
-                <span className="detail-value">{selectedVariantObj?.body_part} ({selectedVariantObj?.size})</span>
+                <span className="detail-value">
+                  {selectedVariantObj?.body_part} ({selectedVariantObj?.size})
+                </span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Duration:</span>
                 <span className="detail-value">
-                  {selectedService?.duration} hour{selectedService?.duration !== 1 ? "s" : ""}
+                  {selectedService?.duration} hour
+                  {selectedService?.duration !== 1 ? "s" : ""}
                 </span>
               </div>
               <div className="detail-item highlight">
                 <span className="detail-label">Total Price:</span>
-                <span className="detail-value price">₱{formData.total_price.toLocaleString()}</span>
+                <span className="detail-value price">
+                  ₱{formData.total_price.toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
@@ -1583,7 +1763,7 @@ const Booking = () => {
                     weekday: "long",
                     year: "numeric",
                     month: "long",
-                    day: "numeric"
+                    day: "numeric",
                   })}
                 </span>
               </div>
@@ -1611,7 +1791,9 @@ const Booking = () => {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Facebook:</span>
-                <span className="detail-value">{formData.facebook_link || "Not provided"}</span>
+                <span className="detail-value">
+                  {formData.facebook_link || "Not provided"}
+                </span>
               </div>
             </div>
           </div>
@@ -1625,11 +1807,15 @@ const Booking = () => {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Payment Intent:</span>
-                <span className="detail-value code">{paymentIntentId?.substring(0, 12)}...</span>
+                <span className="detail-value code">
+                  {paymentIntentId?.substring(0, 12)}...
+                </span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Slot Status:</span>
-                <span className="detail-value warning">Pending Reservation</span>
+                <span className="detail-value warning">
+                  Pending Reservation
+                </span>
               </div>
             </div>
           </div>
@@ -1648,14 +1834,22 @@ const Booking = () => {
           <h4>📋 Important Policies</h4>
           <ul className="policies-list">
             <li>Slot availability will be checked when you confirm booking</li>
-            <li>If slot is no longer available, you'll be notified immediately</li>
+            <li>
+              If slot is no longer available, you'll be notified immediately
+            </li>
             <li>Booking will be marked as "Pending" until admin approval</li>
-            <li>Cancellations allowed within <strong>24 hours after approval</strong></li>
+            <li>
+              Cancellations allowed within{" "}
+              <strong>24 hours after approval</strong>
+            </li>
           </ul>
         </div>
 
         <div className="step-footer premium">
-          <button className="btn btn-secondary premium" onClick={handleBackToPayment}>
+          <button
+            className="btn btn-secondary premium"
+            onClick={handleBackToPayment}
+          >
             Back to Payment
           </button>
           <button
@@ -1669,7 +1863,7 @@ const Booking = () => {
                 Confirming Booking...
               </>
             ) : (
-              'Confirm Booking & Reserve Slot'
+              "Confirm Booking & Reserve Slot"
             )}
           </button>
         </div>
@@ -1685,7 +1879,9 @@ const Booking = () => {
           <span className="icon-check">✓</span>
         </div>
         <h1 className="confirmation-title">Booking Confirmed!</h1>
-        <p className="confirmation-subtitle">Your appointment has been successfully booked</p>
+        <p className="confirmation-subtitle">
+          Your appointment has been successfully booked
+        </p>
       </div>
 
       <div className="confirmation-content premium">
@@ -1697,7 +1893,9 @@ const Booking = () => {
           <div className="card-content">
             <div className="detail-item">
               <span className="detail-label">Status:</span>
-              <span className="detail-value status pending">PENDING APPROVAL</span>
+              <span className="detail-value status pending">
+                PENDING APPROVAL
+              </span>
             </div>
             <div className="detail-item">
               <span className="detail-label">Service:</span>
@@ -1709,24 +1907,31 @@ const Booking = () => {
             </div>
             <div className="detail-item">
               <span className="detail-label">Variant:</span>
-              <span className="detail-value">{selectedVariantObj?.body_part} ({selectedVariantObj?.size})</span>
+              <span className="detail-value">
+                {selectedVariantObj?.body_part} ({selectedVariantObj?.size})
+              </span>
             </div>
             <div className="detail-item">
               <span className="detail-label">Date & Time:</span>
               <span className="detail-value">
                 {new Date(formData.booking_date).toLocaleDateString("en-PH", {
                   month: "short",
-                  day: "numeric"
-                })} at {formData.booking_time}
+                  day: "numeric",
+                })}{" "}
+                at {formData.booking_time}
               </span>
             </div>
             <div className="detail-item success">
               <span className="detail-label">Payment:</span>
-              <span className="detail-value status success">Downpayment Verified ✓</span>
+              <span className="detail-value status success">
+                Downpayment Verified ✓
+              </span>
             </div>
             <div className="detail-item success">
               <span className="detail-label">Slot Status:</span>
-              <span className="detail-value status success">Slot Reserved ✓</span>
+              <span className="detail-value status success">
+                Slot Reserved ✓
+              </span>
             </div>
           </div>
         </div>
@@ -1761,7 +1966,10 @@ const Booking = () => {
       </div>
 
       <div className="step-footer premium">
-        <button className="btn btn-primary premium" onClick={() => (window.location.href = "/")}>
+        <button
+          className="btn btn-primary premium"
+          onClick={() => (window.location.href = "/")}
+        >
           Back to Home
         </button>
         <button
