@@ -13,6 +13,7 @@ import servicesRouter from "./routes/Services_Feature/serviceRoutes.js";
 import paymentRouter from "./routes/Payment_Feature/paymentRoutes.js";
 import testEmailRoutes from "./routes/testEmail.js"
 import portfolioRoutes from "./routes/portfolio_Feature/portfolioRoutes.js";  
+import reviewsRoutes from "./routes/Review_Feature/reviewsRoutes.js"
 dotenv.config();
 
 const app = express();
@@ -31,6 +32,9 @@ app.use("/api/calendar", calendarRoutes);
 app.use("/api/payments", paymentRouter);
 app.use("/api/test-email", testEmailRoutes);
 app.use("/api/portfolio", portfolioRoutes);
+app.use("/api/reviews", reviewsRoutes);
+
+
 // db or supabaseclienr
 const supabase = createClient(
   process.env.SUPABASE_URL,
