@@ -20,19 +20,6 @@ export const createBooking = async (req, res) => {
 
   try {
     const newBooking = await booking.createBookingWithCustomer(req.body);
-
-    // Email: booking submitted
-    if (newBooking.customers?.email) {
-      await sendEmail({
-        to: newBooking.customers.email,
-        subject: "BOOKING SUBMITTED",
-        html: bookingSubmittedTemplate({
-          name: newBooking.customers.full_name,
-          service: newBooking.services?.name || "Selected Service",
-        }),
-      });
-    }
-
     res.status(201).json(newBooking);
   } catch (err) {
     res.status(400).json({ error: err.message });

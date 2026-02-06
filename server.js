@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import { scheduleSlotCleanup } from "./utils/slotCron.js";
+import { scheduleBookingExpiry } from "./utils/bookingExpiryCron.js";
 
 //ENDPOINTS IMPORT
 import authRoutes from "./routes/Authentication_Feature/authRoutes.js";
@@ -44,6 +45,7 @@ const supabase = createClient(
 
 // start cron job
 scheduleSlotCleanup();
+scheduleBookingExpiry();
 // TEST SERVER ROUTES
 app.get("/", (req, res) => {
   res.send("YEHEY YOUR SERVER IS RUNNING!!!!!!");

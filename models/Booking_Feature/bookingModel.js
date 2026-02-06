@@ -44,6 +44,8 @@ const safeUnblockGlobalIfNoActiveBooking = async (date, time) => {
   }
 };
 
+
+
 /* ==========================================
    STEP 1: Create booking (pending_payment)
    - No slot blocking here
@@ -71,6 +73,66 @@ export const createBookingWithCustomer = async (bookingData) => {
     facebook_link,
   });
 
+  const nowIso = new Date().toISOString();
+
+  // 1) Check if may existing ACTIVE pending_payment booking for same slot/service/customer
+  const { data: existing, error: existingErr } = await supabase
+    .from("bookings")
+    .select(
+      `
+      *,
+      customers(*),
+      services(
+        *,
+        service_categories(
+          id,
+          name,
+          service_variants(
+            id,
+            body_part,
+            size,
+            price,
+            downpayment,
+            is_active
+          )
+        )
+      )
+    `
+    )
+    .eq("customer_id", customer.id)
+    .eq("service_id", service_id)
+    .eq("booking_date", booking_date)
+    .eq("booking_time", booking_time)
+    .eq("status", "pending_payment")
+    .gt("expires_at", nowIso) // still valid
+    .maybeSingle();
+
+  if (existingErr) throw new Error(existingErr.message);
+
+  // If exists, reuse it (no new row)
+  if (existing) {
+    // optional: update small fields if you want latest notes/variant
+    // (safe, pero optional)
+    // await supabase.from("bookings").update({ notes, service_variant_id }).eq("id", existing.id);
+
+    // keep only selected variant in response
+    if (service_category_id && service_variant_id && existing.services) {
+      existing.services.service_categories = existing.services.service_categories
+        .filter((cat) => cat.id === service_category_id)
+        .map((cat) => {
+          cat.service_variants = cat.service_variants.filter((v) => v.id === service_variant_id);
+          return cat;
+        });
+    } else {
+      filterSelectedVariant(existing);
+    }
+
+    return existing;
+  }
+
+  // 2) Create new booking if none found
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
     .insert([
@@ -84,6 +146,7 @@ export const createBookingWithCustomer = async (bookingData) => {
         downpayment,
         notes,
         status: "pending_payment",
+        expires_at: expiresAt,
       },
     ])
     .select(
@@ -105,29 +168,27 @@ export const createBookingWithCustomer = async (bookingData) => {
           )
         )
       )
-    `,
+    `
     )
     .single();
 
   if (bookingError) throw new Error(bookingError.message);
 
-  // keep your existing filter by selected category+variant (fine)
   if (service_category_id && service_variant_id && booking.services) {
     booking.services.service_categories = booking.services.service_categories
       .filter((cat) => cat.id === service_category_id)
       .map((cat) => {
-        cat.service_variants = cat.service_variants.filter(
-          (v) => v.id === service_variant_id,
-        );
+        cat.service_variants = cat.service_variants.filter((v) => v.id === service_variant_id);
         return cat;
       });
   } else {
-    // if not provided, still ensure 1 variant only based on service_variant_id
     filterSelectedVariant(booking);
   }
 
   return booking;
 };
+
+
 
 /* ==========================================
    STEP 3: Confirm booking using payment_intent
@@ -335,13 +396,23 @@ export const rejectBooking = async (id) => {
     .update({ status: "rejected" })
     .eq("id", id)
     .eq("status", "pending_approval")
-    .select("booking_date, booking_time")
+    .select("booking_date, booking_time, service_id")
     .single();
 
   if (error || !updated) throw new Error("Booking cannot be rejected");
 
+  // RELEASE SERVICE SLOT
+  await supabase
+    .from("calendar_slots")
+    .update({ is_available: true })
+    .eq("service_id", updated.service_id)
+    .eq("date", updated.booking_date)
+    .eq("time", updated.booking_time);
+
+  // SAFE UNBLOCK GLOBAL (if no other active booking)
   await safeUnblockGlobalIfNoActiveBooking(updated.booking_date, updated.booking_time);
 
+  // (rest stays the same)
   const { data, error: fetchError } = await supabase
     .from("bookings")
     .select(
@@ -363,7 +434,7 @@ export const rejectBooking = async (id) => {
         )
       ),
       customers(full_name, email)
-    `,
+    `
     )
     .eq("id", id)
     .single();
@@ -408,9 +479,20 @@ export const cancelBooking = async (id) => {
 
   if (cancelError) throw new Error(cancelError.message);
 
+  // 1) RELEASE SERVICE SLOT
+  await supabase
+    .from("calendar_slots")
+    .update({ is_available: true })
+    .eq("service_id", booking.service_id)
+    .eq("date", booking.booking_date)
+    .eq("time", booking.booking_time);
+
+  // 2) SAFE UNBLOCK GLOBAL
   await safeUnblockGlobalIfNoActiveBooking(booking.booking_date, booking.booking_time);
+
   return data;
 };
+
 
 /* ==========================================
    PUBLIC: Get booking details by ID (Review page)
