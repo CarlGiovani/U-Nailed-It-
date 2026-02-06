@@ -33,13 +33,16 @@ const LS_KEYS = {
 
 const saveActiveBooking = ({ bookingId, expiresAt }) => {
   if (bookingId) localStorage.setItem(LS_KEYS.bookingId, String(bookingId));
-  if (expiresAt) localStorage.setItem(LS_KEYS.bookingExpiresAt, String(expiresAt));
+  if (expiresAt)
+    localStorage.setItem(LS_KEYS.bookingExpiresAt, String(expiresAt));
 };
 
 const saveActivePayment = ({ intentId, expiresAt, signedUrl }) => {
   if (intentId) localStorage.setItem(LS_KEYS.paymentIntentId, String(intentId));
-  if (expiresAt) localStorage.setItem(LS_KEYS.paymentExpiresAt, String(expiresAt));
-  if (signedUrl) localStorage.setItem(LS_KEYS.paymentSignedUrl, String(signedUrl));
+  if (expiresAt)
+    localStorage.setItem(LS_KEYS.paymentExpiresAt, String(expiresAt));
+  if (signedUrl)
+    localStorage.setItem(LS_KEYS.paymentSignedUrl, String(signedUrl));
 };
 
 const clearActiveFlow = () => {
@@ -47,12 +50,40 @@ const clearActiveFlow = () => {
 };
 
 // ===============================
-// TIME HELPERS
+// TIME HELPERS - IMPROVED: BULLETPROOF
 // ===============================
 const toMs = (isoOrNull) => {
   if (!isoOrNull) return null;
-  const t = new Date(isoOrNull).getTime();
-  return Number.isFinite(t) ? t : null;
+
+  // Handle number or numeric string (epoch milliseconds)
+  if (typeof isoOrNull === "number" && !isNaN(isoOrNull)) {
+    return isoOrNull;
+  }
+
+  if (typeof isoOrNull === "string") {
+    // Check if it's a numeric string (epoch)
+    const num = Number(isoOrNull);
+    if (!isNaN(num) && String(num) === isoOrNull.trim()) {
+      return num;
+    }
+
+    // Handle ISO string with timezone variations
+    const date = new Date(isoOrNull);
+    const ms = date.getTime();
+
+    // Check if date is valid
+    if (isNaN(ms)) {
+      // Try removing timezone offset if present
+      const cleaned = isoOrNull.replace(/[+-]\d{2}:?\d{2}$/, "");
+      const date2 = new Date(cleaned);
+      const ms2 = date2.getTime();
+      return Number.isFinite(ms2) ? ms2 : null;
+    }
+
+    return Number.isFinite(ms) ? ms : null;
+  }
+
+  return null;
 };
 
 const formatCountdown = (ms) => {
@@ -100,15 +131,16 @@ const Booking = () => {
   // errors
   const [confirmationError, setConfirmationError] = useState(null);
 
-  // NEW: Resume booking modal
+  // Resume booking modal
   const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [resumeBookingData, setResumeBookingData] = useState(null);
 
   // modal state
   const [modal, setModal] = useState({
     open: false,
     title: "",
     message: "",
-    actions: [], // { label, variant, onClick }
+    actions: [],
   });
 
   // countdown
@@ -133,6 +165,34 @@ const Booking = () => {
   });
 
   // ===============================
+  // STEP GUARD (Prevent invalid step access)
+  // ===============================
+  useEffect(() => {
+    // Guard: Step 4 requires bookingId
+    if (step === 4 && !bookingId) {
+      console.warn("Invalid step 4: No bookingId, redirecting to step 1");
+      setStep(1);
+      return;
+    }
+
+    // Guard: Step 5 requires paymentIntentId and bookingId
+    if (step === 5 && (!paymentIntentId || !bookingId)) {
+      console.warn(
+        "Invalid step 5: Missing paymentIntentId or bookingId, redirecting to step 4",
+      );
+      setStep(4);
+      return;
+    }
+
+    // Guard: Step 6 requires confirmed booking
+    if (step === 6 && !bookingPreview) {
+      console.warn("Invalid step 6: No bookingPreview, redirecting to step 1");
+      setStep(1);
+      return;
+    }
+  }, [step, bookingId, paymentIntentId, bookingPreview]);
+
+  // ===============================
   // MAIN MODAL COMPONENT
   // ===============================
   const Modal = () => {
@@ -152,7 +212,6 @@ const Booking = () => {
           padding: 16,
         }}
         onClick={() => {
-          // click outside closes only if there are no actions
           if (!modal.actions?.length) setModal((m) => ({ ...m, open: false }));
         }}
       >
@@ -210,30 +269,53 @@ const Booking = () => {
   };
 
   // ===============================
-  // RESUME BOOKING MODAL (SIMPLIFIED - NO GLITCH)
+  // RESUME BOOKING MODAL (BACKEND-DRIVEN)
   // ===============================
   const ResumeModal = () => {
-    if (!showResumePrompt) return null;
+    if (!showResumePrompt || !resumeBookingData) return null;
+
+    const { booking, serviceInfo } = resumeBookingData;
 
     const formatDate = (dateStr) => {
       if (!dateStr) return "N/A";
-      const date = new Date(dateStr);
-      return date.toLocaleDateString("en-PH", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
+      try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString("en-PH", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+      } catch {
+        return dateStr;
+      }
     };
 
     const formatTime = (timeStr) => {
       if (!timeStr) return "N/A";
-      const [hours, minutes] = timeStr.split(":");
-      const hour = parseInt(hours, 10);
-      const ampm = hour >= 12 ? "PM" : "AM";
-      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      return `${displayHour}:${minutes} ${ampm}`;
+      try {
+        const [hours, minutes] = timeStr.split(":");
+        const hour = parseInt(hours, 10);
+        const ampm = hour >= 12 ? "PM" : "AM";
+        const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+        return `${displayHour}:${minutes.padStart(2, "0")} ${ampm}`;
+      } catch {
+        return timeStr;
+      }
     };
+
+    // Get service name from serviceInfo or booking
+    const serviceName =
+      serviceInfo?.name ||
+      booking.service?.name ||
+      `Service #${booking.service_id}`;
+
+    const categoryName =
+      serviceInfo?.category?.name || `Category #${booking.service_category_id}`;
+
+    const variantName =
+      serviceInfo?.variant?.body_part ||
+      `Variant #${booking.service_variant_id}`;
 
     return (
       <div
@@ -284,7 +366,14 @@ const Booking = () => {
               ⏳
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#333" }}>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: "#333",
+                }}
+              >
                 Resume Booking?
               </h3>
               <p style={{ margin: "4px 0 0", fontSize: 14, color: "#666" }}>
@@ -313,7 +402,23 @@ const Booking = () => {
                   Service
                 </div>
                 <div style={{ fontWeight: 600, color: "#333" }}>
-                  {selectedCategory?.name || "N/A"}
+                  {serviceName}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
+                  Category
+                </div>
+                <div style={{ fontWeight: 600, color: "#333" }}>
+                  {categoryName}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
+                  Variant
+                </div>
+                <div style={{ fontWeight: 600, color: "#333" }}>
+                  {variantName}
                 </div>
               </div>
               <div>
@@ -321,7 +426,8 @@ const Booking = () => {
                   Date & Time
                 </div>
                 <div style={{ fontWeight: 600, color: "#333" }}>
-                  {formatDate(formData.booking_date)} at {formatTime(formData.booking_time)}
+                  {formatDate(booking.booking_date)} at{" "}
+                  {formatTime(booking.booking_time)}
                 </div>
               </div>
               <div>
@@ -329,7 +435,7 @@ const Booking = () => {
                   Downpayment
                 </div>
                 <div style={{ fontWeight: 600, color: "#333" }}>
-                  ₱{formData.downpayment?.toLocaleString() || "0"}
+                  ₱{(booking.downpayment || 0)?.toLocaleString() || "0"}
                 </div>
               </div>
               <div>
@@ -345,9 +451,10 @@ const Booking = () => {
                     borderRadius: 6,
                     fontSize: 12,
                     display: "inline-block",
+                    textTransform: "uppercase",
                   }}
                 >
-                  PENDING PAYMENT
+                  {booking.status?.replace("_", " ") || "PENDING PAYMENT"}
                 </div>
               </div>
             </div>
@@ -361,7 +468,8 @@ const Booking = () => {
                 color: "#666",
               }}
             >
-              ⏰ <strong>30-minute payment window</strong> - Upload proof to secure your slot
+              ⏰ <strong>30-minute payment window</strong> - Upload proof to
+              secure your slot
             </div>
           </div>
 
@@ -400,16 +508,7 @@ const Booking = () => {
               className="btn btn-primary premium"
               onClick={() => {
                 setShowResumePrompt(false);
-                
-                // Determine which step to resume to
-                if (paymentIntentId) {
-                  // Already uploaded proof, go to review
-                  setPaymentProofUploaded(true);
-                  setStep(5);
-                } else {
-                  // Need to upload proof
-                  setStep(4);
-                }
+                resumeBooking();
               }}
               style={{
                 background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -443,7 +542,7 @@ const Booking = () => {
           service.image_url ||
           service.image ||
           `https://via.placeholder.com/300x200?text=${encodeURIComponent(
-            service.name
+            service.name,
           )}`,
         service_categories:
           service.service_categories?.map((category) => ({
@@ -476,7 +575,7 @@ const Booking = () => {
   }, [fetchServices]);
 
   /* ==========================================
-     RESET FLOW (when user changes service / restarts)
+     RESET FUNCTIONS (CENTRALIZED LOGIC)
   ========================================== */
   const resetBookingFlow = useCallback(() => {
     setBookingId(null);
@@ -492,7 +591,6 @@ const Booking = () => {
     setIsExpiredLocal(false);
     expiryHandledRef.current = false;
 
-    // IMPORTANT
     clearActiveFlow();
   }, []);
 
@@ -504,6 +602,7 @@ const Booking = () => {
     setMonthlyAvailability({});
     setSelectedCategory(null);
     setSelectedVariant(null);
+    setResumeBookingData(null);
 
     setFormData({
       service_id: "",
@@ -523,24 +622,64 @@ const Booking = () => {
   }, [resetBookingFlow]);
 
   /* ==========================================
-     RESUME ON PAGE LOAD
+     RESUME ON PAGE LOAD (IMPROVED)
   ========================================== */
   const checkAndResumeBooking = useCallback(async () => {
     const savedBookingId = localStorage.getItem(LS_KEYS.bookingId);
     if (!savedBookingId) return;
 
     try {
-      const b = await getBookingById(savedBookingId);
+      const booking = await getBookingById(savedBookingId);
 
-      // if finished/invalid, clear storage
-      if (["expired", "cancelled", "rejected", "completed"].includes(b.status)) {
+      // If booking is in final state, clear storage
+      if (
+        ["expired", "cancelled", "rejected", "completed"].includes(
+          booking.status,
+        )
+      ) {
         clearActiveFlow();
         return;
       }
 
-      setBookingId(b.id);
+      // Get service info for resume modal
+      let serviceInfo = null;
+      try {
+        if (services.length > 0) {
+          const service = services.find((s) => s.id === booking.service_id);
+          if (service) {
+            const variantId = booking.service_variant_id;
 
-      // payment intent resume (if uploaded before refresh)
+            const category = service.service_categories?.find((c) =>
+              c.service_variants?.some((v) => v.id === variantId),
+            );
+
+            const variant = category?.service_variants?.find(
+              (v) => v.id === variantId,
+            );
+
+            serviceInfo = {
+              name: service.name,
+              category: category ? { name: category.name } : null,
+              variant: variant
+                ? { body_part: variant.body_part, size: variant.size }
+                : null,
+            };
+          }
+        }
+      } catch (e) {
+        console.warn("Could not fetch service details for resume:", e);
+      }
+
+      // Set resume booking data for modal
+      setResumeBookingData({
+        booking,
+        serviceInfo,
+      });
+
+      // Store booking ID
+      setBookingId(booking.id);
+
+      // Payment intent resume
       const savedIntentId = localStorage.getItem(LS_KEYS.paymentIntentId);
       const savedPayExp = localStorage.getItem(LS_KEYS.paymentExpiresAt);
       const savedSigned = localStorage.getItem(LS_KEYS.paymentSignedUrl);
@@ -549,47 +688,69 @@ const Booking = () => {
       if (savedPayExp) setPaymentExpiresAt(savedPayExp);
       if (savedSigned) setPaymentSignedUrl(savedSigned);
 
-      // set preview booking
-      setBookingPreview(b);
+      // Set booking preview
+      setBookingPreview(booking);
 
-      // fill formData from booking + customer
+      // Fill form data
       setFormData((prev) => ({
         ...prev,
-        service_id: b.service_id ?? prev.service_id,
-        service_variant_id: b.service_variant_id ?? prev.service_variant_id,
-        booking_date: b.booking_date ?? prev.booking_date,
-        booking_time: b.booking_time ?? prev.booking_time,
-        total_price: b.total_price ?? prev.total_price,
-        downpayment: b.downpayment ?? prev.downpayment,
-        notes: b.notes ?? prev.notes,
-        full_name: b.customers?.full_name ?? prev.full_name,
-        email: b.customers?.email ?? prev.email,
-        phone: b.customers?.phone ?? prev.phone,
-        facebook_link: b.customers?.facebook_link ?? prev.facebook_link,
+        service_id: booking.service_id ?? prev.service_id,
+        service_variant_id:
+          booking.service_variant_id ?? prev.service_variant_id,
+        service_category_id:
+          booking.service_category_id ?? prev.service_category_id,
+        booking_date: booking.booking_date ?? prev.booking_date,
+        booking_time: booking.booking_time ?? prev.booking_time,
+        total_price: booking.total_price ?? prev.total_price,
+        downpayment: booking.downpayment ?? prev.downpayment,
+        notes: booking.notes ?? prev.notes,
+        full_name: booking.customers?.full_name ?? prev.full_name,
+        email: booking.customers?.email ?? prev.email,
+        phone: booking.customers?.phone ?? prev.phone,
+        facebook_link: booking.customers?.facebook_link ?? prev.facebook_link,
       }));
 
-      // set selected date for calendar/slots
-      if (b.booking_date) setSelectedDate(b.booking_date);
+      // Set selected date for calendar
+      if (booking.booking_date) setSelectedDate(booking.booking_date);
 
-      // ✅ MODIFIED PART: Show resume prompt instead of auto-resume
-      if (b.status === "pending_payment") {
-        // Show modal, don't auto-set step
+      // Show resume modal for pending payment
+      if (booking.status === "pending_payment") {
         setShowResumePrompt(true);
-      } else if (b.status === "pending_approval" || b.status === "approved") {
-        // Already confirmed booking, go straight to confirmation
+        // Don't auto-set step - let user decide
+      } else if (
+        booking.status === "pending_approval" ||
+        booking.status === "approved"
+      ) {
         setStep(6);
-      } else {
-        setStep(1);
       }
-    } catch (e) {
-      console.error("Resume failed:", e);
+    } catch (error) {
+      console.error("Resume booking failed:", error);
       clearActiveFlow();
     }
-  }, []);
+  }, [services]);
 
   useEffect(() => {
-    checkAndResumeBooking();
-  }, [checkAndResumeBooking]);
+    if (services.length > 0) {
+      checkAndResumeBooking();
+    }
+  }, [services, checkAndResumeBooking]);
+
+  /* ==========================================
+     RESUME BOOKING FUNCTION
+  ========================================== */
+  const resumeBooking = useCallback(() => {
+    if (!bookingPreview) return;
+
+    // Determine which step to resume to
+    if (paymentIntentId) {
+      // Already uploaded proof, go to review
+      setPaymentProofUploaded(true);
+      setStep(5);
+    } else {
+      // Need to upload proof
+      setStep(4);
+    }
+  }, [bookingPreview, paymentIntentId]);
 
   /* ==========================================
      AUTO-MAP CATEGORY FROM VARIANT (resume-safe)
@@ -603,7 +764,7 @@ const Booking = () => {
 
     if (formData.service_category_id) {
       const cat = service.service_categories?.find(
-        (c) => c.id === formData.service_category_id
+        (c) => c.id === formData.service_category_id,
       );
       if (cat) setSelectedCategory(cat);
     }
@@ -612,7 +773,7 @@ const Booking = () => {
       const variantId = formData.service_variant_id;
 
       const foundCat = service.service_categories?.find((c) =>
-        c.service_variants?.some((v) => v.id === variantId)
+        c.service_variants?.some((v) => v.id === variantId),
       );
 
       if (foundCat) {
@@ -623,9 +784,11 @@ const Booking = () => {
 
     if (formData.service_category_id && formData.service_variant_id) {
       const cat = service.service_categories?.find(
-        (c) => c.id === formData.service_category_id
+        (c) => c.id === formData.service_category_id,
       );
-      const v = cat?.service_variants?.find((x) => x.id === formData.service_variant_id);
+      const v = cat?.service_variants?.find(
+        (x) => x.id === formData.service_variant_id,
+      );
       if (v) setSelectedVariant(v);
     }
   }, [
@@ -649,7 +812,7 @@ const Booking = () => {
       const availabilityData = await getMonthlyAvailability(
         formData.service_id,
         year,
-        month
+        month,
       );
 
       const availabilityMap = {};
@@ -779,10 +942,9 @@ const Booking = () => {
   }, [formData.service_id, selectedDate, fetchAvailableSlots]);
 
   /* ==========================================
-     COUNTDOWN + AUTO EXPIRE MODAL (Step 4/5) - FIXED BUG
+     COUNTDOWN + AUTO EXPIRE MODAL (IMPROVED)
   ========================================== */
   useEffect(() => {
-    // Don't run countdown if resume modal is showing
     if (showResumePrompt) return;
 
     const bookingExp = localStorage.getItem(LS_KEYS.bookingExpiresAt);
@@ -805,12 +967,7 @@ const Booking = () => {
       const expired = left <= 0;
       setIsExpiredLocal(expired);
 
-      // show modal once (only on steps where it matters)
-      if (
-        expired &&
-        !expiryHandledRef.current &&
-        (step === 4 || step === 5)
-      ) {
+      if (expired && !expiryHandledRef.current && (step === 4 || step === 5)) {
         expiryHandledRef.current = true;
 
         setModal({
@@ -830,7 +987,6 @@ const Booking = () => {
           ],
         });
 
-        // keep UI consistent immediately
         resetBookingFlow();
         setStep(1);
       }
@@ -839,20 +995,31 @@ const Booking = () => {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [paymentExpiresAt, bookingPreview?.expires_at, step, hardRestart, resetBookingFlow, showResumePrompt]);
+  }, [
+    paymentExpiresAt,
+    bookingPreview?.expires_at,
+    step,
+    hardRestart,
+    resetBookingFlow,
+    showResumePrompt,
+  ]);
 
   /* ==========================================
      NAVIGATION HELPERS
   ========================================== */
   const prevMonth = () => {
-    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    setCurrentMonth(
+      (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
+    );
     setSelectedDate("");
     setAvailableSlots([]);
     setFormData((prev) => ({ ...prev, booking_time: "" }));
   };
 
   const nextMonth = () => {
-    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    setCurrentMonth(
+      (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
+    );
     setSelectedDate("");
     setAvailableSlots([]);
     setFormData((prev) => ({ ...prev, booking_time: "" }));
@@ -982,7 +1149,8 @@ const Booking = () => {
 
     if (step === 1) {
       if (!formData.service_id) errors.push("Please select a service");
-      if (!formData.service_category_id) errors.push("Please select a category");
+      if (!formData.service_category_id)
+        errors.push("Please select a category");
       if (!formData.service_variant_id) errors.push("Please select a variant");
     }
 
@@ -1034,7 +1202,6 @@ const Booking = () => {
       setBookingId(result.id);
       saveActiveBooking({ bookingId: result.id, expiresAt: result.expires_at });
 
-      // also store preview + expiry if backend returns it
       setBookingPreview(result);
 
       setStep(4);
@@ -1049,13 +1216,12 @@ const Booking = () => {
   };
 
   /* ==========================================
-     STEP 4: UPLOAD PAYMENT PROOF (creates payment_intent)
+     STEP 4: UPLOAD PAYMENT PROOF
   ========================================== */
   const handlePaymentUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !bookingId) return;
 
-    // local guard
     if (isExpiredLocal) {
       setModal({
         open: true,
@@ -1132,7 +1298,7 @@ const Booking = () => {
   };
 
   /* ==========================================
-     STEP 5: CONFIRM BOOKING (HARD LOCK)
+     STEP 5: CONFIRM BOOKING (WITH SLOT TAKEN HANDLING)
   ========================================== */
   const handleFinalConfirmation = async () => {
     if (!bookingId) {
@@ -1144,7 +1310,6 @@ const Booking = () => {
       return;
     }
 
-    // local guard
     if (isExpiredLocal) {
       setModal({
         open: true,
@@ -1179,7 +1344,7 @@ const Booking = () => {
       }
 
       setStep(6);
-      clearActiveFlow(); // ✅ stop resume once confirmed
+      clearActiveFlow();
       alert("🎉 Booking confirmed! Slot is now reserved.");
       return result;
     } catch (error) {
@@ -1218,10 +1383,38 @@ const Booking = () => {
             ],
           });
         } else if (String(msg).toLowerCase().includes("slot")) {
+          // ✅ SLOT TAKEN AUTO RECOVERY
           errorType = "slot_taken";
           errorMessage =
             "Slot is no longer available. Please choose another date/time.";
           showRetry = false;
+
+          // Auto clear booking and payment
+          resetBookingFlow();
+          clearActiveFlow();
+
+          // Reset date/time selection
+          setFormData((prev) => ({
+            ...prev,
+            booking_date: "",
+            booking_time: "",
+          }));
+          setSelectedDate("");
+          setAvailableSlots([]);
+
+          // Go back to schedule selection
+          setStep(2);
+
+          // Show informative modal
+          setModal({
+            open: true,
+            title: "Slot No Longer Available",
+            message:
+              "The selected time slot has been taken. Please choose another date and time.",
+            actions: [],
+          });
+
+          return; // Exit early since we handled slot taken
         } else {
           errorType = "invalid_payment";
           errorMessage = msg || "Invalid request.";
@@ -1261,18 +1454,18 @@ const Booking = () => {
   ========================================== */
   const selectedService = useMemo(
     () => services.find((s) => s.id === formData.service_id),
-    [services, formData.service_id]
+    [services, formData.service_id],
   );
 
   const selectedCategoryObj = useMemo(() => {
     return selectedService?.service_categories?.find(
-      (c) => c.id === formData.service_category_id
+      (c) => c.id === formData.service_category_id,
     );
   }, [selectedService, formData.service_category_id]);
 
   const selectedVariantObj = useMemo(() => {
     return selectedCategoryObj?.service_variants?.find(
-      (v) => v.id === formData.service_variant_id
+      (v) => v.id === formData.service_variant_id,
     );
   }, [selectedCategoryObj, formData.service_variant_id]);
 
@@ -1368,7 +1561,10 @@ const Booking = () => {
               <p className="empty-description">
                 There are no services available at the moment.
               </p>
-              <button className="btn btn-outline premium" onClick={fetchServices}>
+              <button
+                className="btn btn-outline premium"
+                onClick={fetchServices}
+              >
                 Refresh Services
               </button>
             </div>
@@ -1388,7 +1584,7 @@ const Booking = () => {
                       alt={service.name}
                       onError={(e) => {
                         e.target.src = `https://via.placeholder.com/300x200?text=${encodeURIComponent(
-                          service.name
+                          service.name,
                         )}`;
                       }}
                     />
@@ -1401,19 +1597,24 @@ const Booking = () => {
                       <h3>{service.name}</h3>
                       <span className="service-badge premium">Available</span>
                     </div>
-                    <p className="service-description premium">{service.description}</p>
+                    <p className="service-description premium">
+                      {service.description}
+                    </p>
                     <div className="service-meta premium">
                       <div className="meta-item">
                         <span className="meta-icon">⏱️</span>
                         <span>
-                          {service.duration} hour{service.duration !== 1 ? "s" : ""}
+                          {service.duration} hour
+                          {service.duration !== 1 ? "s" : ""}
                         </span>
                       </div>
                       <div className="meta-item">
                         <span className="meta-icon">🏷️</span>
                         <span>
                           {service.service_categories?.length || 0} categor
-                          {service.service_categories?.length !== 1 ? "ies" : "y"}
+                          {service.service_categories?.length !== 1
+                            ? "ies"
+                            : "y"}
                         </span>
                       </div>
                     </div>
@@ -1432,7 +1633,8 @@ const Booking = () => {
             </button>
             <div className="step-info">
               <span className="info-text">
-                Showing {services.length} service{services.length !== 1 ? "s" : ""}
+                Showing {services.length} service
+                {services.length !== 1 ? "s" : ""}
               </span>
             </div>
           </div>
@@ -1486,11 +1688,15 @@ const Booking = () => {
                       <span>
                         ₱
                         {Math.min(
-                          ...(category.service_variants?.map((v) => v.price) || [0])
+                          ...(category.service_variants?.map(
+                            (v) => v.price,
+                          ) || [0]),
                         ).toLocaleString()}{" "}
                         - ₱
                         {Math.max(
-                          ...(category.service_variants?.map((v) => v.price) || [0])
+                          ...(category.service_variants?.map(
+                            (v) => v.price,
+                          ) || [0]),
                         ).toLocaleString()}
                       </span>
                     </div>
@@ -1517,7 +1723,10 @@ const Booking = () => {
             <div className="step-info">
               <span className="info-text">
                 {selectedService?.service_categories?.length || 0} categor
-                {selectedService?.service_categories?.length !== 1 ? "ies" : "y"} available
+                {selectedService?.service_categories?.length !== 1
+                  ? "ies"
+                  : "y"}{" "}
+                available
               </span>
             </div>
           </div>
@@ -1542,7 +1751,8 @@ const Booking = () => {
             <div>
               <h1 className="step-title">Select Variant</h1>
               <p className="step-subtitle">
-                Choose a specific variant for <strong>{selectedCategory?.name}</strong>
+                Choose a specific variant for{" "}
+                <strong>{selectedCategory?.name}</strong>
               </p>
             </div>
           </div>
@@ -1563,7 +1773,9 @@ const Booking = () => {
                   </div>
                   <div className="variant-details premium">
                     <div className="price-section">
-                      <div className="price-main">₱{variant.price.toLocaleString()}</div>
+                      <div className="price-main">
+                        ₱{variant.price.toLocaleString()}
+                      </div>
                       <div className="price-sub">
                         Downpayment: ₱{variant.downpayment.toLocaleString()}
                       </div>
@@ -1598,7 +1810,10 @@ const Booking = () => {
             <div className="step-info">
               <span className="info-text">
                 {selectedCategory?.service_variants?.length || 0} variant
-                {selectedCategory?.service_variants?.length !== 1 ? "s" : ""} available
+                {selectedCategory?.service_variants?.length !== 1
+                  ? "s"
+                  : ""}{" "}
+                available
               </span>
             </div>
           </div>
@@ -1610,15 +1825,25 @@ const Booking = () => {
   };
 
   /* ==========================================
-     STEP 2 UI (UNCHANGED STRUCTURE)
+     STEP 2 UI
   ========================================== */
   const renderDateTimeSelection = () => {
     const timeSlots = generateTimeSlots();
     const monthNames = [
-      "January","February","March","April","May","June",
-      "July","August","September","October","November","December",
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
     ];
-    const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
     return (
       <div className="premium-step">
@@ -1643,7 +1868,9 @@ const Booking = () => {
         <div className="selected-service-summary premium">
           <div className="summary-header">
             <h4>Selected Service</h4>
-            <div className="price-tag">₱{formData.total_price.toLocaleString()}</div>
+            <div className="price-tag">
+              ₱{formData.total_price.toLocaleString()}
+            </div>
           </div>
           <div className="summary-details">
             <div className="detail-item">
@@ -1681,7 +1908,8 @@ const Booking = () => {
 
                 <div className="calendar-title">
                   <h3>
-                    {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+                    {monthNames[currentMonth.getMonth()]}{" "}
+                    {currentMonth.getFullYear()}
                   </h3>
                   <button className="today-btn premium" onClick={goToToday}>
                     Today
@@ -1723,13 +1951,25 @@ const Booking = () => {
                           ${dateObj.isBlocked ? "blocked" : "available"}
                           ${dateObj.isSelected ? "selected" : ""}
                           ${isToday ? "today" : ""}`}
-                        onClick={() => !dateObj.isBlocked && handleDateSelect(dateObj.date)}
-                        title={dateObj.isBlocked ? "Not available" : "Click to select"}
+                        onClick={() =>
+                          !dateObj.isBlocked && handleDateSelect(dateObj.date)
+                        }
+                        title={
+                          dateObj.isBlocked
+                            ? "Not available"
+                            : "Click to select"
+                        }
                       >
                         <div className="day-content premium">
-                          <span className="day-number">{dateObj.date.getDate()}</span>
-                          {isToday && <span className="today-label">Today</span>}
-                          {dateObj.isSelected && <div className="selected-indicator"></div>}
+                          <span className="day-number">
+                            {dateObj.date.getDate()}
+                          </span>
+                          {isToday && (
+                            <span className="today-label">Today</span>
+                          )}
+                          {dateObj.isSelected && (
+                            <div className="selected-indicator"></div>
+                          )}
                         </div>
                         {!dateObj.isCurrentMonth && (
                           <div className="month-indicator">
@@ -1814,9 +2054,15 @@ const Booking = () => {
                           className={`timeslot-btn premium ${
                             !slot.available ? "disabled" : ""
                           } ${slot.isSelected ? "selected" : ""}`}
-                          onClick={() => slot.available && handleTimeSelect(slot.value)}
+                          onClick={() =>
+                            slot.available && handleTimeSelect(slot.value)
+                          }
                           disabled={!slot.available}
-                          title={!slot.available ? "This slot is booked" : "Select time slot"}
+                          title={
+                            !slot.available
+                              ? "This slot is booked"
+                              : "Select time slot"
+                          }
                         >
                           <span className="slot-time">{slot.display}</span>
                           <span className="slot-status">
@@ -1825,7 +2071,9 @@ const Booking = () => {
                             ) : slot.isSelected ? (
                               <span className="status-selected">Selected</span>
                             ) : (
-                              <span className="status-available">Available</span>
+                              <span className="status-available">
+                                Available
+                              </span>
                             )}
                           </span>
                         </button>
@@ -1904,7 +2152,9 @@ const Booking = () => {
       <div className="booking-summary-card premium">
         <div className="summary-header">
           <h4>Booking Summary</h4>
-          <div className="total-amount">₱{formData.total_price.toLocaleString()}</div>
+          <div className="total-amount">
+            ₱{formData.total_price.toLocaleString()}
+          </div>
         </div>
         <div className="summary-grid premium">
           <div className="summary-item">
@@ -1937,7 +2187,9 @@ const Booking = () => {
           </div>
           <div className="summary-item highlight">
             <span className="item-label">Downpayment:</span>
-            <span className="item-value">₱{formData.downpayment.toLocaleString()}</span>
+            <span className="item-value">
+              ₱{formData.downpayment.toLocaleString()}
+            </span>
           </div>
         </div>
       </div>
@@ -2034,20 +2286,26 @@ const Booking = () => {
         </div>
         <ul className="notice-list">
           <li>
-            Booking will be created with status <strong>"Pending Payment"</strong>
+            Booking will be created with status{" "}
+            <strong>"Pending Payment"</strong>
           </li>
           <li>
-            Slot is <strong>NOT reserved</strong> until payment proof is uploaded
+            Slot is <strong>NOT reserved</strong> until payment proof is
+            uploaded
           </li>
           <li>
-            Upload payment proof within <strong>30 minutes</strong> to secure your slot
+            Upload payment proof within <strong>30 minutes</strong> to secure
+            your slot
           </li>
           <li>Slot availability will be verified after payment upload</li>
         </ul>
       </div>
 
       <div className="step-footer premium">
-        <button className="btn btn-secondary premium" onClick={() => setStep(2)}>
+        <button
+          className="btn btn-secondary premium"
+          onClick={() => setStep(2)}
+        >
           Back to Schedule
         </button>
         <button
@@ -2077,15 +2335,15 @@ const Booking = () => {
     const expiryLabel = isExpiredLocal
       ? "Expired"
       : countdown
-      ? `${countdown} remaining`
-      : paymentExpiresAt
-      ? new Date(paymentExpiresAt).toLocaleString("en-PH", {
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "30 minutes";
+        ? `${countdown} remaining`
+        : paymentExpiresAt
+          ? new Date(paymentExpiresAt).toLocaleString("en-PH", {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "30 minutes";
 
     return (
       <div className="premium-step">
@@ -2095,18 +2353,23 @@ const Booking = () => {
           </button>
           <div>
             <h1 className="step-title">Payment Instructions</h1>
-            <p className="step-subtitle">Pay the downpayment to secure your appointment</p>
+            <p className="step-subtitle">
+              Pay the downpayment to secure your appointment
+            </p>
           </div>
         </div>
 
-        <div className={`status-banner warning premium ${isExpiredLocal ? "error" : ""}`}>
+        <div
+          className={`status-banner warning premium ${isExpiredLocal ? "error" : ""}`}
+        >
           <div className="status-content">
             <div className="status-indicator">
               <span className="status-dot"></span>
               <span className="status-text">PENDING PAYMENT</span>
             </div>
             <p className="status-message">
-              ⏰ Upload payment proof within <strong>{expiryLabel}</strong> to secure your slot
+              ⏰ Upload payment proof within <strong>{expiryLabel}</strong> to
+              secure your slot
             </p>
           </div>
         </div>
@@ -2150,7 +2413,9 @@ const Booking = () => {
             <div className="qr-card premium">
               <div className="qr-header">
                 <h4>Scan to Pay via GCash</h4>
-                <div className="payment-amount">₱{formData.downpayment.toLocaleString()}</div>
+                <div className="payment-amount">
+                  ₱{formData.downpayment.toLocaleString()}
+                </div>
               </div>
               <div className="qr-container">
                 <img
@@ -2192,7 +2457,9 @@ const Booking = () => {
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Expires:</span>
-                  <span className={`detail-value ${isExpiredLocal ? "warning" : "warning"}`}>
+                  <span
+                    className={`detail-value ${isExpiredLocal ? "warning" : "warning"}`}
+                  >
                     {expiryLabel}
                   </span>
                 </div>
@@ -2210,7 +2477,8 @@ const Booking = () => {
             <div className="upload-header">
               <h4>Upload Proof of Payment</h4>
               <p className="upload-subtitle">
-                <strong>Required:</strong> Upload payment proof to secure your slot
+                <strong>Required:</strong> Upload payment proof to secure your
+                slot
               </p>
             </div>
 
@@ -2237,7 +2505,9 @@ const Booking = () => {
                     <span className="upload-icon">✓</span>
                     <div>
                       <p className="upload-title">Payment Proof Uploaded</p>
-                      <p className="upload-sub">Payment intent created successfully</p>
+                      <p className="upload-sub">
+                        Payment intent created successfully
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -2268,12 +2538,16 @@ const Booking = () => {
           <div className="note-icon">⚠️</div>
           <div className="note-content">
             <strong>Important:</strong> Your slot is{" "}
-            <span className="warning-text">NOT RESERVED</span> until you confirm booking.
+            <span className="warning-text">NOT RESERVED</span> until you confirm
+            booking.
           </div>
         </div>
 
         <div className="step-footer premium">
-          <button className="btn btn-secondary premium" onClick={() => setStep(3)}>
+          <button
+            className="btn btn-secondary premium"
+            onClick={() => setStep(3)}
+          >
             Back to Information
           </button>
           {paymentProofUploaded && (
@@ -2304,7 +2578,9 @@ const Booking = () => {
           </button>
           <div>
             <h1 className="step-title">Final Review</h1>
-            <p className="step-subtitle">Verify all details before confirming your booking</p>
+            <p className="step-subtitle">
+              Verify all details before confirming your booking
+            </p>
           </div>
         </div>
 
@@ -2315,7 +2591,8 @@ const Booking = () => {
               <span className="status-text">SLOT NOT YET RESERVED</span>
             </div>
             <p className="status-message">
-              ⚠️ Slot will be checked and reserved when you click "Confirm Booking"
+              ⚠️ Slot will be checked and reserved when you click "Confirm
+              Booking"
             </p>
           </div>
         </div>
@@ -2403,7 +2680,9 @@ const Booking = () => {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Category:</span>
-                <span className="detail-value">{selectedCategoryObj?.name}</span>
+                <span className="detail-value">
+                  {selectedCategoryObj?.name}
+                </span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Variant:</span>
@@ -2414,7 +2693,8 @@ const Booking = () => {
               <div className="detail-item">
                 <span className="detail-label">Duration:</span>
                 <span className="detail-value">
-                  {selectedService?.duration} hour{selectedService?.duration !== 1 ? "s" : ""}
+                  {selectedService?.duration} hour
+                  {selectedService?.duration !== 1 ? "s" : ""}
                 </span>
               </div>
               <div className="detail-item highlight">
@@ -2464,7 +2744,9 @@ const Booking = () => {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Facebook:</span>
-                <span className="detail-value">{formData.facebook_link || "Not provided"}</span>
+                <span className="detail-value">
+                  {formData.facebook_link || "Not provided"}
+                </span>
               </div>
             </div>
           </div>
@@ -2484,7 +2766,9 @@ const Booking = () => {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Slot Status:</span>
-                <span className="detail-value warning">Pending Reservation</span>
+                <span className="detail-value warning">
+                  Pending Reservation
+                </span>
               </div>
 
               {preview?.status && (
@@ -2510,20 +2794,32 @@ const Booking = () => {
           <h4>📋 Important Policies</h4>
           <ul className="policies-list">
             <li>Slot availability will be checked when you confirm booking</li>
-            <li>If slot is no longer available, you'll be notified immediately</li>
-            <li>Booking will be marked as "Pending Approval" until admin approval</li>
-            <li>Cancellations allowed within <strong>24 hours after approval</strong></li>
+            <li>
+              If slot is no longer available, you'll be notified immediately
+            </li>
+            <li>
+              Booking will be marked as "Pending Approval" until admin approval
+            </li>
+            <li>
+              Cancellations allowed within{" "}
+              <strong>24 hours after approval</strong>
+            </li>
           </ul>
         </div>
 
         <div className="step-footer premium">
-          <button className="btn btn-secondary premium" onClick={handleBackToPayment}>
+          <button
+            className="btn btn-secondary premium"
+            onClick={handleBackToPayment}
+          >
             Back to Payment
           </button>
           <button
             className="btn btn-primary premium"
             onClick={handleFinalConfirmation}
-            disabled={loading || !paymentIntentId || !bookingId || isExpiredLocal}
+            disabled={
+              loading || !paymentIntentId || !bookingId || isExpiredLocal
+            }
           >
             {loading ? (
               <>
@@ -2563,7 +2859,9 @@ const Booking = () => {
           <div className="card-content">
             <div className="detail-item">
               <span className="detail-label">Status:</span>
-              <span className="detail-value status pending">PENDING APPROVAL</span>
+              <span className="detail-value status pending">
+                PENDING APPROVAL
+              </span>
             </div>
             <div className="detail-item">
               <span className="detail-label">Service:</span>
@@ -2591,11 +2889,15 @@ const Booking = () => {
             </div>
             <div className="detail-item success">
               <span className="detail-label">Payment:</span>
-              <span className="detail-value status success">Downpayment Verified ✓</span>
+              <span className="detail-value status success">
+                Downpayment Verified ✓
+              </span>
             </div>
             <div className="detail-item success">
               <span className="detail-label">Slot Status:</span>
-              <span className="detail-value status success">Slot Reserved ✓</span>
+              <span className="detail-value status success">
+                Slot Reserved ✓
+              </span>
             </div>
           </div>
         </div>
@@ -2630,7 +2932,10 @@ const Booking = () => {
       </div>
 
       <div className="step-footer premium">
-        <button className="btn btn-primary premium" onClick={() => (window.location.href = "/")}>
+        <button
+          className="btn btn-primary premium"
+          onClick={() => (window.location.href = "/")}
+        >
           Back to Home
         </button>
         <button
@@ -2648,7 +2953,7 @@ const Booking = () => {
   return (
     <div className="booking-system-premium">
       <Modal />
-      {/* ✅ RESUME BOOKING MODAL */}
+      {/* RESUME BOOKING MODAL */}
       <ResumeModal />
 
       <div className="booking-header premium">
