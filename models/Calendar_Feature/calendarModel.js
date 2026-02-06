@@ -44,12 +44,12 @@ export const getAvailableSlots = async (service_id, date) => {
     .eq("date", date)
     .eq("is_available", true);
 
+  // kung today, hide past times
   if (date === todayStr) {
     query = query.gt("time", currentTime);
   }
 
   const { data, error } = await query.order("time");
-
   if (error) throw new Error(error.message);
   return data;
 };
@@ -67,7 +67,9 @@ export const getMonthlyAvailability = async (service_id, year, month) => {
 
   const lastDay = new Date(yearNum, monthNum, 0).getDate();
   const startDate = `${yearNum}-${String(monthNum).padStart(2, "0")}-01`;
-  const endDate = `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  const endDate = `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(
+    lastDay,
+  ).padStart(2, "0")}`;
 
   const now = new Date();
   const todayStr = formatLocalDate(now);
@@ -76,7 +78,7 @@ export const getMonthlyAvailability = async (service_id, year, month) => {
   const { data, error } = await supabase
     .from("calendar_slots")
     .select("date, time, is_available")
-    .eq("service_id", service_id)
+    .eq("service_id", Number(service_id))
     .gte("date", startDate)
     .lte("date", endDate);
 
@@ -89,20 +91,13 @@ export const getMonthlyAvailability = async (service_id, year, month) => {
     if (row.date < todayStr) continue;
     if (row.date === todayStr && row.time <= currentTime) continue;
 
-    if (!dayMap[row.date]) {
-      dayMap[row.date] = false;
-    }
+    if (!dayMap[row.date]) dayMap[row.date] = false;
 
-    // kahit isa lang na available → available day
-    if (row.is_available) {
-      dayMap[row.date] = true;
-    }
+    // kahit isa lang available slot → available day
+    if (row.is_available) dayMap[row.date] = true;
   }
 
-  return Object.keys(dayMap).map((date) => ({
-    date,
-    available: dayMap[date],
-  }));
+  return Object.keys(dayMap).map((date) => ({ date, available: dayMap[date] }));
 };
 
 /* =========================
@@ -154,6 +149,7 @@ export const blockSlotGlobally = async (date, time) => {
   return data;
 };
 
+// ⚠️ NOTE: this is "force unblock". Huwag gamitin sa normal reject/cancel flow.
 export const unblockSlotGlobally = async (date, time) => {
   const { data, error } = await supabase
     .from("calendar_slots")
@@ -169,21 +165,14 @@ export const unblockSlotGlobally = async (date, time) => {
 /* =========================
    BULK SLOT CREATION
 ========================= */
-
-export const createSlotsBulk = async ({
-  service_id,
-  startDate,
-  endDate,
-  times,
-}) => {
+export const createSlotsBulk = async ({ service_id, startDate, endDate, times }) => {
   if (!service_id || !startDate || !endDate || !times?.length)
     throw new Error("Missing required parameters");
 
   const start = new Date(startDate);
   const end = new Date(endDate);
-  const dates = [];
 
-  // Generate dates array
+  const dates = [];
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     dates.push(new Date(d));
   }
@@ -194,20 +183,20 @@ export const createSlotsBulk = async ({
     const dateStr = formatLocalDate(date);
 
     for (const time of times) {
-      // 🔹 Check if may booking sa kahit anong service sa parehong date+time
+      // ✅ Only active bookings block the slot
       const { data: takenGlobal, error: checkError } = await supabase
         .from("bookings")
         .select("id")
         .eq("booking_date", dateStr)
         .eq("booking_time", time)
-        .neq("status", "cancelled")
+        .in("status", ["pending_approval", "approved"])
         .maybeSingle();
 
       if (checkError) throw new Error(checkError.message);
 
       const isBlocked = !!takenGlobal;
 
-      // 🔹 Block lahat ng existing slots sa parehong date+time kung may booking
+      // if blocked globally, block all existing slots too
       if (isBlocked) {
         await supabase
           .from("calendar_slots")
@@ -216,7 +205,6 @@ export const createSlotsBulk = async ({
           .eq("time", time);
       }
 
-      // 🔹 Insert / upsert slot para sa bagong service
       slotsToInsert.push({
         service_id,
         date: dateStr,
@@ -232,7 +220,6 @@ export const createSlotsBulk = async ({
     .select();
 
   if (error) throw new Error(error.message);
-
   return data;
 };
 
@@ -250,11 +237,7 @@ export const blockDayGlobally = async (date, isAvailable = false) => {
   return data;
 };
 
-export const blockDayForService = async (
-  service_id,
-  date,
-  isAvailable = false,
-) => {
+export const blockDayForService = async (service_id, date, isAvailable = false) => {
   const { data, error } = await supabase
     .from("calendar_slots")
     .update({ is_available: isAvailable })

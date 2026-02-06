@@ -11,14 +11,14 @@ import {
   validate,
 } from "../../utils/validators/bookingValidation.js";
 
-//PUBLIC : create booking (updated to create customer if not exists all in one sya)
-// PUBLIC : create booking (Step 1)
+/* ==========================================
+   PUBLIC: Step 1 - Create booking (pending_payment)
+========================================== */
 export const createBooking = async (req, res) => {
   const errors = validate(createBookingSchema, req.body);
   if (errors) return res.status(400).json({ errors });
 
   try {
-    // Step 1: Pending payment booking
     const newBooking = await booking.createBookingWithCustomer(req.body);
 
     // Email: booking submitted
@@ -39,49 +39,79 @@ export const createBooking = async (req, res) => {
   }
 };
 
-// PUBLIC: confirm booking (Step 3)
+/* ==========================================
+   PUBLIC: Review page - Get booking details
+   GET /bookings/:id
+========================================== */
+export const getBookingById = async (req, res) => {
+  try {
+    const bookingData = await booking.getBookingById(req.params.id);
+    res.json(bookingData);
+  } catch (err) {
+    res.status(404).json({ error: err.message });
+  }
+};
+
+/* ==========================================
+   PUBLIC: Step 3 - Confirm booking (manual button)
+   POST /bookings/:id/confirm
+   body: { payment_intent_id }
+========================================== */
 export const confirmBooking = async (req, res) => {
+  const bookingId = req.params.id;
   const { payment_intent_id } = req.body;
-  if (!payment_intent_id)
+
+  if (!payment_intent_id) {
     return res.status(400).json({ error: "payment_intent_id required" });
+  }
 
   try {
-    // Step 3: Check slot, lock, create final booking
-    const bookingData = await booking.createBookingWithPaymentIntent(payment_intent_id);
+    // IMPORTANT:
+    // Dapat sa model: i-check na intent.booking_id === bookingId
+    // Suggest: gumawa ng function confirmBookingForBookingId(bookingId, intentId)
+    const updatedBooking = await booking.confirmBookingForBookingId(
+      bookingId,
+      payment_intent_id,
+    );
 
-    // Email: booking confirmed
-    if (bookingData.customers?.email) {
+    // Email: booking moved to pending_approval (confirmed by user)
+    // NOTE: Make sure updatedBooking includes customers/services
+    if (updatedBooking.customers?.email) {
       await sendEmail({
-        to: bookingData.customers.email,
+        to: updatedBooking.customers.email,
         subject: "Booking Confirmed",
         html: bookingSubmittedTemplate({
-          name: bookingData.customers.full_name,
-          service: bookingData.services?.name || "Selected Service",
+          name: updatedBooking.customers.full_name,
+          service: updatedBooking.services?.name || "Selected Service",
         }),
       });
     }
 
-    res.status(201).json({ message: "Booking confirmed", booking: bookingData });
+    res.status(201).json({
+      message: "Booking confirmed (pending approval)",
+      booking: updatedBooking,
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
-
-// ADMIN : get all bookings
+/* ==========================================
+   ADMIN: Get all bookings
+========================================== */
 export const getAllBookings = async (req, res) => {
   try {
     const bookings = await booking.getAllBookings();
     res.json(bookings);
-    console.log(bookings);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// ADMIN: update booking status (approve / reject / completed)
+/* ==========================================
+   ADMIN: update booking status (generic)
+========================================== */
 export const updateBookingStatus = async (req, res) => {
-  // ---- VALIDATION ----
   const errors = validate(updateBookingStatusSchema, req.body);
   if (errors) return res.status(400).json({ errors });
 
@@ -96,8 +126,9 @@ export const updateBookingStatus = async (req, res) => {
   }
 };
 
-// ADMIN: approve booking
-// GUMAGANA NA TO
+/* ==========================================
+   ADMIN: approve booking
+========================================== */
 export const approveBooking = async (req, res) => {
   try {
     const result = await booking.approveBooking(req.params.id);
@@ -120,8 +151,9 @@ export const approveBooking = async (req, res) => {
   }
 };
 
-// ADMIN: reject booking
-// GUMAGANA NA TO
+/* ==========================================
+   ADMIN: reject booking
+========================================== */
 export const rejectBooking = async (req, res) => {
   try {
     const result = await booking.rejectBooking(req.params.id);
@@ -134,14 +166,16 @@ export const rejectBooking = async (req, res) => {
         service: result.services.name,
       }),
     });
+
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
-// PUBLIC: cancel booking
-// TODO: send email notification upon cancellation IMPLEMENTATION
+/* ==========================================
+   PUBLIC: cancel booking
+========================================== */
 export const cancelBooking = async (req, res) => {
   try {
     const result = await booking.cancelBooking(req.params.id);
@@ -150,3 +184,22 @@ export const cancelBooking = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+
+
+
+
+/* ==========================================
+   ADMIN: complete booking
+   PATCH /bookings/:id/complete
+========================================== */
+
+export const completeBooking = async (req , res) => {
+  try {
+    const result = await booking.completeBooking(req.params.id);
+    return res.json(result);
+  } catch (error) {
+   return  res.status(400).json({error: error.message});
+    
+  }
+  
+}

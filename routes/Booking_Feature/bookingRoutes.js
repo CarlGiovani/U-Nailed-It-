@@ -4,22 +4,31 @@ import { verifyAdmin } from "../../middlewares/Authentication/authMiddleware.js"
 
 const router = express.Router();
 
-// PUBLIC
+/* =========================
+   PUBLIC
+========================= */
+
+// Step 1: create booking (pending_payment)
 router.post("/", BookingController.createBooking);
 
-// PUBLIC: confirm booking (after payment proof)
-router.post("/confirm", BookingController.confirmBooking);
+// Review page: fetch booking details by id
+router.get("/:id", BookingController.getBookingById);
 
- 
-// ADMIN
+// Confirm button: confirm THIS booking using payment_intent_id
+router.post("/:id/confirm", BookingController.confirmBooking);
+
+// Cancel booking
+router.put("/:id/cancel", BookingController.cancelBooking);
+
+/* =========================
+   ADMIN
+========================= */
+
 router.get("/", verifyAdmin, BookingController.getAllBookings);
 router.put("/:id/status", verifyAdmin, BookingController.updateBookingStatus);
 
-// ADMIN
 router.patch("/:id/approve", verifyAdmin, BookingController.approveBooking);
 router.patch("/:id/reject", verifyAdmin, BookingController.rejectBooking);
-
-// PUBLIC
-router.put("/:id/cancel", BookingController.cancelBooking);
+router.patch("/:id/complete", verifyAdmin , BookingController.completeBooking);
 
 export default router;
