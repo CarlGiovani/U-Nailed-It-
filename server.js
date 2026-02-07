@@ -48,7 +48,7 @@ scheduleSlotCleanup();
 scheduleBookingExpiry();
 // TEST SERVER ROUTES
 app.get("/", (req, res) => {
-  res.send("YEHEY YOUR SERVER IS RUNNING!!!!!!");
+  res.send("YOUR SERVER IS RUNNING!!!!!!");
 });
 
 // Example route to test Supabase connection

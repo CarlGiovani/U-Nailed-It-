@@ -29,6 +29,6 @@ router.put("/:id/status", verifyAdmin, BookingController.updateBookingStatus);
 
 router.patch("/:id/approve", verifyAdmin, BookingController.approveBooking);
 router.patch("/:id/reject", verifyAdmin, BookingController.rejectBooking);
-router.patch("/:id/complete", verifyAdmin , BookingController.completeBooking);
+router.patch("/:id/complete", verifyAdmin, BookingController.completeBooking);
 
 export default router;
