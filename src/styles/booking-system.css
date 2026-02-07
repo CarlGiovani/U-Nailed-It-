@@ -2494,3 +2494,13 @@
 }
 
 
+.confirmation-card.pending {
+  border-color: var(--gold-light);
+}
+
+.confirmation-card.success {
+  border-color: var(--pink-light);
+}
+
+
+

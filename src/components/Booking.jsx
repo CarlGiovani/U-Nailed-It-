@@ -20,27 +20,38 @@ const formatLocalDate = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+// SAFE DATE PARSING - FIXES TIMEZONE ISSUES
+const parseLocalDate = (dateStr) => {
+  if (!dateStr) return null;
+  // Always parse with local timezone (append T00:00:00)
+  return new Date(dateStr + "T00:00:00");
+};
+
+//HELPER
+const sameId = (a, b) => Number(a) === Number(b);
+
 // ===============================
 // RESUME BOOKING (localStorage)
 // ===============================
 const LS_KEYS = {
   bookingId: "active_booking_id",
-  bookingExpiresAt: "active_booking_expires_at",
+  bookingExpiresAt: "active_booking_expires_at", // Will store as epoch ms
   paymentIntentId: "active_payment_intent_id",
-  paymentExpiresAt: "active_payment_expires_at",
   paymentSignedUrl: "active_payment_signed_url",
 };
 
 const saveActiveBooking = ({ bookingId, expiresAt }) => {
   if (bookingId) localStorage.setItem(LS_KEYS.bookingId, String(bookingId));
-  if (expiresAt)
-    localStorage.setItem(LS_KEYS.bookingExpiresAt, String(expiresAt));
+  if (expiresAt) {
+    // Store as epoch milliseconds for consistent parsing
+    const expiryMs =
+      typeof expiresAt === "string" ? Date.parse(expiresAt) : expiresAt;
+    localStorage.setItem(LS_KEYS.bookingExpiresAt, String(expiryMs));
+  }
 };
 
-const saveActivePayment = ({ intentId, expiresAt, signedUrl }) => {
+const saveActivePayment = ({ intentId, signedUrl }) => {
   if (intentId) localStorage.setItem(LS_KEYS.paymentIntentId, String(intentId));
-  if (expiresAt)
-    localStorage.setItem(LS_KEYS.paymentExpiresAt, String(expiresAt));
   if (signedUrl)
     localStorage.setItem(LS_KEYS.paymentSignedUrl, String(signedUrl));
 };
@@ -50,36 +61,23 @@ const clearActiveFlow = () => {
 };
 
 // ===============================
-// TIME HELPERS - IMPROVED: BULLETPROOF
+// TIME HELPERS - BULLETPROOF
 // ===============================
 const toMs = (isoOrNull) => {
   if (!isoOrNull) return null;
 
-  // Handle number or numeric string (epoch milliseconds)
-  if (typeof isoOrNull === "number" && !isNaN(isoOrNull)) {
+  if (typeof isoOrNull === "number") {
     return isoOrNull;
   }
 
   if (typeof isoOrNull === "string") {
-    // Check if it's a numeric string (epoch)
     const num = Number(isoOrNull);
     if (!isNaN(num) && String(num) === isoOrNull.trim()) {
       return num;
     }
 
-    // Handle ISO string with timezone variations
     const date = new Date(isoOrNull);
     const ms = date.getTime();
-
-    // Check if date is valid
-    if (isNaN(ms)) {
-      // Try removing timezone offset if present
-      const cleaned = isoOrNull.replace(/[+-]\d{2}:?\d{2}$/, "");
-      const date2 = new Date(cleaned);
-      const ms2 = date2.getTime();
-      return Number.isFinite(ms2) ? ms2 : null;
-    }
-
     return Number.isFinite(ms) ? ms : null;
   }
 
@@ -106,10 +104,9 @@ const Booking = () => {
   // Booking flow states
   const [bookingId, setBookingId] = useState(null);
   const [paymentIntentId, setPaymentIntentId] = useState(null);
-  const [paymentExpiresAt, setPaymentExpiresAt] = useState(null);
   const [paymentSignedUrl, setPaymentSignedUrl] = useState(null);
 
-  // Review/Confirmed booking data (from backend)
+  // Review/Confirmed booking data (from backend) - SINGLE SOURCE OF TRUTH
   const [bookingPreview, setBookingPreview] = useState(null);
 
   // UI states
@@ -134,6 +131,18 @@ const Booking = () => {
   // Resume booking modal
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [resumeBookingData, setResumeBookingData] = useState(null);
+  const [resuming, setResuming] = useState(false);
+
+  //payment image preview
+  const [proofPreviewUrl, setProofPreviewUrl] = useState(null);
+  const [selectedProofFile, setSelectedProofFile] = useState(null);
+
+  //para sa preview ng payment image
+  useEffect(() => {
+    return () => {
+      if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
+    };
+  }, [proofPreviewUrl]);
 
   // modal state
   const [modal, setModal] = useState({
@@ -143,7 +152,7 @@ const Booking = () => {
     actions: [],
   });
 
-  // countdown
+  // countdown - SINGLE EXPIRY SOURCE
   const [timeLeftMs, setTimeLeftMs] = useState(null);
   const [isExpiredLocal, setIsExpiredLocal] = useState(false);
   const expiryHandledRef = useRef(false);
@@ -165,32 +174,55 @@ const Booking = () => {
   });
 
   // ===============================
-  // STEP GUARD (Prevent invalid step access)
+  // MODAL UTILITIES (REPLACE ALERT())
+  // ===============================
+  const showAlert = useCallback((title, message, onConfirm = null) => {
+    setModal({
+      open: true,
+      title,
+      message,
+      actions: [
+        {
+          label: "OK",
+          variant: "btn-primary",
+          onClick: () => {
+            setModal((m) => ({ ...m, open: false }));
+            if (onConfirm && typeof onConfirm === "function") {
+              onConfirm();
+            }
+          },
+        },
+      ],
+    });
+  }, []);
+
+  // ===============================
+  // STEP GUARD
   // ===============================
   useEffect(() => {
-    // Guard: Step 4 requires bookingId
+    if (resuming) return;
+
+    // Step 4 = Review (need bookingId)
     if (step === 4 && !bookingId) {
       console.warn("Invalid step 4: No bookingId, redirecting to step 1");
       setStep(1);
       return;
     }
 
-    // Guard: Step 5 requires paymentIntentId and bookingId
-    if (step === 5 && (!paymentIntentId || !bookingId)) {
-      console.warn(
-        "Invalid step 5: Missing paymentIntentId or bookingId, redirecting to step 4",
-      );
+    // Step 5 = Payment + Confirm (need bookingId only)
+    if (step === 5 && !bookingId) {
+      console.warn("Invalid step 5: No bookingId, redirecting to step 4");
       setStep(4);
       return;
     }
 
-    // Guard: Step 6 requires confirmed booking
+    // Step 6 = Done/Confirmation (need bookingPreview)
     if (step === 6 && !bookingPreview) {
       console.warn("Invalid step 6: No bookingPreview, redirecting to step 1");
       setStep(1);
       return;
     }
-  }, [step, bookingId, paymentIntentId, bookingPreview]);
+  }, [step, bookingId, bookingPreview, resuming]);
 
   // ===============================
   // MAIN MODAL COMPONENT
@@ -279,7 +311,7 @@ const Booking = () => {
     const formatDate = (dateStr) => {
       if (!dateStr) return "N/A";
       try {
-        const date = new Date(dateStr);
+        const date = parseLocalDate(dateStr);
         return date.toLocaleDateString("en-PH", {
           weekday: "short",
           month: "short",
@@ -304,7 +336,6 @@ const Booking = () => {
       }
     };
 
-    // Get service name from serviceInfo or booking
     const serviceName =
       serviceInfo?.name ||
       booking.service?.name ||
@@ -508,7 +539,7 @@ const Booking = () => {
               className="btn btn-primary premium"
               onClick={() => {
                 setShowResumePrompt(false);
-                resumeBooking();
+                handleResumeBooking();
               }}
               style={{
                 background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -575,18 +606,16 @@ const Booking = () => {
   }, [fetchServices]);
 
   /* ==========================================
-     RESET FUNCTIONS (CENTRALIZED LOGIC)
+     RESET FUNCTIONS
   ========================================== */
   const resetBookingFlow = useCallback(() => {
     setBookingId(null);
     setPaymentIntentId(null);
-    setPaymentExpiresAt(null);
     setPaymentSignedUrl(null);
     setPaymentProofUploaded(false);
     setConfirmationError(null);
     setBookingPreview(null);
 
-    // countdown/expiry flags
     setTimeLeftMs(null);
     setIsExpiredLocal(false);
     expiryHandledRef.current = false;
@@ -622,40 +651,61 @@ const Booking = () => {
   }, [resetBookingFlow]);
 
   /* ==========================================
-     RESUME ON PAGE LOAD (IMPROVED)
+     RESUME ON PAGE LOAD (BACKEND-DRIVEN)
   ========================================== */
   const checkAndResumeBooking = useCallback(async () => {
     const savedBookingId = localStorage.getItem(LS_KEYS.bookingId);
     if (!savedBookingId) return;
 
+    setResuming(true);
+
     try {
       const booking = await getBookingById(savedBookingId);
 
-      // If booking is in final state, clear storage
-      if (
-        ["expired", "cancelled", "rejected", "completed"].includes(
-          booking.status,
-        )
-      ) {
+      const finalStates = ["expired", "cancelled", "rejected", "completed"];
+      if (finalStates.includes(booking.status)) {
         clearActiveFlow();
         return;
       }
 
-      // Get service info for resume modal
       let serviceInfo = null;
+
       try {
         if (services.length > 0) {
-          const service = services.find((s) => s.id === booking.service_id);
+          const serviceId = Number(booking.service_id);
+          const catId =
+            booking.service_category_id != null
+              ? Number(booking.service_category_id)
+              : null;
+          const varId =
+            booking.service_variant_id != null
+              ? Number(booking.service_variant_id)
+              : null;
+
+          const service = services.find((s) => Number(s.id) === serviceId);
+
           if (service) {
-            const variantId = booking.service_variant_id;
+            let category =
+              (varId != null
+                ? service.service_categories?.find((c) =>
+                    c.service_variants?.some((v) => Number(v.id) === varId),
+                  )
+                : null) ||
+              (catId != null
+                ? service.service_categories?.find(
+                    (c) => Number(c.id) === catId,
+                  )
+                : null);
 
-            const category = service.service_categories?.find((c) =>
-              c.service_variants?.some((v) => v.id === variantId),
-            );
-
-            const variant = category?.service_variants?.find(
-              (v) => v.id === variantId,
-            );
+            let variant =
+              (category && varId != null
+                ? category.service_variants?.find((v) => Number(v.id) === varId)
+                : null) ||
+              (varId != null
+                ? service.service_categories
+                    ?.flatMap((c) => c.service_variants || [])
+                    ?.find((v) => Number(v.id) === varId)
+                : null);
 
             serviceInfo = {
               name: service.name,
@@ -670,28 +720,37 @@ const Booking = () => {
         console.warn("Could not fetch service details for resume:", e);
       }
 
-      // Set resume booking data for modal
-      setResumeBookingData({
-        booking,
-        serviceInfo,
-      });
-
-      // Store booking ID
+      setResumeBookingData({ booking, serviceInfo });
       setBookingId(booking.id);
 
-      // Payment intent resume
+      const backendPaymentIntentId =
+        booking.payment?.payment_intent_id || booking.payment_intent_id;
+
       const savedIntentId = localStorage.getItem(LS_KEYS.paymentIntentId);
-      const savedPayExp = localStorage.getItem(LS_KEYS.paymentExpiresAt);
       const savedSigned = localStorage.getItem(LS_KEYS.paymentSignedUrl);
 
-      if (savedIntentId) setPaymentIntentId(savedIntentId);
-      if (savedPayExp) setPaymentExpiresAt(savedPayExp);
+      const hasProofFromStorage = !!savedSigned;
+
+      //UPDATED
+      if (backendPaymentIntentId) {
+        setPaymentIntentId(backendPaymentIntentId);
+
+        const hasProofBackend =
+          !!booking.payment?.proof_url ||
+          !!booking.payment?.payment_proof_url ||
+          !!booking.payment?.signed_url ||
+          !!booking.payment?.signedUrl;
+
+        setPaymentProofUploaded(hasProofBackend || hasProofFromStorage);
+      } else if (savedIntentId) {
+        setPaymentIntentId(savedIntentId);
+        setPaymentProofUploaded(hasProofFromStorage);
+      }
+
       if (savedSigned) setPaymentSignedUrl(savedSigned);
 
-      // Set booking preview
       setBookingPreview(booking);
 
-      // Fill form data
       setFormData((prev) => ({
         ...prev,
         service_id: booking.service_id ?? prev.service_id,
@@ -710,13 +769,13 @@ const Booking = () => {
         facebook_link: booking.customers?.facebook_link ?? prev.facebook_link,
       }));
 
-      // Set selected date for calendar
-      if (booking.booking_date) setSelectedDate(booking.booking_date);
+      if (booking.booking_date) {
+        const localDate = parseLocalDate(booking.booking_date);
+        setSelectedDate(formatLocalDate(localDate));
+      }
 
-      // Show resume modal for pending payment
       if (booking.status === "pending_payment") {
         setShowResumePrompt(true);
-        // Don't auto-set step - let user decide
       } else if (
         booking.status === "pending_approval" ||
         booking.status === "approved"
@@ -726,6 +785,8 @@ const Booking = () => {
     } catch (error) {
       console.error("Resume booking failed:", error);
       clearActiveFlow();
+    } finally {
+      setResuming(false);
     }
   }, [services]);
 
@@ -736,24 +797,37 @@ const Booking = () => {
   }, [services, checkAndResumeBooking]);
 
   /* ==========================================
-     RESUME BOOKING FUNCTION
+     RESUME BOOKING FUNCTION (BACKEND-DRIVEN STEP DECISION)
   ========================================== */
-  const resumeBooking = useCallback(() => {
+  const handleResumeBooking = useCallback(() => {
     if (!bookingPreview) return;
 
-    // Determine which step to resume to
-    if (paymentIntentId) {
-      // Already uploaded proof, go to review
-      setPaymentProofUploaded(true);
-      setStep(5);
-    } else {
-      // Need to upload proof
-      setStep(4);
+    const status = bookingPreview.status;
+
+    const hasProof =
+      !!paymentSignedUrl ||
+      !!bookingPreview?.payment?.proof_url ||
+      !!bookingPreview?.payment?.payment_proof_url ||
+      !!bookingPreview?.payment?.signed_url ||
+      !!bookingPreview?.payment?.signedUrl;
+
+    if (status === "pending_payment") {
+      setPaymentProofUploaded(!!hasProof);
+      setStep(4); // ALWAYS Review first
+      return;
     }
-  }, [bookingPreview, paymentIntentId]);
+
+    if (status === "pending_approval" || status === "approved") {
+      setStep(6);
+      return;
+    }
+
+    // fallback: unknown state
+    setStep(1);
+  }, [bookingPreview, paymentSignedUrl]);
 
   /* ==========================================
-     AUTO-MAP CATEGORY FROM VARIANT (resume-safe)
+     AUTO-MAP CATEGORY FROM VARIANT
   ========================================== */
   useEffect(() => {
     if (!services.length) return;
@@ -839,7 +913,7 @@ const Booking = () => {
   }, [formData.service_id, currentMonth, fetchMonthlyAvailability]);
 
   /* ==========================================
-     GENERATE CALENDAR
+     GENERATE CALENDAR (FIXED TIMEZONE ISSUES)
   ========================================== */
   const generateCalendar = useCallback(() => {
     if (!formData.service_id) return;
@@ -942,17 +1016,13 @@ const Booking = () => {
   }, [formData.service_id, selectedDate, fetchAvailableSlots]);
 
   /* ==========================================
-     COUNTDOWN + AUTO EXPIRE MODAL (IMPROVED)
+     COUNTDOWN - FIXED DOUBLE RESET ISSUE
   ========================================== */
   useEffect(() => {
     if (showResumePrompt) return;
 
-    const bookingExp = localStorage.getItem(LS_KEYS.bookingExpiresAt);
-    const expMs =
-      toMs(bookingExp) ??
-      toMs(paymentExpiresAt) ??
-      toMs(bookingPreview?.expires_at) ??
-      null;
+    // ✅ SINGLE EXPIRY SOURCE: bookingPreview.expires_at
+    const expMs = toMs(bookingPreview?.expires_at);
 
     if (!expMs) {
       setTimeLeftMs(null);
@@ -967,17 +1037,18 @@ const Booking = () => {
       const expired = left <= 0;
       setIsExpiredLocal(expired);
 
+      // ✅ MODAL ONLY - NO AUTO RESET
       if (expired && !expiryHandledRef.current && (step === 4 || step === 5)) {
         expiryHandledRef.current = true;
 
         setModal({
           open: true,
-          title: "Booking expired",
+          title: "Booking Expired",
           message:
-            "Your 30-minute payment window has ended. This booking is now expired. Please start a new booking to continue.",
+            "Your 30-minute payment window has ended. Please start a new booking.",
           actions: [
             {
-              label: "Start new booking",
+              label: "Start New Booking",
               variant: "btn-primary",
               onClick: () => {
                 setModal((m) => ({ ...m, open: false }));
@@ -987,22 +1058,14 @@ const Booking = () => {
           ],
         });
 
-        resetBookingFlow();
-        setStep(1);
+        // ✅ NO resetBookingFlow() or setStep(1) HERE
       }
     };
 
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [
-    paymentExpiresAt,
-    bookingPreview?.expires_at,
-    step,
-    hardRestart,
-    resetBookingFlow,
-    showResumePrompt,
-  ]);
+  }, [bookingPreview?.expires_at, step, hardRestart, showResumePrompt]);
 
   /* ==========================================
      NAVIGATION HELPERS
@@ -1082,7 +1145,7 @@ const Booking = () => {
   };
 
   /* ==========================================
-     DATE & TIME
+     DATE & TIME (FIXED TIMEZONE)
   ========================================== */
   const handleDateSelect = (date) => {
     if (!date) return;
@@ -1168,14 +1231,14 @@ const Booking = () => {
     }
 
     if (errors.length > 0) {
-      alert(errors.join("\n"));
+      showAlert("Validation Error", errors.join("\n"));
       return false;
     }
     return true;
   };
 
   /* ==========================================
-     STEP 3: CREATE BOOKING (pending_payment)
+     STEP 3: CREATE BOOKING
   ========================================== */
   const handleCreateBooking = async () => {
     if (!validateForm()) return;
@@ -1200,272 +1263,381 @@ const Booking = () => {
       const result = await createBooking(payload);
 
       setBookingId(result.id);
+      // ✅ SINGLE EXPIRY SOURCE
       saveActiveBooking({ bookingId: result.id, expiresAt: result.expires_at });
 
       setBookingPreview(result);
 
       setStep(4);
 
-      alert("Booking created! Please upload payment proof within 30 minutes.");
+      // ✅ REPLACE ALERT WITH MODAL
+      showAlert(
+        "Booking Created",
+        "Please review your details before payment.",
+      );
     } catch (error) {
       console.error("Booking error:", error);
-      alert(`Error: ${error.response?.data?.error || error.message}`);
+      showAlert("Error", error.response?.data?.error || error.message);
     } finally {
       setLoading(false);
     }
   };
 
   /* ==========================================
-     STEP 4: UPLOAD PAYMENT PROOF
+     STEP 4: UPLOAD PAYMENT PROOF (USES BACKEND TRUTH)
   ========================================== */
-  const handlePaymentUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !bookingId) return;
+  const handlePaymentUpload = async (file, { silent = false } = {}) => {
+  if (!file || !bookingId) return null;
+  if (uploading) return null;
 
-    if (isExpiredLocal) {
-      setModal({
-        open: true,
-        title: "Booking expired",
-        message:
-          "This booking is already expired. Please start a new booking to continue.",
-        actions: [
-          {
-            label: "Start new booking",
-            variant: "btn-primary",
-            onClick: () => {
-              setModal((m) => ({ ...m, open: false }));
-              hardRestart();
-            },
+  if (isExpiredLocal) {
+    setModal({
+      open: true,
+      title: "Booking Expired",
+      message:
+        "This booking is already expired. Please start a new booking to continue.",
+      actions: [
+        {
+          label: "Start New Booking",
+          variant: "btn-primary",
+          onClick: () => {
+            setModal((m) => ({ ...m, open: false }));
+            hardRestart();
           },
-        ],
-      });
+        },
+      ],
+    });
+    return null;
+  }
+
+  if (!bookingPreview) {
+    showAlert(
+      "Error",
+      "Booking data not found. Please restart the booking process.",
+    );
+    return null;
+  }
+
+  setUploading(true);
+
+  const formDataObj = new FormData();
+  formDataObj.append("booking_id", bookingId);
+  formDataObj.append(
+    "email",
+    bookingPreview.customers?.email || bookingPreview.email || formData.email,
+  );
+  formDataObj.append("service_id", bookingPreview.service_id);
+  formDataObj.append("service_variant_id", bookingPreview.service_variant_id);
+  formDataObj.append("booking_date", bookingPreview.booking_date);
+  formDataObj.append("booking_time", bookingPreview.booking_time);
+  formDataObj.append("proof", file);
+
+  try {
+    const result = await uploadPaymentProof(formDataObj);
+
+    const intent =
+      result.payment_intent_id ||
+      result.paymentIntentId ||
+      result.intentId ||
+      result.payment_intent ||
+      null;
+
+    const signed =
+      result.signedUrl ||
+      result.signed_url ||
+      result.proof_url ||
+      result.signedUrl ||
+      null;
+
+    // if backend didn't return an intent, treat as failure
+    if (!intent) {
+      showAlert("Upload Error", "Payment intent was not returned. Please try again.");
+      return null;
+    }
+
+    setPaymentIntentId(intent);
+    setPaymentSignedUrl(signed);
+
+    saveActivePayment({
+      intentId: intent,
+      signedUrl: signed,
+    });
+
+    setPaymentProofUploaded(true);
+
+    // clear selected file + reset input
+    setSelectedProofFile(null);
+    setProofPreviewUrl(null);
+
+    const input = document.getElementById("payment-proof");
+    if (input) input.value = "";
+
+    // refresh booking preview (best-effort)
+    try {
+      const preview = await getBookingById(bookingId);
+      setBookingPreview(preview);
+    } catch (err) {
+      console.warn("Preview fetch failed:", err);
+    }
+
+    if (!silent) {
+      showAlert(
+        "Payment Proof Uploaded",
+        "Payment proof uploaded successfully! You can now confirm your booking.",
+        () => setStep(5),
+      );
+    }
+
+    //IMPORTANT: return the intent string (fixes first-click confirm)
+    return intent;
+  } catch (error) {
+    console.error("Upload error:", error);
+
+    let errorMessage = "Upload failed. ";
+    if (error.response?.status === 413) {
+      errorMessage += "File too large (max 5MB).";
+    } else if (error.response?.status === 400) {
+      errorMessage +=
+        error.response?.data?.error ||
+        "Invalid file format. Please upload PNG, JPG, or PDF.";
+    } else {
+      errorMessage += error.response?.data?.error || error.message;
+    }
+
+    showAlert("Upload Error", errorMessage);
+    return null;
+  } finally {
+    setUploading(false);
+  }
+};
+
+
+const handleConfirmWithUpload = async () => {
+  if (!bookingId) {
+    showAlert("Error", "Missing booking ID. Please restart booking.");
+    return;
+  }
+
+  if (isExpiredLocal) {
+    setModal({
+      open: true,
+      title: "Booking Expired",
+      message:
+        "Your payment window has ended. Please start a new booking to continue.",
+      actions: [
+        {
+          label: "Start New Booking",
+          variant: "btn-primary",
+          onClick: () => {
+            setModal((m) => ({ ...m, open: false }));
+            hardRestart();
+          },
+        },
+      ],
+    });
+    return;
+  }
+
+  const alreadyHasProof =
+    paymentProofUploaded ||
+    !!paymentSignedUrl ||
+    !!bookingPreview?.payment?.proof_url ||
+    !!bookingPreview?.payment?.payment_proof_url ||
+    !!bookingPreview?.payment?.signed_url ||
+    !!bookingPreview?.payment?.signedUrl;
+
+  if (!alreadyHasProof && !selectedProofFile) {
+    showAlert("Upload Required", "Please select a proof of payment file first.");
+    return;
+  }
+
+  try {
+    // if no proof yet, upload NOW and use returned intent immediately
+    if (!alreadyHasProof) {
+      const intent = await handlePaymentUpload(selectedProofFile, { silent: true });
+      if (!intent) return;
+
+      // pass intent override (fixes first-click confirm)
+      await handleFinalConfirmation(intent);
       return;
     }
 
-    setUploading(true);
+    // proof exists already, confirm using current state intent
+    await handleFinalConfirmation();
+  } catch (e) {
+    console.error(e);
+  }
+};
 
-    const formDataObj = new FormData();
-    formDataObj.append("booking_id", bookingId);
-    formDataObj.append("email", formData.email);
-    formDataObj.append("service_id", formData.service_id);
-    formDataObj.append("service_variant_id", formData.service_variant_id);
-    formDataObj.append("booking_date", formData.booking_date);
-    formDataObj.append("booking_time", formData.booking_time);
-    formDataObj.append("proof", file);
-
-    try {
-      const result = await uploadPaymentProof(formDataObj);
-
-      setPaymentIntentId(result.payment_intent_id);
-      setPaymentExpiresAt(result.expires_at || null);
-      setPaymentSignedUrl(result.signedUrl || null);
-
-      saveActivePayment({
-        intentId: result.payment_intent_id,
-        expiresAt: result.expires_at || null,
-        signedUrl: result.signedUrl || null,
-      });
-
-      setPaymentProofUploaded(true);
-
-      try {
-        const preview = await getBookingById(bookingId);
-        setBookingPreview(preview);
-      } catch (err) {
-        console.warn("Preview fetch failed (ok lang):", err);
-      }
-
-      setTimeout(() => setStep(5), 300);
-      alert("Payment proof uploaded! Proceeding to review...");
-    } catch (error) {
-      console.error("Upload error:", error);
-
-      let errorMessage = "Upload failed. ";
-      if (error.response?.status === 413) {
-        errorMessage += "File too large (max 5MB).";
-      } else if (error.response?.status === 400) {
-        errorMessage +=
-          error.response?.data?.error ||
-          "Invalid file format. Please upload PNG, JPG, or PDF.";
-      } else {
-        errorMessage += error.response?.data?.error || error.message;
-      }
-
-      alert(errorMessage);
-    } finally {
-      setUploading(false);
-    }
-  };
 
   /* ==========================================
      STEP 5: CONFIRM BOOKING (WITH SLOT TAKEN HANDLING)
   ========================================== */
-  const handleFinalConfirmation = async () => {
-    if (!bookingId) {
-      alert("Missing booking ID. Please restart booking.");
-      return;
-    }
-    if (!paymentIntentId) {
-      alert("Please upload payment proof first.");
-      return;
-    }
+  const handleFinalConfirmation = async (intentOverride = null) => {
+  if (!bookingId) {
+    showAlert("Error", "Missing booking ID. Please restart booking.");
+    return;
+  }
 
-    if (isExpiredLocal) {
-      setModal({
-        open: true,
-        title: "Booking expired",
-        message:
-          "Your payment window has ended. Please start a new booking to continue.",
-        actions: [
-          {
-            label: "Start new booking",
-            variant: "btn-primary",
-            onClick: () => {
-              setModal((m) => ({ ...m, open: false }));
-              hardRestart();
-            },
+  const intentToUse = intentOverride || paymentIntentId;
+
+  if (!intentToUse) {
+    showAlert("Error", "Please upload payment proof first.");
+    return;
+  }
+
+  if (isExpiredLocal) {
+    setModal({
+      open: true,
+      title: "Booking Expired",
+      message:
+        "Your payment window has ended. Please start a new booking to continue.",
+      actions: [
+        {
+          label: "Start New Booking",
+          variant: "btn-primary",
+          onClick: () => {
+            setModal((m) => ({ ...m, open: false }));
+            hardRestart();
           },
-        ],
-      });
-      return;
-    }
+        },
+      ],
+    });
+    return;
+  }
 
-    setConfirmationError(null);
-    setLoading(true);
+  setConfirmationError(null);
+  setLoading(true);
 
+  try {
+    // ✅ Use the intent we computed (override OR state)
+    await confirmBooking(bookingId, intentToUse);
+
+    // Refresh booking preview
     try {
-      const result = await confirmBooking(bookingId, paymentIntentId);
-
-      try {
-        const latest = await getBookingById(bookingId);
-        setBookingPreview(latest);
-      } catch (err) {
-        console.warn("Fetch latest booking failed (ok lang):", err);
-      }
-
-      setStep(6);
-      clearActiveFlow();
-      alert("🎉 Booking confirmed! Slot is now reserved.");
-      return result;
-    } catch (error) {
-      console.error("Confirm error:", error);
-      const msg = error.response?.data?.error || error.message;
-
-      let errorType = "unknown";
-      let errorMessage = "An error occurred. Please try again.";
-      let showRetry = true;
-
-      if (error.response?.status === 404) {
-        errorType = "payment_not_found";
-        errorMessage = "Payment record not found. Please upload proof again.";
-        showRetry = false;
-      } else if (error.response?.status === 400) {
-        if (String(msg).toLowerCase().includes("expired")) {
-          errorType = "payment_expired";
-          errorMessage =
-            "Payment proof expired (30 minutes). Please restart booking.";
-          showRetry = false;
-
-          setModal({
-            open: true,
-            title: "Payment expired",
-            message:
-              "Your 30-minute payment window has ended. Please start a new booking.",
-            actions: [
-              {
-                label: "Start new booking",
-                variant: "btn-primary",
-                onClick: () => {
-                  setModal((m) => ({ ...m, open: false }));
-                  hardRestart();
-                },
-              },
-            ],
-          });
-        } else if (String(msg).toLowerCase().includes("slot")) {
-          // ✅ SLOT TAKEN AUTO RECOVERY
-          errorType = "slot_taken";
-          errorMessage =
-            "Slot is no longer available. Please choose another date/time.";
-          showRetry = false;
-
-          // Auto clear booking and payment
-          resetBookingFlow();
-          clearActiveFlow();
-
-          // Reset date/time selection
-          setFormData((prev) => ({
-            ...prev,
-            booking_date: "",
-            booking_time: "",
-          }));
-          setSelectedDate("");
-          setAvailableSlots([]);
-
-          // Go back to schedule selection
-          setStep(2);
-
-          // Show informative modal
-          setModal({
-            open: true,
-            title: "Slot No Longer Available",
-            message:
-              "The selected time slot has been taken. Please choose another date and time.",
-            actions: [],
-          });
-
-          return; // Exit early since we handled slot taken
-        } else {
-          errorType = "invalid_payment";
-          errorMessage = msg || "Invalid request.";
-        }
-      } else if (error.response?.status === 500) {
-        errorType = "server_error";
-        errorMessage = "Server error. Please try again later.";
-      } else if (!navigator.onLine) {
-        errorType = "offline";
-        errorMessage = "No internet connection. Please check your network.";
-      } else {
-        errorMessage = msg || errorMessage;
-      }
-
-      setConfirmationError({
-        type: errorType,
-        message: errorMessage,
-        retry: showRetry,
-      });
-    } finally {
-      setLoading(false);
+      const latest = await getBookingById(bookingId);
+      setBookingPreview(latest);
+    } catch (err) {
+      console.warn("Fetch latest booking failed:", err);
     }
-  };
+
+    setStep(6);
+    clearActiveFlow();
+
+    showAlert(
+      "Booking Confirmed",
+      "🎉 Your booking has been confirmed! Slot is now reserved.",
+    );
+  } catch (error) {
+    console.error("Confirm error:", error);
+    const msg = error.response?.data?.error || error.message;
+
+    let errorType = "unknown";
+    let errorMessage = "An error occurred. Please try again.";
+    let showRetry = true;
+
+    if (error.response?.status === 404) {
+      errorType = "payment_not_found";
+      errorMessage = "Payment record not found. Please upload proof again.";
+      showRetry = false;
+    } else if (error.response?.status === 400) {
+      if (String(msg).toLowerCase().includes("expired")) {
+        errorType = "payment_expired";
+        errorMessage =
+          "Payment proof expired (30 minutes). Please restart booking.";
+        showRetry = false;
+
+        setModal({
+          open: true,
+          title: "Payment Expired",
+          message:
+            "Your 30-minute payment window has ended. Please start a new booking.",
+          actions: [
+            {
+              label: "Start New Booking",
+              variant: "btn-primary",
+              onClick: () => {
+                setModal((m) => ({ ...m, open: false }));
+                hardRestart();
+              },
+            },
+          ],
+        });
+      } else if (String(msg).toLowerCase().includes("slot")) {
+        errorType = "slot_taken";
+        errorMessage =
+          "Slot is no longer available. Please choose another date/time.";
+        showRetry = false;
+
+        resetBookingFlow();
+        clearActiveFlow();
+
+        setFormData((prev) => ({
+          ...prev,
+          booking_date: "",
+          booking_time: "",
+        }));
+        setSelectedDate("");
+        setAvailableSlots([]);
+
+        setStep(2);
+
+        setModal({
+          open: true,
+          title: "Slot No Longer Available",
+          message:
+            "The selected time slot has been taken. Please choose another date and time. Note: You will need to re-upload payment proof after selecting new schedule.",
+          actions: [],
+        });
+
+        return;
+      } else {
+        errorType = "invalid_payment";
+        errorMessage = msg || "Invalid request.";
+      }
+    } else if (error.response?.status === 500) {
+      errorType = "server_error";
+      errorMessage = "Server error. Please try again later.";
+    } else if (!navigator.onLine) {
+      errorType = "offline";
+      errorMessage = "No internet connection. Please check your network.";
+    } else {
+      errorMessage = msg || errorMessage;
+    }
+
+    setConfirmationError({
+      type: errorType,
+      message: errorMessage,
+      retry: showRetry,
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const retryConfirmation = () => {
     setConfirmationError(null);
     handleFinalConfirmation();
   };
 
-  const handleBackToPayment = () => {
-    setConfirmationError(null);
-    setStep(4);
-  };
-
   /* ==========================================
      SELECTED OBJECTS (FOR UI DISPLAY)
   ========================================== */
   const selectedService = useMemo(
-    () => services.find((s) => s.id === formData.service_id),
+    () => services.find((s) => sameId(s.id, formData.service_id)),
     [services, formData.service_id],
   );
 
   const selectedCategoryObj = useMemo(() => {
-    return selectedService?.service_categories?.find(
-      (c) => c.id === formData.service_category_id,
+    return selectedService?.service_categories?.find((c) =>
+      sameId(c.id, formData.service_category_id),
     );
   }, [selectedService, formData.service_category_id]);
 
   const selectedVariantObj = useMemo(() => {
-    return selectedCategoryObj?.service_variants?.find(
-      (v) => v.id === formData.service_variant_id,
+    return selectedCategoryObj?.service_variants?.find((v) =>
+      sameId(v.id, formData.service_variant_id),
     );
   }, [selectedCategoryObj, formData.service_variant_id]);
 
@@ -1482,15 +1654,15 @@ const Booking = () => {
           { number: 1, label: "Service", icon: "🎨" },
           { number: 2, label: "Schedule", icon: "📅" },
           { number: 3, label: "Details", icon: "👤" },
-          { number: 4, label: "Payment", icon: "💳" },
-          { number: 5, label: "Review", icon: "📋" },
-          { number: 6, label: "Confirm", icon: "✅" },
+          { number: 4, label: "Review", icon: "📋" }, // swapped
+          { number: 5, label: "Payment", icon: "💳" }, // swapped
+          { number: 6, label: "Done", icon: "✅" },
         ].map((stepItem) => (
           <div
             key={stepItem.number}
-            className={`progress-step ${step > stepItem.number ? "completed" : ""} ${
-              step === stepItem.number ? "active" : ""
-            }`}
+            className={`progress-step ${
+              step > stepItem.number ? "completed" : ""
+            } ${step === stepItem.number ? "active" : ""}`}
           >
             <div className="step-indicator">
               {step > stepItem.number ? (
@@ -1500,7 +1672,9 @@ const Booking = () => {
               )}
               <span className="step-number">{stepItem.number}</span>
             </div>
+
             <div className="step-label">{stepItem.label}</div>
+
             {stepItem.number < 6 && <div className="step-connector"></div>}
           </div>
         ))}
@@ -1509,7 +1683,7 @@ const Booking = () => {
   );
 
   /* ==========================================
-     STEP 1 UI
+     STEP 1 UI - SERVICE SELECTION
   ========================================== */
   const renderServiceSelection = () => {
     if (fetchingServices) {
@@ -1825,7 +1999,7 @@ const Booking = () => {
   };
 
   /* ==========================================
-     STEP 2 UI
+     STEP 2 UI - DATE TIME SELECTION (FIXED TIMEZONE)
   ========================================== */
   const renderDateTimeSelection = () => {
     const timeSlots = generateTimeSlots();
@@ -2016,7 +2190,7 @@ const Booking = () => {
                 <div className="selected-date premium">
                   <span className="date-icon">📅</span>
                   <span className="date-text">
-                    {new Date(selectedDate).toLocaleDateString("en-PH", {
+                    {parseLocalDate(selectedDate).toLocaleDateString("en-PH", {
                       weekday: "long",
                       month: "long",
                       day: "numeric",
@@ -2140,7 +2314,7 @@ const Booking = () => {
   };
 
   /* ==========================================
-     STEP 3 UI
+     STEP 3 UI - CUSTOMER INFO
   ========================================== */
   const renderCustomerInfo = () => (
     <div className="premium-step">
@@ -2174,11 +2348,14 @@ const Booking = () => {
           <div className="summary-item">
             <span className="item-label">Date:</span>
             <span className="item-value">
-              {new Date(formData.booking_date).toLocaleDateString("en-PH", {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-              })}
+              {parseLocalDate(formData.booking_date)?.toLocaleDateString(
+                "en-PH",
+                {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                },
+              )}
             </span>
           </div>
           <div className="summary-item">
@@ -2327,7 +2504,7 @@ const Booking = () => {
   );
 
   /* ==========================================
-     STEP 4 UI (PAYMENT UPLOAD) + COUNTDOWN
+     STEP 4 UI - PAYMENT UPLOAD
   ========================================== */
   const renderPaymentInstructions = () => {
     const countdown = formatCountdown(timeLeftMs);
@@ -2336,21 +2513,15 @@ const Booking = () => {
       ? "Expired"
       : countdown
         ? `${countdown} remaining`
-        : paymentExpiresAt
-          ? new Date(paymentExpiresAt).toLocaleString("en-PH", {
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "30 minutes";
+        : "30 minutes";
 
     return (
       <div className="premium-step">
         <div className="step-header with-back">
-          <button className="back-btn premium" onClick={() => setStep(3)}>
-            <span className="back-icon">←</span> Back to Information
+          <button className="back-btn premium" onClick={() => setStep(4)}>
+            <span className="back-icon">←</span> Back to Review
           </button>
+
           <div>
             <h1 className="step-title">Payment Instructions</h1>
             <p className="step-subtitle">
@@ -2386,12 +2557,12 @@ const Booking = () => {
               onClick={() => {
                 setModal({
                   open: true,
-                  title: "Booking expired",
+                  title: "Booking Expired",
                   message:
                     "Your 30-minute payment window ended. Start a new booking to continue.",
                   actions: [
                     {
-                      label: "Start new booking",
+                      label: "Start New Booking",
                       variant: "btn-primary",
                       onClick: () => {
                         setModal((m) => ({ ...m, open: false }));
@@ -2407,25 +2578,33 @@ const Booking = () => {
           </div>
         )}
 
-        {/* your payment UI */}
         <div className="payment-container premium">
           <div className="payment-qr-section">
             <div className="qr-card premium">
               <div className="qr-header">
-                <h4>Scan to Pay via GCash</h4>
+                <h4>Pay via GCash</h4>
                 <div className="payment-amount">
                   ₱{formData.downpayment.toLocaleString()}
                 </div>
               </div>
               <div className="qr-container">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=GCash%3A09123456789%0AAmount%3A₱${formData.downpayment}%0AReference%3ABOOK-${bookingId}`}
-                  alt="Payment QR Code"
-                  className="qr-code premium"
-                />
-                <div className="qr-hint">
-                  <span className="hint-icon">📱</span>
-                  Scan with GCash app
+                {/* ✅ STATIC QR OR CLIENT-SIDE GENERATION */}
+                <div className="qr-placeholder premium">
+                  <div className="qr-mock">
+                    <div className="qr-lines">
+                      {Array.from({ length: 12 }).map((_, i) => (
+                        <div key={i} className="qr-line"></div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="qr-hint">
+                    <span className="hint-icon">💰</span>
+                    Send ₱{formData.downpayment.toLocaleString()} to:
+                    <br />
+                    <strong>0912 345 6789</strong>
+                    <br />
+                    Reference: <strong>BOOK-{bookingId}</strong>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2446,10 +2625,6 @@ const Booking = () => {
                   <span className="detail-value amount">
                     ₱{formData.downpayment.toLocaleString()}
                   </span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Account:</span>
-                  <span className="detail-value">Your Business Name</span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">GCash Number:</span>
@@ -2487,7 +2662,16 @@ const Booking = () => {
                 type="file"
                 id="payment-proof"
                 accept="image/*,.pdf"
-                onChange={handlePaymentUpload}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setSelectedProofFile(file);
+
+                  if (file && file.type.startsWith("image/")) {
+                    setProofPreviewUrl(URL.createObjectURL(file));
+                  } else {
+                    setProofPreviewUrl(null);
+                  }
+                }}
                 disabled={uploading || paymentProofUploaded || isExpiredLocal}
                 className="upload-input"
               />
@@ -2520,6 +2704,60 @@ const Booking = () => {
                   </div>
                 )}
               </label>
+              {/* PDF hint */}
+              {selectedProofFile &&
+                selectedProofFile.type === "application/pdf" && (
+                  <div className="form-hint premium" style={{ marginTop: 10 }}>
+                    PDF selected — preview not available. You can still upload
+                    it.
+                  </div>
+                )}
+              {/* IMAGE PREVIEW */}
+              {proofPreviewUrl && (
+                <div style={{ marginTop: 12 }}>
+                  <p className="form-hint premium">Preview:</p>
+                  <img
+                    src={proofPreviewUrl}
+                    alt="Payment Proof Preview"
+                    style={{
+                      width: "100%",
+                      maxHeight: "250px",
+                      objectFit: "contain",
+                      borderRadius: "12px",
+                      border: "1px solid #ddd",
+                    }}
+                  />
+                </div>
+              )}
+              {/* ✅ show selected file */}
+              {selectedProofFile && !paymentProofUploaded && (
+                <div className="form-hint premium" style={{ marginTop: 10 }}>
+                  Selected: <strong>{selectedProofFile.name}</strong>
+                </div>
+              )}
+              {/* ✅ manual upload button */}
+              <button
+                className="btn btn-outline premium"
+                style={{ marginTop: 12, width: "100%" }}
+                onClick={() => {
+                  setSelectedProofFile(null);
+                  setProofPreviewUrl(null);
+
+                  const input = document.getElementById("payment-proof");
+                  if (input) input.value = "";
+                }}
+                disabled={uploading || isExpiredLocal}
+              >
+                Clear Selected File
+              </button>
+              ✅ 3 Optional: Clear selected file after successful upload Sa try
+              success part ng handlePaymentUpload, add:
+              setSelectedProofFile(null); ✅ 4 Confirm Booking button logic
+              stays the same Yung confirm button mo okay na, since it requires:
+              paymentProofUploaded paymentIntentId bookingId If gusto mo, pwede
+              ko rin i-adjust yung UX: after successful upload, automatic balik
+              sa Review (Step 4) or stay sa Payment step—sabihin mo lang kung
+              anong trip mo.
             </div>
 
             <div className="upload-tips premium">
@@ -2546,26 +2784,47 @@ const Booking = () => {
         <div className="step-footer premium">
           <button
             className="btn btn-secondary premium"
-            onClick={() => setStep(3)}
+            onClick={() => setStep(4)}
           >
-            Back to Information
+            Back to Review
           </button>
-          {paymentProofUploaded && (
-            <button
-              className="btn btn-primary premium"
-              onClick={() => setStep(5)}
-              disabled={isExpiredLocal}
-            >
-              Proceed to Review
-            </button>
-          )}
+
+          <button
+            className="btn btn-primary premium"
+            onClick={handleConfirmWithUpload}
+            disabled={
+              loading ||
+              uploading ||
+              !bookingId ||
+              isExpiredLocal ||
+              // require a selected file IF no proof exists yet
+              (!(
+                paymentProofUploaded ||
+                paymentSignedUrl ||
+                bookingPreview?.payment?.proof_url ||
+                bookingPreview?.payment?.payment_proof_url ||
+                bookingPreview?.payment?.signed_url ||
+                bookingPreview?.payment?.signedUrl
+              ) &&
+                !selectedProofFile)
+            }
+          >
+            {loading || uploading ? (
+              <>
+                <span className="spinner small"></span>
+                Processing...
+              </>
+            ) : (
+              "Confirm Booking & Reserve Slot"
+            )}
+          </button>
         </div>
       </div>
     );
   };
 
   /* ==========================================
-     STEP 5 UI (REVIEW + CONFIRM)
+     STEP 5 UI - REVIEW
   ========================================== */
   const renderBookingPreview = () => {
     const preview = bookingPreview;
@@ -2573,9 +2832,10 @@ const Booking = () => {
     return (
       <div className="premium-step">
         <div className="step-header with-back">
-          <button className="back-btn premium" onClick={handleBackToPayment}>
-            <span className="back-icon">←</span> Back to Payment
+          <button className="back-btn premium" onClick={() => setStep(3)}>
+            <span className="back-icon">←</span> Back to Information
           </button>
+
           <div>
             <h1 className="step-title">Final Review</h1>
             <p className="step-subtitle">
@@ -2609,11 +2869,11 @@ const Booking = () => {
                   onClick={() => {
                     setModal({
                       open: true,
-                      title: "Booking expired",
+                      title: "Booking Expired",
                       message: "Start a new booking to continue.",
                       actions: [
                         {
-                          label: "Start new booking",
+                          label: "Start New Booking",
                           variant: "btn-primary",
                           onClick: () => {
                             setModal((m) => ({ ...m, open: false }));
@@ -2712,12 +2972,15 @@ const Booking = () => {
               <div className="detail-item">
                 <span className="detail-label">Date:</span>
                 <span className="detail-value">
-                  {new Date(formData.booking_date).toLocaleDateString("en-PH", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                  {parseLocalDate(formData.booking_date)?.toLocaleDateString(
+                    "en-PH",
+                    {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    },
+                  )}
                 </span>
               </div>
               <div className="detail-item">
@@ -2810,25 +3073,17 @@ const Booking = () => {
         <div className="step-footer premium">
           <button
             className="btn btn-secondary premium"
-            onClick={handleBackToPayment}
+            onClick={() => setStep(3)}
           >
-            Back to Payment
+            Back to Information
           </button>
+
           <button
             className="btn btn-primary premium"
-            onClick={handleFinalConfirmation}
-            disabled={
-              loading || !paymentIntentId || !bookingId || isExpiredLocal
-            }
+            onClick={() => setStep(5)}
+            disabled={isExpiredLocal || !bookingId}
           >
-            {loading ? (
-              <>
-                <span className="spinner small"></span>
-                Confirming Booking...
-              </>
-            ) : (
-              "Confirm Booking & Reserve Slot"
-            )}
+            Proceed to Payment
           </button>
         </div>
       </div>
@@ -2836,124 +3091,196 @@ const Booking = () => {
   };
 
   /* ==========================================
-     STEP 6 UI (CONFIRMATION)
-  ========================================== */
-  const renderConfirmation = () => (
-    <div className="premium-step confirmation-step">
-      <div className="confirmation-header premium">
-        <div className="confirmation-icon">
-          <span className="icon-check">✓</span>
-        </div>
-        <h1 className="confirmation-title">Booking Confirmed!</h1>
-        <p className="confirmation-subtitle">
-          Your appointment has been successfully booked
-        </p>
-      </div>
+   STEP 6 UI - CONFIRMATION (STATUS-AWARE)
+========================================== */
+  const renderConfirmation = () => {
+    const status = bookingPreview?.status || "pending_approval";
 
-      <div className="confirmation-content premium">
-        <div className="confirmation-card success premium">
-          <div className="card-header">
-            <h4>Booking Details</h4>
-            <div className="booking-id">#{bookingId}</div>
+    const isApproved = status === "approved";
+    const isCompleted = status === "completed";
+
+    const title = isCompleted
+      ? "Booking Completed!"
+      : isApproved
+        ? "Booking Approved!"
+        : "Booking Submitted!";
+
+    const subtitle = isCompleted
+      ? "Tapos na ang appointment mo ✅"
+      : isApproved
+        ? "Approved na ang appointment mo ✅"
+        : "Naka-submit na ang booking mo at for approval na 🕒";
+
+    const statusLabel = isCompleted
+      ? "COMPLETED"
+      : isApproved
+        ? "APPROVED"
+        : "PENDING APPROVAL";
+
+    // Payment messaging (safe, wag mag-claim verified kung pending pa)
+    const paymentText =
+      isApproved || isCompleted
+        ? "Payment Verified ✓"
+        : "Payment proof submitted (For verification)";
+
+    // Slot messaging (neutral para di conflicting sa ibang part ng flow)
+    const slotText =
+      isApproved || isCompleted
+        ? "Slot Reserved ✓"
+        : "Slot reserved (Pending approval)";
+
+    const statusClass = isApproved || isCompleted ? "success" : "pending";
+
+    const dateText = formData.booking_date
+      ? parseLocalDate(formData.booking_date)?.toLocaleDateString("en-PH", {
+          month: "short",
+          day: "numeric",
+        })
+      : "N/A";
+
+    const timeText = formData.booking_time || "N/A";
+
+    return (
+      <div className="premium-step confirmation-step">
+        <div className="confirmation-header premium">
+          <div className="confirmation-icon">
+            <span className="icon-check">✓</span>
           </div>
-          <div className="card-content">
-            <div className="detail-item">
-              <span className="detail-label">Status:</span>
-              <span className="detail-value status pending">
-                PENDING APPROVAL
-              </span>
+          <h1 className="confirmation-title">{title}</h1>
+          <p className="confirmation-subtitle">{subtitle}</p>
+        </div>
+
+        <div className="confirmation-content premium">
+          {/* ✅ dynamic card status */}
+          <div className={`confirmation-card ${statusClass} premium`}>
+            <div className="card-header">
+              <h4>Booking Details</h4>
+              <div className="booking-id">#{bookingId}</div>
             </div>
-            <div className="detail-item">
-              <span className="detail-label">Service:</span>
-              <span className="detail-value">{selectedService?.name}</span>
+
+            <div className="card-content">
+              <div className="detail-item">
+                <span className="detail-label">Status:</span>
+                <span className={`detail-value status ${statusClass}`}>
+                  {statusLabel}
+                </span>
+              </div>
+
+              <div className="detail-item">
+                <span className="detail-label">Service:</span>
+                <span className="detail-value">
+                  {selectedService?.name || "N/A"}
+                </span>
+              </div>
+
+              <div className="detail-item">
+                <span className="detail-label">Category:</span>
+                <span className="detail-value">
+                  {selectedCategoryObj?.name || "N/A"}
+                </span>
+              </div>
+
+              <div className="detail-item">
+                <span className="detail-label">Variant:</span>
+                <span className="detail-value">
+                  {selectedVariantObj?.body_part
+                    ? `${selectedVariantObj.body_part} (${selectedVariantObj.size})`
+                    : "N/A"}
+                </span>
+              </div>
+
+              <div className="detail-item">
+                <span className="detail-label">Date & Time:</span>
+                <span className="detail-value">
+                  {dateText} at {timeText}
+                </span>
+              </div>
+
+              <div
+                className={`detail-item ${statusClass === "success" ? "success" : ""}`}
+              >
+                <span className="detail-label">Payment:</span>
+                <span className={`detail-value status ${statusClass}`}>
+                  {paymentText}
+                </span>
+              </div>
+
+              <div
+                className={`detail-item ${statusClass === "success" ? "success" : ""}`}
+              >
+                <span className="detail-label">Slot Status:</span>
+                <span className={`detail-value status ${statusClass}`}>
+                  {slotText}
+                </span>
+              </div>
             </div>
-            <div className="detail-item">
-              <span className="detail-label">Category:</span>
-              <span className="detail-value">{selectedCategoryObj?.name}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Variant:</span>
-              <span className="detail-value">
-                {selectedVariantObj?.body_part} ({selectedVariantObj?.size})
-              </span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Date & Time:</span>
-              <span className="detail-value">
-                {new Date(formData.booking_date).toLocaleDateString("en-PH", {
-                  month: "short",
-                  day: "numeric",
-                })}{" "}
-                at {formData.booking_time}
-              </span>
-            </div>
-            <div className="detail-item success">
-              <span className="detail-label">Payment:</span>
-              <span className="detail-value status success">
-                Downpayment Verified ✓
-              </span>
-            </div>
-            <div className="detail-item success">
-              <span className="detail-label">Slot Status:</span>
-              <span className="detail-value status success">
-                Slot Reserved ✓
-              </span>
+          </div>
+
+          <div className="next-steps-card premium">
+            <h4>📝 What happens next?</h4>
+            <ol className="steps-list">
+              {isApproved || isCompleted ? (
+                <>
+                  <li>Approved na ang booking mo ✅</li>
+                  <li>Makaka-receive ka ng confirmation sa email</li>
+                  <li>Pwede mong i-check status anytime gamit email</li>
+                  <li>Message/call us if may questions</li>
+                </>
+              ) : (
+                <>
+                  <li>Veverify namin ang payment proof within 24 hours</li>
+                  <li>Makaka-receive ka ng email once approved</li>
+                  <li>Pwede mong i-check status anytime gamit email</li>
+                  <li>Message/call us if may questions</li>
+                </>
+              )}
+            </ol>
+          </div>
+
+          <div className="contact-card premium">
+            <h4>📞 Need Help?</h4>
+            <div className="contact-info premium">
+              <div className="contact-item">
+                <span className="contact-icon">✉️</span>
+                <span>booking@yourbusiness.com</span>
+              </div>
+              <div className="contact-item">
+                <span className="contact-icon">📱</span>
+                <span>(02) 1234-5678</span>
+              </div>
+              <div className="contact-item">
+                <span className="contact-icon">👥</span>
+                <span>@yourbusinesspage</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="next-steps-card premium">
-          <h4>📝 What happens next?</h4>
-          <ol className="steps-list">
-            <li>We'll verify your payment proof within 24 hours</li>
-            <li>You'll receive an email confirmation once approved</li>
-            <li>Check your booking status anytime using your email</li>
-            <li>Contact us if you have any questions</li>
-          </ol>
-        </div>
-
-        <div className="contact-card premium">
-          <h4>📞 Need Help?</h4>
-          <div className="contact-info premium">
-            <div className="contact-item">
-              <span className="contact-icon">✉️</span>
-              <span>booking@yourbusiness.com</span>
-            </div>
-            <div className="contact-item">
-              <span className="contact-icon">📱</span>
-              <span>(02) 1234-5678</span>
-            </div>
-            <div className="contact-item">
-              <span className="contact-icon">👥</span>
-              <span>@yourbusinesspage</span>
-            </div>
-          </div>
+        <div className="step-footer premium">
+          <button
+            className="btn btn-primary premium"
+            onClick={() => (window.location.href = "/")}
+          >
+            Back to Home
+          </button>
+          <button
+            className="btn btn-outline premium"
+            onClick={() =>
+              (window.location.href = `/booking-history?email=${encodeURIComponent(
+                formData.email || "",
+              )}`)
+            }
+          >
+            View My Bookings
+          </button>
         </div>
       </div>
-
-      <div className="step-footer premium">
-        <button
-          className="btn btn-primary premium"
-          onClick={() => (window.location.href = "/")}
-        >
-          Back to Home
-        </button>
-        <button
-          className="btn btn-outline premium"
-          onClick={() =>
-            (window.location.href = `/booking-history?email=${encodeURIComponent(formData.email)}`)
-          }
-        >
-          View My Bookings
-        </button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="booking-system-premium">
       <Modal />
-      {/* RESUME BOOKING MODAL */}
       <ResumeModal />
 
       <div className="booking-header premium">
@@ -2967,8 +3294,11 @@ const Booking = () => {
         {step === 1 && renderServiceSelection()}
         {step === 2 && renderDateTimeSelection()}
         {step === 3 && renderCustomerInfo()}
-        {step === 4 && renderPaymentInstructions()}
-        {step === 5 && renderBookingPreview()}
+        {step === 4 && renderBookingPreview()}
+        {/* REVIEW only */}
+        {step === 5 && renderPaymentInstructions()}
+        {/* PAYMENT + UPLOAD + CONFIRM */}
+
         {step === 6 && renderConfirmation()}
       </div>
     </div>
