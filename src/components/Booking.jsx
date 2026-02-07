@@ -1287,334 +1287,339 @@ const Booking = () => {
      STEP 4: UPLOAD PAYMENT PROOF (USES BACKEND TRUTH)
   ========================================== */
   const handlePaymentUpload = async (file, { silent = false } = {}) => {
-  if (!file || !bookingId) return null;
-  if (uploading) return null;
+    if (!file || !bookingId) return null;
+    if (uploading) return null;
 
-  if (isExpiredLocal) {
-    setModal({
-      open: true,
-      title: "Booking Expired",
-      message:
-        "This booking is already expired. Please start a new booking to continue.",
-      actions: [
-        {
-          label: "Start New Booking",
-          variant: "btn-primary",
-          onClick: () => {
-            setModal((m) => ({ ...m, open: false }));
-            hardRestart();
+    if (isExpiredLocal) {
+      setModal({
+        open: true,
+        title: "Booking Expired",
+        message:
+          "This booking is already expired. Please start a new booking to continue.",
+        actions: [
+          {
+            label: "Start New Booking",
+            variant: "btn-primary",
+            onClick: () => {
+              setModal((m) => ({ ...m, open: false }));
+              hardRestart();
+            },
           },
-        },
-      ],
-    });
-    return null;
-  }
-
-  if (!bookingPreview) {
-    showAlert(
-      "Error",
-      "Booking data not found. Please restart the booking process.",
-    );
-    return null;
-  }
-
-  setUploading(true);
-
-  const formDataObj = new FormData();
-  formDataObj.append("booking_id", bookingId);
-  formDataObj.append(
-    "email",
-    bookingPreview.customers?.email || bookingPreview.email || formData.email,
-  );
-  formDataObj.append("service_id", bookingPreview.service_id);
-  formDataObj.append("service_variant_id", bookingPreview.service_variant_id);
-  formDataObj.append("booking_date", bookingPreview.booking_date);
-  formDataObj.append("booking_time", bookingPreview.booking_time);
-  formDataObj.append("proof", file);
-
-  try {
-    const result = await uploadPaymentProof(formDataObj);
-
-    const intent =
-      result.payment_intent_id ||
-      result.paymentIntentId ||
-      result.intentId ||
-      result.payment_intent ||
-      null;
-
-    const signed =
-      result.signedUrl ||
-      result.signed_url ||
-      result.proof_url ||
-      result.signedUrl ||
-      null;
-
-    // if backend didn't return an intent, treat as failure
-    if (!intent) {
-      showAlert("Upload Error", "Payment intent was not returned. Please try again.");
+        ],
+      });
       return null;
     }
 
-    setPaymentIntentId(intent);
-    setPaymentSignedUrl(signed);
-
-    saveActivePayment({
-      intentId: intent,
-      signedUrl: signed,
-    });
-
-    setPaymentProofUploaded(true);
-
-    // clear selected file + reset input
-    setSelectedProofFile(null);
-    setProofPreviewUrl(null);
-
-    const input = document.getElementById("payment-proof");
-    if (input) input.value = "";
-
-    // refresh booking preview (best-effort)
-    try {
-      const preview = await getBookingById(bookingId);
-      setBookingPreview(preview);
-    } catch (err) {
-      console.warn("Preview fetch failed:", err);
-    }
-
-    if (!silent) {
+    if (!bookingPreview) {
       showAlert(
-        "Payment Proof Uploaded",
-        "Payment proof uploaded successfully! You can now confirm your booking.",
-        () => setStep(5),
+        "Error",
+        "Booking data not found. Please restart the booking process.",
       );
+      return null;
     }
 
-    //IMPORTANT: return the intent string (fixes first-click confirm)
-    return intent;
-  } catch (error) {
-    console.error("Upload error:", error);
+    setUploading(true);
 
-    let errorMessage = "Upload failed. ";
-    if (error.response?.status === 413) {
-      errorMessage += "File too large (max 5MB).";
-    } else if (error.response?.status === 400) {
-      errorMessage +=
-        error.response?.data?.error ||
-        "Invalid file format. Please upload PNG, JPG, or PDF.";
-    } else {
-      errorMessage += error.response?.data?.error || error.message;
+    const formDataObj = new FormData();
+    formDataObj.append("booking_id", bookingId);
+    formDataObj.append(
+      "email",
+      bookingPreview.customers?.email || bookingPreview.email || formData.email,
+    );
+    formDataObj.append("service_id", bookingPreview.service_id);
+    formDataObj.append("service_variant_id", bookingPreview.service_variant_id);
+    formDataObj.append("booking_date", bookingPreview.booking_date);
+    formDataObj.append("booking_time", bookingPreview.booking_time);
+    formDataObj.append("proof", file);
+
+    try {
+      const result = await uploadPaymentProof(formDataObj);
+
+      const intent =
+        result.payment_intent_id ||
+        result.paymentIntentId ||
+        result.intentId ||
+        result.payment_intent ||
+        null;
+
+      const signed =
+        result.signedUrl ||
+        result.signed_url ||
+        result.proof_url ||
+        result.signedUrl ||
+        null;
+
+      // if backend didn't return an intent, treat as failure
+      if (!intent) {
+        showAlert(
+          "Upload Error",
+          "Payment intent was not returned. Please try again.",
+        );
+        return null;
+      }
+
+      setPaymentIntentId(intent);
+      setPaymentSignedUrl(signed);
+
+      saveActivePayment({
+        intentId: intent,
+        signedUrl: signed,
+      });
+
+      setPaymentProofUploaded(true);
+
+      // clear selected file + reset input
+      setSelectedProofFile(null);
+      setProofPreviewUrl(null);
+
+      const input = document.getElementById("payment-proof");
+      if (input) input.value = "";
+
+      // refresh booking preview (best-effort)
+      try {
+        const preview = await getBookingById(bookingId);
+        setBookingPreview(preview);
+      } catch (err) {
+        console.warn("Preview fetch failed:", err);
+      }
+
+      if (!silent) {
+        showAlert(
+          "Payment Proof Uploaded",
+          "Payment proof uploaded successfully! You can now confirm your booking.",
+          () => setStep(5),
+        );
+      }
+
+      //IMPORTANT: return the intent string (fixes first-click confirm)
+      return intent;
+    } catch (error) {
+      console.error("Upload error:", error);
+
+      let errorMessage = "Upload failed. ";
+      if (error.response?.status === 413) {
+        errorMessage += "File too large (max 5MB).";
+      } else if (error.response?.status === 400) {
+        errorMessage +=
+          error.response?.data?.error ||
+          "Invalid file format. Please upload PNG, JPG, or PDF.";
+      } else {
+        errorMessage += error.response?.data?.error || error.message;
+      }
+
+      showAlert("Upload Error", errorMessage);
+      return null;
+    } finally {
+      setUploading(false);
     }
+  };
 
-    showAlert("Upload Error", errorMessage);
-    return null;
-  } finally {
-    setUploading(false);
-  }
-};
-
-
-const handleConfirmWithUpload = async () => {
-  if (!bookingId) {
-    showAlert("Error", "Missing booking ID. Please restart booking.");
-    return;
-  }
-
-  if (isExpiredLocal) {
-    setModal({
-      open: true,
-      title: "Booking Expired",
-      message:
-        "Your payment window has ended. Please start a new booking to continue.",
-      actions: [
-        {
-          label: "Start New Booking",
-          variant: "btn-primary",
-          onClick: () => {
-            setModal((m) => ({ ...m, open: false }));
-            hardRestart();
-          },
-        },
-      ],
-    });
-    return;
-  }
-
-  const alreadyHasProof =
-    paymentProofUploaded ||
-    !!paymentSignedUrl ||
-    !!bookingPreview?.payment?.proof_url ||
-    !!bookingPreview?.payment?.payment_proof_url ||
-    !!bookingPreview?.payment?.signed_url ||
-    !!bookingPreview?.payment?.signedUrl;
-
-  if (!alreadyHasProof && !selectedProofFile) {
-    showAlert("Upload Required", "Please select a proof of payment file first.");
-    return;
-  }
-
-  try {
-    // if no proof yet, upload NOW and use returned intent immediately
-    if (!alreadyHasProof) {
-      const intent = await handlePaymentUpload(selectedProofFile, { silent: true });
-      if (!intent) return;
-
-      // pass intent override (fixes first-click confirm)
-      await handleFinalConfirmation(intent);
+  const handleConfirmWithUpload = async () => {
+    if (!bookingId) {
+      showAlert("Error", "Missing booking ID. Please restart booking.");
       return;
     }
 
-    // proof exists already, confirm using current state intent
-    await handleFinalConfirmation();
-  } catch (e) {
-    console.error(e);
-  }
-};
+    if (isExpiredLocal) {
+      setModal({
+        open: true,
+        title: "Booking Expired",
+        message:
+          "Your payment window has ended. Please start a new booking to continue.",
+        actions: [
+          {
+            label: "Start New Booking",
+            variant: "btn-primary",
+            onClick: () => {
+              setModal((m) => ({ ...m, open: false }));
+              hardRestart();
+            },
+          },
+        ],
+      });
+      return;
+    }
 
+    const alreadyHasProof =
+      paymentProofUploaded ||
+      !!paymentSignedUrl ||
+      !!bookingPreview?.payment?.proof_url ||
+      !!bookingPreview?.payment?.payment_proof_url ||
+      !!bookingPreview?.payment?.signed_url ||
+      !!bookingPreview?.payment?.signedUrl;
+
+    if (!alreadyHasProof && !selectedProofFile) {
+      showAlert(
+        "Upload Required",
+        "Please select a proof of payment file first.",
+      );
+      return;
+    }
+
+    try {
+      // if no proof yet, upload NOW and use returned intent immediately
+      if (!alreadyHasProof) {
+        const intent = await handlePaymentUpload(selectedProofFile, {
+          silent: true,
+        });
+        if (!intent) return;
+
+        // pass intent override (fixes first-click confirm)
+        await handleFinalConfirmation(intent);
+        return;
+      }
+
+      // proof exists already, confirm using current state intent
+      await handleFinalConfirmation();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   /* ==========================================
      STEP 5: CONFIRM BOOKING (WITH SLOT TAKEN HANDLING)
   ========================================== */
   const handleFinalConfirmation = async (intentOverride = null) => {
-  if (!bookingId) {
-    showAlert("Error", "Missing booking ID. Please restart booking.");
-    return;
-  }
-
-  const intentToUse = intentOverride || paymentIntentId;
-
-  if (!intentToUse) {
-    showAlert("Error", "Please upload payment proof first.");
-    return;
-  }
-
-  if (isExpiredLocal) {
-    setModal({
-      open: true,
-      title: "Booking Expired",
-      message:
-        "Your payment window has ended. Please start a new booking to continue.",
-      actions: [
-        {
-          label: "Start New Booking",
-          variant: "btn-primary",
-          onClick: () => {
-            setModal((m) => ({ ...m, open: false }));
-            hardRestart();
-          },
-        },
-      ],
-    });
-    return;
-  }
-
-  setConfirmationError(null);
-  setLoading(true);
-
-  try {
-    // ✅ Use the intent we computed (override OR state)
-    await confirmBooking(bookingId, intentToUse);
-
-    // Refresh booking preview
-    try {
-      const latest = await getBookingById(bookingId);
-      setBookingPreview(latest);
-    } catch (err) {
-      console.warn("Fetch latest booking failed:", err);
+    if (!bookingId) {
+      showAlert("Error", "Missing booking ID. Please restart booking.");
+      return;
     }
 
-    setStep(6);
-    clearActiveFlow();
+    const intentToUse = intentOverride || paymentIntentId;
 
-    showAlert(
-      "Booking Confirmed",
-      "🎉 Your booking has been confirmed! Slot is now reserved.",
-    );
-  } catch (error) {
-    console.error("Confirm error:", error);
-    const msg = error.response?.data?.error || error.message;
+    if (!intentToUse) {
+      showAlert("Error", "Please upload payment proof first.");
+      return;
+    }
 
-    let errorType = "unknown";
-    let errorMessage = "An error occurred. Please try again.";
-    let showRetry = true;
-
-    if (error.response?.status === 404) {
-      errorType = "payment_not_found";
-      errorMessage = "Payment record not found. Please upload proof again.";
-      showRetry = false;
-    } else if (error.response?.status === 400) {
-      if (String(msg).toLowerCase().includes("expired")) {
-        errorType = "payment_expired";
-        errorMessage =
-          "Payment proof expired (30 minutes). Please restart booking.";
-        showRetry = false;
-
-        setModal({
-          open: true,
-          title: "Payment Expired",
-          message:
-            "Your 30-minute payment window has ended. Please start a new booking.",
-          actions: [
-            {
-              label: "Start New Booking",
-              variant: "btn-primary",
-              onClick: () => {
-                setModal((m) => ({ ...m, open: false }));
-                hardRestart();
-              },
+    if (isExpiredLocal) {
+      setModal({
+        open: true,
+        title: "Booking Expired",
+        message:
+          "Your payment window has ended. Please start a new booking to continue.",
+        actions: [
+          {
+            label: "Start New Booking",
+            variant: "btn-primary",
+            onClick: () => {
+              setModal((m) => ({ ...m, open: false }));
+              hardRestart();
             },
-          ],
-        });
-      } else if (String(msg).toLowerCase().includes("slot")) {
-        errorType = "slot_taken";
-        errorMessage =
-          "Slot is no longer available. Please choose another date/time.";
-        showRetry = false;
-
-        resetBookingFlow();
-        clearActiveFlow();
-
-        setFormData((prev) => ({
-          ...prev,
-          booking_date: "",
-          booking_time: "",
-        }));
-        setSelectedDate("");
-        setAvailableSlots([]);
-
-        setStep(2);
-
-        setModal({
-          open: true,
-          title: "Slot No Longer Available",
-          message:
-            "The selected time slot has been taken. Please choose another date and time. Note: You will need to re-upload payment proof after selecting new schedule.",
-          actions: [],
-        });
-
-        return;
-      } else {
-        errorType = "invalid_payment";
-        errorMessage = msg || "Invalid request.";
-      }
-    } else if (error.response?.status === 500) {
-      errorType = "server_error";
-      errorMessage = "Server error. Please try again later.";
-    } else if (!navigator.onLine) {
-      errorType = "offline";
-      errorMessage = "No internet connection. Please check your network.";
-    } else {
-      errorMessage = msg || errorMessage;
+          },
+        ],
+      });
+      return;
     }
 
-    setConfirmationError({
-      type: errorType,
-      message: errorMessage,
-      retry: showRetry,
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+    setConfirmationError(null);
+    setLoading(true);
 
+    try {
+      // ✅ Use the intent we computed (override OR state)
+      await confirmBooking(bookingId, intentToUse);
+
+      // Refresh booking preview
+      try {
+        const latest = await getBookingById(bookingId);
+        setBookingPreview(latest);
+      } catch (err) {
+        console.warn("Fetch latest booking failed:", err);
+      }
+
+      setStep(6);
+      clearActiveFlow();
+
+      showAlert(
+        "Booking Confirmed",
+        "🎉 Your booking has been confirmed! Slot is now reserved.",
+      );
+    } catch (error) {
+      console.error("Confirm error:", error);
+      const msg = error.response?.data?.error || error.message;
+
+      let errorType = "unknown";
+      let errorMessage = "An error occurred. Please try again.";
+      let showRetry = true;
+
+      if (error.response?.status === 404) {
+        errorType = "payment_not_found";
+        errorMessage = "Payment record not found. Please upload proof again.";
+        showRetry = false;
+      } else if (error.response?.status === 400) {
+        if (String(msg).toLowerCase().includes("expired")) {
+          errorType = "payment_expired";
+          errorMessage =
+            "Payment proof expired (30 minutes). Please restart booking.";
+          showRetry = false;
+
+          setModal({
+            open: true,
+            title: "Payment Expired",
+            message:
+              "Your 30-minute payment window has ended. Please start a new booking.",
+            actions: [
+              {
+                label: "Start New Booking",
+                variant: "btn-primary",
+                onClick: () => {
+                  setModal((m) => ({ ...m, open: false }));
+                  hardRestart();
+                },
+              },
+            ],
+          });
+        } else if (String(msg).toLowerCase().includes("slot")) {
+          errorType = "slot_taken";
+          errorMessage =
+            "Slot is no longer available. Please choose another date/time.";
+          showRetry = false;
+
+          resetBookingFlow();
+          clearActiveFlow();
+
+          setFormData((prev) => ({
+            ...prev,
+            booking_date: "",
+            booking_time: "",
+          }));
+          setSelectedDate("");
+          setAvailableSlots([]);
+
+          setStep(2);
+
+          setModal({
+            open: true,
+            title: "Slot No Longer Available",
+            message:
+              "The selected time slot has been taken. Please choose another date and time. Note: You will need to re-upload payment proof after selecting new schedule.",
+            actions: [],
+          });
+
+          return;
+        } else {
+          errorType = "invalid_payment";
+          errorMessage = msg || "Invalid request.";
+        }
+      } else if (error.response?.status === 500) {
+        errorType = "server_error";
+        errorMessage = "Server error. Please try again later.";
+      } else if (!navigator.onLine) {
+        errorType = "offline";
+        errorMessage = "No internet connection. Please check your network.";
+      } else {
+        errorMessage = msg || errorMessage;
+      }
+
+      setConfirmationError({
+        type: errorType,
+        message: errorMessage,
+        retry: showRetry,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const retryConfirmation = () => {
     setConfirmationError(null);
@@ -3279,7 +3284,7 @@ const handleConfirmWithUpload = async () => {
   };
 
   return (
-    <div className="booking-system-premium">
+    <div className="booking-system-premium" id="booking">
       <Modal />
       <ResumeModal />
 

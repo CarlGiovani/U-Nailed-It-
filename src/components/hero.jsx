@@ -1,8 +1,8 @@
 const Hero = () => {
   const scrollToBooking = () => {
-    const element = document.getElementById('booking');
+    const element = document.getElementById("booking");
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      element.scrollIntoView({ behavior: "smooth" });
     }
   };
 
