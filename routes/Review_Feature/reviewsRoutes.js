@@ -1,15 +1,19 @@
 import express from "express";
-import * as ReviewController from "../../controllers/Reviews_Feature/reviewsController.js"
-import {verifyAdmin} from "../../middlewares/Authentication/authMiddleware.js"
+import * as ReviewController from "../../controllers/Reviews_Feature/reviewsController.js";
+import { verifyAdmin } from "../../middlewares/Authentication/authMiddleware.js";
+import {
+  reviewSubmitLimiter,
+  reviewVerifyLimiter,
+} from "../../middlewares/reviewLimiter.js";
 
 const router = express.Router();
-
 
 /* =========================
    PUBLIC
 ========================= */
-router.post("/", ReviewController.createReview);
+router.post("/", reviewSubmitLimiter, ReviewController.createReview);
 router.get("/", ReviewController.getApprovedReviews);
+router.get("/verify", reviewVerifyLimiter, ReviewController.verifyReviewToken);
 
 /* =========================
    ADMIN

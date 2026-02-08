@@ -4,6 +4,7 @@ import {
   unblockSlotGlobally,
 } from "../Calendar_Feature/calendarModel.js";
 import { getOrCreateCustomer } from "../Customer_Feature/customerModel.js";
+import crypto from "crypto";
 
 /* ==========================================
    HELPER: filter selected variant ONLY
@@ -573,24 +574,29 @@ export const confirmBookingForBookingId = async (bookingId, intentId) => {
    - only approved bookings can be completed
    - sets completed_at
 ========================================== */
-
 export const completeBooking = async (id) => {
-  const bookingId = Number(id)
-  if(!bookingId) throw new Error("Invalid Booking Id");
+  const bookingId = Number(id);
+  if (!bookingId) throw new Error("Invalid Booking Id");
+
+  //  generate review token
+  const reviewToken = crypto.randomUUID();
 
   // update status -> completed (only if currently approved)
   const { data: updated, error } = await supabase
     .from("bookings")
     .update({
       status: "completed",
-      completed_at: new Date(),
+      completed_at: new Date().toISOString(),
+      review_token: reviewToken,
     })
     .eq("id", bookingId)
     .eq("status", "approved")
     .select()
     .single();
 
-  if (error || !updated) throw new Error("Booking cannot be completed");
+  if (error || !updated) {
+    throw new Error("Booking cannot be completed");
+  }
 
   // return full booking with joins (same pattern ng approve/reject)
   const { data, error: fetchError } = await supabase
@@ -614,12 +620,12 @@ export const completeBooking = async (id) => {
         )
       ),
       customers(full_name,email)
-    `,
+    `
     )
     .eq("id", bookingId)
     .single();
 
   if (fetchError) throw new Error(fetchError.message);
+
   return filterSelectedVariant(data);
-  
-}
+};

@@ -1,9 +1,12 @@
+import dotenv from "dotenv";
 import * as booking from "../../models/Booking_Feature/bookingModel.js";
-
 import sendEmail from "../../services/Email_Feature/emailService.js";
 import { bookingApprovedTemplate } from "../../templates/emails/bookingApproved.js";
+import { bookingCompletedTemplate } from "../../templates/emails/bookingCompletedTemplate.js";
 import { bookingRejectedTemplate } from "../../templates/emails/bookingRejected.js";
 import { bookingSubmittedTemplate } from "../../templates/emails/bookingSubmitted.js";
+
+dotenv.config();
 
 import {
   createBookingSchema,
@@ -172,21 +175,34 @@ export const cancelBooking = async (req, res) => {
   }
 };
 
-
-
-
 /* ==========================================
    ADMIN: complete booking
    PATCH /bookings/:id/complete
 ========================================== */
 
-export const completeBooking = async (req , res) => {
+export const completeBooking = async (req, res) => {
   try {
     const result = await booking.completeBooking(req.params.id);
+
+    const FRONTEND_REVIEW_URL =
+      process.env.FRONTEND_REVIEW_URL || "http://localhost:5173";
+
+    const reviewLink = `${FRONTEND_REVIEW_URL}/review?token=${result.review_token}`;
+
+    await sendEmail({
+      to: result.customers.email,
+      subject: "How was your appointment?",
+      html: bookingCompletedTemplate({
+        name: result.customers.full_name,
+        service: result.services?.name || "Your Service",
+        date: result.booking_date,
+        time: result.booking_time,
+        reviewLink,
+      }),
+    });
+
     return res.json(result);
   } catch (error) {
-   return  res.status(400).json({error: error.message});
-    
+    return res.status(400).json({ error: error.message });
   }
-  
-}
+};

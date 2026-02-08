@@ -1,21 +1,45 @@
 import * as review from "../../models/Reviews_Feature/reviewsModel.js";
-import { createReviewSchema, validate } from "../../utils/validators/reviewValidation.js";
+import {
+  createReviewSchema,
+  validate,
+} from "../../utils/validators/reviewValidation.js";
 
 /* ==========================================
    PUBLIC: POST /api/reviews
 ========================================== */
-export const createReview = async (req, res) => {
-  const errors = validate(createReviewSchema, req.body);
-  if (errors) return res.status(400).json({ errors });
 
+export const createReview = async (req, res) => {
   try {
-    const created = await review.createReview(req.body);
-    res.status(201).json({ message: "Review submitted (pending approval)", review: created });
+    // ✅ galing sa body, hindi function args
+    const { token, rating, comment, image_url } = req.body;
+
+    // normalize
+    const payload = {
+      token,
+      rating: Number(rating),
+      comment: comment ?? null,
+      image_url: image_url ?? null,
+    };
+
+    // ✅ Joi validation
+    const errors = validate(createReviewSchema, payload);
+    if (errors) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors,
+      });
+    }
+
+    // ✅ DELEGATE TO MODEL (important!)
+    const data = await review.createReview(payload);
+
+    return res.status(201).json(data);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    return res.status(400).json({
+      error: err.message,
+    });
   }
 };
-
 /* ==========================================
    PUBLIC: GET /api/reviews (approved only)
 ========================================== */
@@ -25,6 +49,20 @@ export const getApprovedReviews = async (req, res) => {
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+/* ==========================================
+   PUBLIC: Verify review token
+   GET /api/reviews/verify?token=xxx
+========================================== */
+export const verifyReviewToken = async (req, res) => {
+  try {
+    const { token } = req.query;
+    const data = await review.verifyReviewToken(token);
+    res.json(data);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };
 
@@ -63,5 +101,3 @@ export const rejectReview = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
-
-

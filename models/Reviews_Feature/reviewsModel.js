@@ -5,75 +5,56 @@ import supabase from "../../utils/supabaseClient.js";
    - only if booking is completed
    - only if no existing review for that booking
 ========================================== */
-export const createReview = async ({
-  booking_id,
-  rating,
-  comment,
-  image_url,
-}) => {
-  const bookingId = Number(booking_id);
-  if (!bookingId) throw new Error("Invalid Booking Id");
+export const createReview = async ({ token, rating, comment, image_url }) => {
+  if (!token) throw new Error("Review token is required");
 
-  // dapat exisiting booking
-  const { data: booking, error: bookingErr } = await supabase
+  // 1️⃣ Find booking by token
+  const { data: booking, error } = await supabase
     .from("bookings")
-    .select("id,status,customer_id,service_id,booking_date,booking_time")
-    .eq("id", bookingId)
+    .select("id, status")
+    .eq("review_token", token)
     .maybeSingle();
 
-  if (bookingErr) throw new Error(bookingErr.message);
-  if (!booking) throw new Error("Booking not found");
-  if (booking.status !== "completed") {
+  if (error) throw new Error(error.message);
+  if (!booking) throw new Error("Invalid or expired review link");
+  if (booking.status !== "completed")
     throw new Error("You can only review a completed booking");
-  }
-  // Prevent duplicate review for same booking
-  const { data: existing, error: existErr } = await supabase
+
+  // 2️⃣ Prevent duplicate review
+  const { data: existing } = await supabase
     .from("reviews")
     .select("id")
-    .eq("booking_id", bookingId)
+    .eq("booking_id", booking.id)
     .maybeSingle();
 
-  if (existErr) throw new Error(existErr.message);
   if (existing) throw new Error("This booking already has a review");
 
-  // Insert review (default: is_approved=false)
+  // 3️⃣ Insert review
   const { data: created, error: createErr } = await supabase
     .from("reviews")
     .insert([
       {
-        booking_id: bookingId,
+        booking_id: booking.id,
         rating,
         comment,
         image_url: image_url || null,
         is_approved: false,
       },
     ])
-    .select(
-      `
-      *,
-      bookings(
-        id,
-        booking_date,
-        booking_time,
-        services(id,name),
-        customers(id,full_name,email)
-      )
-    `,
-    )
+    .select()
     .single();
 
   if (createErr) throw new Error(createErr.message);
   return created;
 };
 
-
 /* ==========================================
    PUBLIC: Get approved reviews (website)
 ========================================== */
 export const getApprovedReviews = async (params) => {
-    const {data , error} = await supabase
+  const { data, error } = await supabase
     .from("reviews")
-     .select(
+    .select(
       `
       id,
       rating,
@@ -90,12 +71,11 @@ export const getApprovedReviews = async (params) => {
     `,
     )
     .eq("is_approved", true)
-    .order("created_at" , {ascending: false});
+    .order("created_at", { ascending: false });
 
-    if (error) throw new Error(error.message);
-    return data;
-}
-
+  if (error) throw new Error(error.message);
+  return data;
+};
 
 /* ==========================================
     ADMIN: Get all reviews (pending + approved)
@@ -170,4 +150,56 @@ export const rejectReview = async (id) => {
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Review not found");
   return data;
+};
+
+/* ==========================================
+   FOR REVIEW VERIFY TOKEN
+========================================== */
+export const verifyReviewToken = async (token) => {
+  if (!token) throw new Error("Review token is required");
+
+  // hanapin booking by token
+  const { data: booking, error } = await supabase
+    .from("bookings")
+    .select(
+      `
+      id,
+      status,
+      booking_date,
+      booking_time,
+      review_token,
+      services(id, name),
+      customers(full_name)
+      `,
+    )
+    .eq("review_token", token)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!booking) throw new Error("Invalid or expired review link");
+
+  // must be completed
+  if (booking.status !== "completed") {
+    throw new Error("This booking is not completed");
+  }
+
+  // check kung may existing review na
+  const { data: existing } = await supabase
+    .from("reviews")
+    .select("id")
+    .eq("booking_id", booking.id)
+    .maybeSingle();
+
+  if (existing) {
+    throw new Error("This booking has already been reviewed");
+  }
+
+  // return SAFE data lang
+  return {
+    booking_id: booking.id,
+    service: booking.services?.name,
+    date: booking.booking_date,
+    time: booking.booking_time,
+    customer_name: booking.customers?.full_name,
+  };
 };
