@@ -1,87 +1,182 @@
+/* =========================
+   HERO BASE (YOUR THEME)
+========================= */
+
 .hero {
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)),
-    url("https://images.unsplash.com/photo-1604654894610-df63bc536371?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80");
-  background-size: cover;
-  background-position: center;
-  padding: 120px 0;
-  text-align: center;
   position: relative;
+  min-height: 100vh;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 245, 250, 0.85) 0%,
+      rgba(255, 245, 250, 0.65) 35%,
+      rgba(255, 245, 250, 0.35) 60%,
+      rgba(255, 245, 250, 0.15) 80%,
+      rgba(255, 245, 250, 0.05) 100%
+    ),
+    url("../assets/background.jpg") no-repeat;
+
+  background-size: cover;
+  background-position: center right;
 }
 
-.hero::before {
+.hero::after {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, var(--pale-pink) 0%, transparent 100%);
-  z-index: 0;
+  inset: 0;
+  background: linear-gradient(to left, rgba(0, 0, 0, 0.06), transparent 40%);
+  pointer-events: none;
 }
 
-.hero-content {
+/* =========================
+   INNER LAYOUT (RILEY STYLE)
+========================= */
+
+.hero-inner {
   position: relative;
-  z-index: 1;
-  max-width: 800px;
+  z-index: 2;
 }
 
-.hero-content h1 {
-  font-size: 3.5rem;
-  margin-bottom: 25px;
-  background: linear-gradient(to right, var(--primary-pink), var(--gold));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  line-height: 1.2;
+.hero-text {
+  max-width: 540px;
 }
 
-.hero-content p {
-  font-size: 1.2rem;
-  color: var(--text-light);
-  margin-bottom: 40px;
+/* =========================
+   TEXT (LUXURY NAIL THEME)
+========================= */
+
+.hero-text h1 {
+  font-size: 3.4rem;
+  font-weight: 800;
+  line-height: 1.15;
+  margin-bottom: 20px;
+  color: #1b1b1b;
+}
+
+.hero-text p {
+  font-size: 1.1rem;
   line-height: 1.8;
+  color: rgba(0, 0, 0, 0.75);
+  margin-bottom: 34px;
 }
 
-@media (max-width: 992px) {
-  .hero {
-    padding: 100px 0;
-  }
+/* =========================
+   BUTTON (YOUR GRADIENT)
+========================= */
 
-  .hero-content h1 {
-    font-size: 3rem;
-  }
+.hero-btn {
+  border: none;
+  cursor: pointer;
+  padding: 14px 34px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #111;
+
+  background: linear-gradient(to right, var(--primary-pink), var(--gold));
+
+  box-shadow: 0 10px 28px rgba(255, 182, 193, 0.45);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
-@media (max-width: 768px) {
-  .hero {
-    padding: 80px 0;
-  }
-
-  .hero-content h1 {
-    font-size: 2.5rem;
-  }
-
-  .hero-content p {
-    font-size: 1.1rem;
-  }
+.hero-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 45px rgba(255, 182, 193, 0.6);
 }
 
+/* =========================
+   DECORATIVE ELEMENTS
+========================= */
+
+/* SUN (GOLD TONE) */
+.hero-sun {
+  position: absolute;
+  right: 14%;
+  top: 18%;
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd27d, #f4b942);
+  box-shadow:
+    0 0 0 30px rgba(244, 185, 66, 0.25),
+    0 0 0 70px rgba(244, 185, 66, 0.15);
+}
+
+/* CLOUDS */
+.hero-cloud {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 999px;
+}
+
+.cloud-1 {
+  width: 320px;
+  height: 120px;
+  left: 6%;
+  top: 55%;
+}
+
+.cloud-2 {
+  width: 220px;
+  height: 90px;
+  right: 18%;
+  bottom: 20%;
+}
+
+/* SPARKLES (PINK ACCENT) */
+.hero-sparkle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--primary-pink);
+  transform: rotate(45deg);
+  border-radius: 2px;
+  opacity: 0.75;
+}
+
+.sparkle-1 {
+  top: 32%;
+  left: 42%;
+}
+
+.sparkle-2 {
+  top: 68%;
+  right: 36%;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
 @media (max-width: 576px) {
   .hero {
-    padding: 60px 0;
+    min-height: auto;
+    padding: 120px 0 100px;
+
+    background:
+      linear-gradient(rgba(255, 245, 250, 0.85), rgba(255, 245, 250, 0.85)),
+      url("../assets/background.jpg") no-repeat;
+
+    background-size: cover;
+    background-position: center top;
   }
 
-  .hero-content h1 {
-    font-size: 2rem;
-  }
-
-  .hero-content p {
-    font-size: 1rem;
+  /* remove vignette on mobile */
+  .hero::after {
+    display: none;
   }
 }
 
-.hero::before {
-  pointer-events: none;
+.glitter {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--gold);
+  border-radius: 50%;
+  opacity: 0.6;
 }
