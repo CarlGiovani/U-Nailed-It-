@@ -1,41 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useState } from "react";
+import { getApprovedReviews } from "../../backend/reviewApi";
 
 const Reviews = () => {
-  const [reviews] = useState([
-    {
-      id: 1,
-      name: "Maria Santos",
-      date: "June 5, 2023",
-      rating: 5,
-      comment: "Liana is incredibly talented! My wedding nails were absolutely stunning and lasted perfectly through my entire honeymoon. Highly recommended!",
-      avatar: "M"
-    },
-    {
-      id: 2,
-      name: "Andrea Reyes",
-      date: "May 20, 2023",
-      rating: 5,
-      comment: "Best nail salon in Makati! The attention to detail is amazing. My custom nail art design exceeded all expectations.",
-      avatar: "A"
-    },
-    {
-      id: 3,
-      name: "Catherine Lim",
-      date: "April 15, 2023",
-      rating: 5,
-      comment: "Professional service with excellent hygiene standards. My gel manicure lasted for 3 weeks without chipping. Will definitely be back!",
-      avatar: "C"
-    }
-  ]);
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const renderStars = (rating) => {
-    return Array(5).fill(0).map((_, index) => (
-      <i 
-        key={index} 
-        className={`fas fa-star ${index < rating ? 'filled' : ''}`}
-      ></i>
-    ));
-  };
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const data = await getApprovedReviews();
+        setReviews(data);
+      } catch (err) {
+        console.error("Failed to load reviews", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, []);
+
+  if (loading) return <p>Loading reviews...</p>;
 
   return (
     <section className="reviews" id="reviews">
@@ -46,21 +31,40 @@ const Reviews = () => {
         </div>
 
         <div className="reviews-slider">
-          {reviews.map(review => (
-            <div key={review.id} className="review-card">
-              <div className="review-header">
-                <div className="review-avatar">{review.avatar}</div>
-                <div>
-                  <div className="review-name">{review.name}</div>
-                  <div className="review-date">{review.date}</div>
+          {reviews.map((review) => {
+            const name =
+              review.bookings?.customers?.full_name || "Customer";
+            const avatar = name.charAt(0).toUpperCase();
+
+            return (
+              <div key={review.id} className="review-card">
+                <div className="review-header">
+                  <div className="review-avatar">
+                    {review.image_url ? (
+                      <img src={review.image_url} alt={name} />
+                    ) : (
+                      avatar
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="review-name">{name}</div>
+                    <div className="review-date">
+                      {new Date(review.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
                 </div>
+
+                <div className="review-stars">
+                  {"★".repeat(review.rating)}
+                </div>
+
+                <p className="review-comment">
+                  “{review.comment}”
+                </p>
               </div>
-              <div className="review-stars">
-                {renderStars(review.rating)}
-              </div>
-              <p className="review-comment">"{review.comment}"</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

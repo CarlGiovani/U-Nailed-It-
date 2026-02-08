@@ -1,3 +1,4 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AboutUs from "./components/AboutUs";
 import Booking from "./components/Booking";
 import CheckBooking from "./components/CheckBooking";
@@ -9,6 +10,8 @@ import Portfolio from "./components/Portfolio";
 import Promos from "./components/Promos";
 import Reviews from "./components/Reviews";
 import Services from "./components/Services";
+
+import ReviewPage from "./components/ReviewPage";
 
 import useServices from "./hooks/useServices";
 
@@ -30,21 +33,33 @@ function App() {
   if (error) return <p>Error loading services: {error}</p>;
 
   return (
-    <div className="App">
-      <Header />
-      <main>
-        <Hero />
-        <AboutUs />
-        {/* <Services services={services} /> */}
-        <Policies />
-        <Portfolio />
-        <Promos />
-        <Booking services={services} />
-        <Reviews />
-        <CheckBooking />
-      </main>
-      <Footer />
-    </div>
+    <BrowserRouter>
+      <Routes>
+        {/* HOME PAGE */}
+        <Route
+          path="/"
+          element={
+            <div className="App">
+              <Header />
+              <main>
+                <Hero />
+                <AboutUs />
+                <Policies />
+                <Portfolio />
+                <Promos />
+                <Booking services={services} />
+                <Reviews />
+                <CheckBooking />
+              </main>
+              <Footer />
+            </div>
+          }
+        />
+
+        {/* REVIEW PAGE (EMAIL LINK) */}
+        <Route path="/review" element={<ReviewPage />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
