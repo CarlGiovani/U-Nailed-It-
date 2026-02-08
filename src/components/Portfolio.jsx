@@ -15,13 +15,13 @@ import {
 } from "react-icons/fa";
 
 const NextArrow = ({ onClick }) => (
-  <button className="slider-arrow outside next" onClick={onClick}>
+  <button className="slider-arrow next" onClick={onClick}>
     <FaArrowRight />
   </button>
 );
 
 const PrevArrow = ({ onClick }) => (
-  <button className="slider-arrow outside prev" onClick={onClick}>
+  <button className="slider-arrow prev" onClick={onClick}>
     <FaArrowLeft />
   </button>
 );
@@ -37,11 +37,22 @@ const Portfolio = () => {
 
   const sliderRef = useRef(null);
 
-  // Pagination
+  // pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
-  // Open / Close slider
+  useEffect(() => {
+    const fetchPortfolio = async () => {
+      try {
+        const data = await getAllPortfolio();
+        setPortfolioItems(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchPortfolio();
+  }, []);
+
   const openSlider = (item) => {
     setSliderImages(item.images || []);
     setSliderTitle(item.title || "");
@@ -52,71 +63,50 @@ const Portfolio = () => {
 
   const closeSlider = () => {
     setIsSliderOpen(false);
-    setSliderImages([]);
     setIsFullscreen(false);
+    setSliderImages([]);
   };
 
-  // Body overflow
   useEffect(() => {
     document.body.style.overflow = isSliderOpen ? "hidden" : "auto";
-    return () => {
-      document.body.style.overflow = "auto";
-    };
   }, [isSliderOpen]);
 
-  // ESC key closes slider
   useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === "Escape") closeSlider();
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
+    const esc = (e) => e.key === "Escape" && closeSlider();
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
   }, []);
 
-  // Fetch portfolio data
-  useEffect(() => {
-    const fetchPortfolio = async () => {
-      try {
-        const data = await getAllPortfolio();
-        setPortfolioItems(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Error fetching portfolio:", err);
-      }
-    };
-    fetchPortfolio();
-  }, []);
-
-  const isMobile = window.innerWidth <= 768;
-
-  // Slider settings
   const sliderSettings = {
     dots: true,
     infinite: sliderImages.length > 1,
-    speed: 500,
+    speed: 400,
     slidesToShow: 1,
     slidesToScroll: 1,
     swipe: true,
-    arrows: !isMobile && sliderImages.length > 1,
+    arrows: sliderImages.length > 1,
     nextArrow: <NextArrow />,
     prevArrow: <PrevArrow />,
-    afterChange: (index) => setCurrentSlide(index),
+    afterChange: (i) => setCurrentSlide(i),
   };
 
   const toggleFullscreen = () => {
-    setIsFullscreen((prev) => !prev);
+    setIsFullscreen((p) => !p);
     setTimeout(() => sliderRef.current?.slickGoTo(currentSlide), 50);
   };
 
-  // Pagination logic
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = portfolioItems.slice(indexOfFirstItem, indexOfLastItem);
+  // pagination logic
+  const start = (currentPage - 1) * itemsPerPage;
+  const currentItems = portfolioItems.slice(start, start + itemsPerPage);
   const totalPages = Math.ceil(portfolioItems.length / itemsPerPage);
 
   return (
     <section className="portfolio" id="portfolio">
       <div className="container">
-        <h2 className="section-title">Our Portfolio</h2>
+        <div className="section-title">
+          <h2>Our Portfolio</h2>
+          <p>This is some of the memories and works</p>
+        </div>
 
         <div className="portfolio-grid">
           {currentItems.map((item) => (
@@ -125,10 +115,7 @@ const Portfolio = () => {
               className="portfolio-item"
               onClick={() => openSlider(item)}
             >
-              <img
-                src={item.images?.[0] || "/placeholder.jpg"}
-                alt={item.title}
-              />
+              <img src={item.images?.[0]} alt={item.title} loading="lazy" />
               <div className="portfolio-overlay">
                 <h3>{item.title}</h3>
               </div>
@@ -157,10 +144,9 @@ const Portfolio = () => {
         )}
       </div>
 
-      {/* Slider Modal */}
       {isSliderOpen && (
         <div className={`slider-modal ${isFullscreen ? "fullscreen" : ""}`}>
-          <div className="slider-backdrop" onClick={closeSlider}></div>
+          <div className="slider-backdrop" onClick={closeSlider} />
 
           <div className="slider-content">
             <button className="slider-close" onClick={closeSlider}>

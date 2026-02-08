@@ -4,8 +4,10 @@ import api from "../config/axios.js";
    PUBLIC WEBSITE
    Display approved reviews only
 =============================== */
-export const getApprovedReviews = async () => {
-  const res = await api.get("/reviews");
+export const getApprovedReviews = async (page = 1, limit = 6) => {
+  const res = await api.get("/reviews", {
+    params: { page, limit },
+  });
   return res.data;
 };
 

@@ -3,6 +3,7 @@ import {
   verifyReviewToken,
   createReview,
 } from "../../backend/reviewApi";
+import { uploadReviewImage } from "../utils/uploadReviewImage";
 
 const ReviewPage = () => {
   // get token from URL
@@ -16,9 +17,15 @@ const ReviewPage = () => {
 
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
+
+  // 🖼️ image states
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
   const [submitted, setSubmitted] = useState(false);
 
-  // ✅ VERIFY TOKEN (Phase 4)
+  // ✅ VERIFY TOKEN
   useEffect(() => {
     let isMounted = true;
 
@@ -33,7 +40,6 @@ const ReviewPage = () => {
 
       try {
         const data = await verifyReviewToken(token);
-
         if (isMounted) {
           setBooking(data);
           setLoading(false);
@@ -47,36 +53,41 @@ const ReviewPage = () => {
     };
 
     verify();
-
     return () => {
       isMounted = false;
     };
   }, [token]);
 
-  // ✅ SUBMIT REVIEW (Phase 5)
+  // ✅ SUBMIT REVIEW
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
+      setUploading(true);
+
+      let image_url = null;
+      if (imageFile) {
+        image_url = await uploadReviewImage(imageFile);
+      }
+
       await createReview({
         token,
         rating,
         comment,
+        image_url,
       });
 
       setSubmitted(true);
     } catch (err) {
       alert(err.message || "Failed to submit review");
+    } finally {
+      setUploading(false);
     }
   };
 
   // 🌀 UI STATES
   if (loading) {
-    return (
-      <div style={{ textAlign: "center", marginTop: 60 }}>
-        Loading...
-      </div>
-    );
+    return <div style={{ textAlign: "center", marginTop: 60 }}>Loading...</div>;
   }
 
   if (error) {
@@ -120,6 +131,7 @@ const ReviewPage = () => {
       </p>
 
       <form onSubmit={handleSubmit}>
+        {/* ⭐ Rating */}
         <label style={{ fontWeight: "bold" }}>Rating</label>
         <select
           value={rating}
@@ -135,6 +147,7 @@ const ReviewPage = () => {
 
         <br /><br />
 
+        {/* 💬 Comment */}
         <label style={{ fontWeight: "bold" }}>Comment</label>
         <textarea
           value={comment}
@@ -151,20 +164,51 @@ const ReviewPage = () => {
 
         <br /><br />
 
+        {/* 🖼️ Image Upload */}
+        <label style={{ fontWeight: "bold" }}>Photo (optional)</label>
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          onChange={(e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            setImageFile(file);
+            setImagePreview(URL.createObjectURL(file));
+          }}
+        />
+
+        {imagePreview && (
+          <img
+            src={imagePreview}
+            alt="Preview"
+            style={{
+              width: "100%",
+              marginTop: 10,
+              borderRadius: 8,
+              objectFit: "cover",
+            }}
+          />
+        )}
+
+        <br /><br />
+
+        {/* 🚀 Submit */}
         <button
           type="submit"
+          disabled={uploading}
           style={{
             width: "100%",
             padding: 12,
             borderRadius: 30,
             border: "none",
-            background: "#E8A1B2",
+            background: uploading ? "#ccc" : "#E8A1B2",
             color: "#111",
             fontWeight: "bold",
-            cursor: "pointer",
+            cursor: uploading ? "not-allowed" : "pointer",
           }}
         >
-          Submit Review
+          {uploading ? "Submitting..." : "Submit Review"}
         </button>
       </form>
     </div>
