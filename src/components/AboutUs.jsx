@@ -1,61 +1,107 @@
+import img1 from "../assets/images/img1.jpg";
+import img2 from "../assets/images/img2.jpg";
+import img3 from "../assets/images/img3.jpg";
+import img4 from "../assets/images/img4.jpg";
+import profile from "../assets/images/profile.jpg"
+
 const AboutUs = () => {
   return (
     <section className="about-us" id="about-us">
       <div className="container">
         <div className="section-title">
           <h2>About Us</h2>
-          <p>Learn more about our founder and what makes our studio special</p>
+          <p>The artist, the journey, and the craft behind every set</p>
         </div>
 
-        <div className="about-grid">
-          {/* Owner Info */}
-          <div className="owner-profile">
+        <div className="about-board">
+          {/* FOUNDER CARD */}
+          <div className="board-card founder-card">
+            <span className="pin pink"></span>
+
             <div className="owner-photo">
-              <img src="/images/owner.jpg" alt="Liana - Founder & Nail Artist" />
+              <img
+                src={profile}
+                alt="Liana Santos - Founder & Lead Nail Artist"
+                loading="lazy"
+              />
             </div>
-            <div className="owner-info">
-              <h3>Liana Santos</h3>
-              <p><strong>Founder & Lead Nail Artist</strong></p>
-              <p>
-                Liana has over 8 years of experience in professional nail artistry, specializing in
-                gel manicures, custom nail designs, and nail care education. She is certified by the
-                Philippine Nail Technicians Association (PNTA) and has attended multiple international
-                nail art workshops in Japan and Korea.
-              </p>
-              <p>
-                <strong>Credentials:</strong>
-              </p>
-              <ul>
-                <li>Certified Nail Technician (PNTA)</li>
-                <li>Diploma in Nail Art & Design, Creative Beauty Institute</li>
-                <li>Workshops: Advanced Nail Art (Tokyo, Japan), Creative Nail Design (Seoul, Korea)</li>
-                <li>Featured in local fashion magazines & TV segments for nail artistry</li>
-              </ul>
-              <div className="social-links">
-                <a href="#" target="_blank" rel="noopener noreferrer"><i className="fab fa-facebook-f"></i></a>
-                <a href="#" target="_blank" rel="noopener noreferrer"><i className="fab fa-instagram"></i></a>
-              </div>
+
+            <h3>Liana Santos</h3>
+            <span className="owner-role">Founder & Lead Nail Artist</span>
+
+            <p className="owner-bio">
+              With over 8 years of professional experience, Liana blends
+              creativity, precision, and global trends to create modern,
+              personalized nail art that empowers confidence.
+            </p>
+
+            <div className="social-links">
+              <a href="#" aria-label="Facebook">
+                <i className="fab fa-facebook-f"></i>
+              </a>
+              <a href="#" aria-label="Instagram">
+                <i className="fab fa-instagram"></i>
+              </a>
             </div>
           </div>
 
-          {/* Business Info */}
-          <div className="business-info">
-            <h3>About Our Studio</h3>
-            <p>
-              Nail Artistry by Liana is a premium nail design studio located in Makati City, Philippines.
-              We focus on providing personalized nail services using the highest hygiene standards, quality
-              products, and innovative designs. Our mission is to make every client feel confident and beautiful.
-            </p>
-            <p>
-              <strong>Studio Highlights:</strong>
-            </p>
-            <ul>
-              <li>Established: 2018</li>
-              <li>Fully licensed and certified beauty studio</li>
-              <li>Professional team trained in modern nail art techniques</li>
-              <li>Eco-friendly and high-quality nail products</li>
-              <li>Custom nail art designs tailored to client preferences</li>
+          {/* JOURNEY CARD */}
+          <div className="board-card journey-card">
+            <span className="pin gold"></span>
+            <h3>Our Journey</h3>
+
+            <ul className="timeline">
+              <li>
+                <strong>2018</strong> Studio founded
+              </li>
+              <li>
+                <strong>2019</strong> PNTA certified
+              </li>
+              <li>
+                <strong>2021</strong> Media features & collabs
+              </li>
+              <li>
+                <strong>2024</strong> Premium nail services expanded
+              </li>
             </ul>
+
+            <div className="badges">
+              <span className="badge">PNTA Certified</span>
+              <span className="badge">Licensed Studio</span>
+              <span className="badge">Eco Products</span>
+              <span className="badge">Intl Training</span>
+            </div>
+          </div>
+
+          {/* STUDIO CARD */}
+          <div className="board-card studio-card">
+            <span className="pin pink"></span>
+            <h3>Our Studio</h3>
+
+            <p>
+              A premium nail studio based in Makati City, built around hygiene,
+              artistry, and personalized service. Every detail is intentional —
+              from tools to techniques.
+            </p>
+
+            <ul className="studio-points">
+              <li>Custom nail designs</li>
+              <li>Strict hygiene standards</li>
+              <li>High-quality & eco-friendly products</li>
+            </ul>
+          </div>
+
+          {/* MINI GALLERY */}
+          <div className="board-card gallery-card">
+            <span className="tape"></span>
+            <h3>Our Work</h3>
+
+            <div className="mini-gallery">
+              <img src={img1} alt="Nail art 1" />
+              <img src={img2} alt="Nail art 2" />
+              <img src={img3} alt="Nail art 3" />
+              <img src={img4} alt="Nail art 4" />
+            </div>
           </div>
         </div>
       </div>

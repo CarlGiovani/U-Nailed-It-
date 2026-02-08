@@ -1,70 +1,94 @@
+/* =========================
+   SECTION BASE
+========================= */
+
 .about-us {
-  padding: 80px 0;
-  background: linear-gradient(135deg, var(--pale-pink) 0%, var(--white) 100%);
-  position: relative;
-  overflow: hidden;
+  padding: 100px 0;
+  background: linear-gradient(
+    135deg,
+    var(--pale-pink),
+    var(--white)
+  );
 }
 
-.about-us::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, var(--light-pink) 0%, transparent 70%);
-  opacity: 0.3;
-  z-index: 0;
-}
-
-.about-us .container {
-  position: relative;
-  z-index: 1;
-}
-
-.about-grid {
+.about-board {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
-  margin-top: 40px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 36px;
+  margin-top: 56px;
 }
 
-.owner-profile {
+/* =========================
+   BOARD CARD BASE
+========================= */
+
+.board-card {
+  position: relative;
   background: var(--white);
-  border-radius: var(--radius);
-  padding: 30px;
-  box-shadow: var(--shadow);
-  display: flex;
-  flex-direction: column;
-  transition: var(--transition);
+  padding: 34px;
+  border-radius: 22px;
   border: 1px solid var(--border-color);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.owner-profile:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 30px rgba(255, 105, 180, 0.1);
+.board-card:hover {
+  transform: translateY(-6px) rotate(-0.4deg);
+  box-shadow: 0 30px 70px rgba(255,105,180,0.18);
 }
+
+/* =========================
+   PINS & TAPE
+========================= */
+
+.pin {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.pin.pink { background: var(--primary-pink); }
+.pin.gold { background: var(--gold); }
+
+.tape {
+  position: absolute;
+  top: -12px;
+  left: 40%;
+  width: 80px;
+  height: 22px;
+  background: rgba(255, 215, 0, 0.35);
+  transform: rotate(-3deg);
+  border-radius: 4px;
+}
+
+/* =========================
+   FOUNDER CARD
+========================= */
 
 .owner-photo {
-  width: 180px;
-  height: 180px;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto 24px;
   border-radius: 50%;
   overflow: hidden;
-  margin: 0 auto 25px;
-  border: 5px solid var(--white);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
   position: relative;
 }
 
 .owner-photo::before {
   content: "";
   position: absolute;
-  top: -5px;
-  left: -5px;
-  right: -5px;
-  bottom: -5px;
+  inset: -6px;
   border-radius: 50%;
-  background: linear-gradient(45deg, var(--primary-pink), var(--gold));
+  background: linear-gradient(
+    45deg,
+    var(--primary-pink),
+    var(--gold)
+  );
   z-index: -1;
 }
 
@@ -72,248 +96,169 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: var(--transition);
 }
 
-.owner-photo:hover img {
+.founder-card h3 {
+  text-align: center;
+  color: var(--primary-pink);
+  font-size: 1.8rem;
+}
+
+.owner-role {
+  display: block;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-light);
+  margin-bottom: 18px;
+}
+
+.owner-bio {
+  color: var(--text-dark);
+  line-height: 1.7;
+}
+
+/* =========================
+   TIMELINE
+========================= */
+
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+
+.timeline li {
+  margin-bottom: 10px;
+  padding-left: 16px;
+  position: relative;
+}
+
+.timeline li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: var(--gold);
+}
+
+/* =========================
+   BADGES
+========================= */
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.badge {
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: linear-gradient(
+    to right,
+    var(--primary-pink),
+    var(--gold)
+  );
+  color: #111;
+}
+
+/* =========================
+   STUDIO
+========================= */
+
+.studio-points {
+  list-style: none;
+  padding: 0;
+  margin-top: 16px;
+}
+
+.studio-points li {
+  padding-left: 18px;
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.studio-points li::before {
+  content: "✦";
+  position: absolute;
+  left: 0;
+  color: var(--gold);
+}
+
+/* =========================
+   MINI GALLERY
+========================= */
+
+.mini-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.mini-gallery img {
+  width: 100%;
+  height: 130px;
+  object-fit: cover;
+  border-radius: 14px;
+  transition: transform 0.3s ease;
+}
+
+.mini-gallery img:hover {
   transform: scale(1.05);
 }
 
-.owner-info {
-  flex: 1;
-}
-
-.owner-info h3 {
-  font-size: 1.8rem;
-  color: var(--primary-pink);
-  margin-bottom: 8px;
-  text-align: center;
-}
-
-.owner-info > p:first-of-type {
-  text-align: center;
-  color: var(--text-light);
-  margin-bottom: 20px;
-  font-size: 1rem;
-}
-
-.owner-info > p:nth-of-type(2) {
-  color: var(--text-dark);
-  line-height: 1.7;
-  margin-bottom: 20px;
-}
-
-.owner-info strong {
-  color: var(--primary-pink);
-  display: block;
-  margin-top: 20px;
-  margin-bottom: 10px;
-  font-size: 1.1rem;
-}
-
-.owner-info ul {
-  list-style: none;
-  padding-left: 0;
-  margin-bottom: 25px;
-}
-
-.owner-info ul li {
-  padding: 8px 0;
-  padding-left: 30px;
-  position: relative;
-  color: var(--text-dark);
-  border-bottom: 1px dashed var(--border-color);
-}
-
-.owner-info ul li:last-child {
-  border-bottom: none;
-}
-
-.owner-info ul li::before {
-  content: "✓";
-  position: absolute;
-  left: 0;
-  top: 8px;
-  width: 20px;
-  height: 20px;
-  background: linear-gradient(45deg, var(--primary-pink), var(--gold));
-  color: var(--white);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  font-weight: bold;
-}
+/* =========================
+   SOCIALS
+========================= */
 
 .social-links {
   display: flex;
-  gap: 15px;
   justify-content: center;
-  margin-top: 25px;
-  padding-top: 25px;
-  border-top: 1px solid var(--border-color);
+  gap: 14px;
+  margin-top: 24px;
 }
 
 .social-links a {
-  width: 45px;
-  height: 45px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: var(--light-gray);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--primary-pink);
-  font-size: 1.2rem;
-  transition: var(--transition);
-  text-decoration: none;
+  transition: 0.3s ease;
 }
 
 .social-links a:hover {
-  background: linear-gradient(45deg, var(--primary-pink), var(--gold));
-  color: var(--white);
+  background: linear-gradient(
+    45deg,
+    var(--primary-pink),
+    var(--gold)
+  );
+  color: #fff;
   transform: translateY(-3px);
-  box-shadow: 0 5px 15px rgba(255, 105, 180, 0.3);
 }
 
-.business-info {
-  background: var(--white);
-  border-radius: var(--radius);
-  padding: 30px;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border-color);
-  position: relative;
-  overflow: hidden;
-}
-
-.business-info::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 100px;
-  height: 100px;
-  background: linear-gradient(45deg, var(--primary-pink), var(--gold));
-  border-radius: 0 0 0 100px;
-  opacity: 0.1;
-}
-
-.business-info h3 {
-  font-size: 1.8rem;
-  color: var(--primary-pink);
-  margin-bottom: 20px;
-  position: relative;
-  padding-bottom: 15px;
-}
-
-.business-info h3::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 60px;
-  height: 3px;
-  background: linear-gradient(to right, var(--primary-pink), var(--gold));
-  border-radius: 2px;
-}
-
-.business-info > p:first-of-type {
-  color: var(--text-dark);
-  line-height: 1.7;
-  margin-bottom: 25px;
-  font-size: 1.05rem;
-}
-
-.business-info strong {
-  color: var(--primary-pink);
-  display: block;
-  margin-top: 25px;
-  margin-bottom: 15px;
-  font-size: 1.1rem;
-}
-
-.business-info ul {
-  list-style: none;
-  padding-left: 0;
-}
-
-.business-info ul li {
-  padding: 10px 0;
-  padding-left: 35px;
-  position: relative;
-  color: var(--text-dark);
-  border-bottom: 1px solid var(--border-color);
-  transition: var(--transition);
-}
-
-.business-info ul li:hover {
-  padding-left: 40px;
-  color: var(--primary-pink);
-}
-
-.business-info ul li:last-child {
-  border-bottom: none;
-}
-
-.business-info ul li::before {
-  content: "✦";
-  position: absolute;
-  left: 0;
-  top: 10px;
-  color: var(--gold);
-  font-size: 1.2rem;
-  font-weight: bold;
-}
+/* =========================
+   RESPONSIVE
+========================= */
 
 @media (max-width: 992px) {
-  .about-grid {
+  .about-board {
     grid-template-columns: 1fr;
-    gap: 30px;
-  }
-
-  .owner-profile,
-  .business-info {
-    padding: 25px;
-  }
-}
-
-@media (max-width: 768px) {
-  .about-us {
-    padding: 60px 0;
-  }
-
-  .owner-photo {
-    width: 150px;
-    height: 150px;
-    margin-bottom: 20px;
-  }
-
-  .owner-info h3,
-  .business-info h3 {
-    font-size: 1.5rem;
-  }
-
-  .social-links a {
-    width: 40px;
-    height: 40px;
-    font-size: 1.1rem;
   }
 }
 
 @media (max-width: 576px) {
-  .owner-info ul li,
-  .business-info ul li {
-    padding-left: 25px;
-    font-size: 0.95rem;
+  .about-us {
+    padding: 70px 0;
   }
 
-  .owner-info ul li::before {
-    width: 18px;
-    height: 18px;
-    font-size: 0.7rem;
-  }
-
-  .business-info ul li::before {
-    font-size: 1rem;
+  .pin,
+  .tape {
+    left: 24px;
+    transform: none;
   }
 }
