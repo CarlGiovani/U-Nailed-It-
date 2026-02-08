@@ -17,8 +17,8 @@
 ========================= */
 .portfolio-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
   margin-top: 40px;
 }
 
@@ -30,11 +30,9 @@
   border-radius: var(--radius);
   overflow: hidden;
   aspect-ratio: 1 / 1;
-  max-height: 280px;
   background: #fff;
-  transition:
-    transform 0.3s ease,
-    box-shadow 0.3s ease;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .portfolio-item:hover {
@@ -45,8 +43,12 @@
 .portfolio-item img {
   width: 100%;
   height: 100%;
-  object-fit: contain; /* ✅ best for mockups */
+  object-fit: cover; /* 🔥 pinaka tama for portfolio */
   transition: transform 0.4s ease;
+}
+
+.portfolio-item:hover img {
+  transform: scale(1.05);
 }
 
 /* =========================
@@ -57,9 +59,9 @@
   inset: 0;
   display: flex;
   align-items: flex-end;
-  padding: 20px;
-  background: linear-gradient(transparent 40%, rgba(0, 0, 0, 0.75));
-  color: var(--white);
+  padding: 18px;
+  background: linear-gradient(transparent 45%, rgba(0, 0, 0, 0.75));
+  color: #fff;
   transform: translateY(100%);
   transition: transform 0.3s ease;
 }
@@ -69,7 +71,7 @@
 }
 
 .portfolio-overlay h3 {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   margin: 0;
 }
 
@@ -85,19 +87,19 @@
 }
 
 .portfolio-pagination button {
-  background: var(--white);
+  background: #fff;
   border: 1px solid var(--primary-pink);
   color: var(--primary-pink);
   padding: 10px 16px;
   border-radius: 30px;
   font-weight: 600;
   cursor: pointer;
-  transition: var(--transition);
+  transition: 0.25s ease;
 }
 
 .portfolio-pagination button:hover:not(:disabled) {
   background: var(--primary-pink);
-  color: var(--white);
+  color: #fff;
 }
 
 .portfolio-pagination button:disabled {
@@ -133,7 +135,7 @@
   width: 100%;
   max-width: 850px;
   max-height: 90vh;
-  background: var(--white);
+  background: #fff;
   border-radius: var(--radius);
   padding: 24px;
   z-index: 2;
@@ -141,20 +143,29 @@
   animation: fadeScale 0.25s ease;
 }
 
-.slider-close {
+.slider-close,
+.slider-fullscreen {
   position: absolute;
   top: 12px;
-  right: 14px;
-  font-size: 1.8rem;
   background: none;
   border: none;
   cursor: pointer;
+  font-size: 1.6rem;
   color: var(--text-dark);
 }
 
-.slider-close:hover {
+.slider-close {
+  right: 14px;
+}
+
+.slider-fullscreen {
+  left: 14px;
+}
+
+.slider-close:hover,
+.slider-fullscreen:hover {
   color: var(--primary-pink);
-  transform: scale(1.15);
+  transform: scale(1.1);
 }
 
 .slider-title {
@@ -194,11 +205,6 @@
   z-index: 10;
 }
 
-.slider-arrow:hover {
-  opacity: 1;
-  transform: translateY(-50%) scale(1.1);
-}
-
 .slider-arrow.prev {
   left: 12px;
 }
@@ -228,51 +234,31 @@
 }
 
 /* =========================
-   TABLET
+   RESPONSIVE
 ========================= */
-@media (max-width: 768px) {
-  .portfolio-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
 
-  .slider-content {
-    max-width: 95%;
-    padding: 18px;
+/* LARGE DESKTOP */
+@media (min-width: 1200px) {
+  .portfolio-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
-/* =========================
-   MOBILE – 2 COLUMNS FIX
-========================= */
+/* TABLET */
+@media (max-width: 992px) {
+  .portfolio-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* MOBILE */
 @media (max-width: 576px) {
   .portfolio {
     padding: 60px 0;
   }
 
   .portfolio-grid {
-    grid-template-columns: repeat(2, 1fr); /* ✅ 2 magkatabi */
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
-  }
-
-  .portfolio-item {
-    max-height: 160px;
-  }
-
-  .portfolio-item img {
-    max-height: 160px;
-  }
-}
-
-/* =========================
-   DISABLE HOVER ON TOUCH
-========================= */
-@media (hover: none) {
-  .portfolio-item:hover {
-    transform: none;
-    box-shadow: var(--shadow);
-  }
-
-  .portfolio-item:hover img {
-    transform: none;
   }
 }

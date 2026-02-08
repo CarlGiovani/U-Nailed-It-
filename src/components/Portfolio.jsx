@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import Slider from "react-slick";
-import { getAllPortfolio } from "../../backend/portfolioApi.js";
+import { getAllPortfolio } from "../../backend/portfolioApi";
 
-import "slick-carousel/slick/slick-theme.css";
 import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
 import "../styles/portfolio.css";
 
 import {
@@ -37,7 +37,6 @@ const Portfolio = () => {
 
   const sliderRef = useRef(null);
 
-  // pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
@@ -47,7 +46,7 @@ const Portfolio = () => {
         const data = await getAllPortfolio();
         setPortfolioItems(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error(err);
+        console.error("Failed to load portfolio", err);
       }
     };
     fetchPortfolio();
@@ -71,19 +70,12 @@ const Portfolio = () => {
     document.body.style.overflow = isSliderOpen ? "hidden" : "auto";
   }, [isSliderOpen]);
 
-  useEffect(() => {
-    const esc = (e) => e.key === "Escape" && closeSlider();
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
-  }, []);
-
   const sliderSettings = {
     dots: true,
     infinite: sliderImages.length > 1,
     speed: 400,
     slidesToShow: 1,
     slidesToScroll: 1,
-    swipe: true,
     arrows: sliderImages.length > 1,
     nextArrow: <NextArrow />,
     prevArrow: <PrevArrow />,
@@ -95,7 +87,6 @@ const Portfolio = () => {
     setTimeout(() => sliderRef.current?.slickGoTo(currentSlide), 50);
   };
 
-  // pagination logic
   const start = (currentPage - 1) * itemsPerPage;
   const currentItems = portfolioItems.slice(start, start + itemsPerPage);
   const totalPages = Math.ceil(portfolioItems.length / itemsPerPage);
@@ -115,7 +106,7 @@ const Portfolio = () => {
               className="portfolio-item"
               onClick={() => openSlider(item)}
             >
-              <img src={item.images?.[0]} alt={item.title} loading="lazy" />
+              <img src={item.images?.[0]} alt={item.title} />
               <div className="portfolio-overlay">
                 <h3>{item.title}</h3>
               </div>
@@ -153,7 +144,10 @@ const Portfolio = () => {
               <FaTimes />
             </button>
 
-            <button className="slider-fullscreen" onClick={toggleFullscreen}>
+            <button
+              className="slider-fullscreen"
+              onClick={toggleFullscreen}
+            >
               {isFullscreen ? <FaCompress /> : <FaExpand />}
             </button>
 
