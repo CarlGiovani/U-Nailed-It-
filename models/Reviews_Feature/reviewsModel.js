@@ -8,7 +8,7 @@ import supabase from "../../utils/supabaseClient.js";
 export const createReview = async ({ token, rating, comment, image_url }) => {
   if (!token) throw new Error("Review token is required");
 
-  // 1️⃣ Find booking by token
+  //Find booking by token
   const { data: booking, error } = await supabase
     .from("bookings")
     .select("id, status")
@@ -20,7 +20,7 @@ export const createReview = async ({ token, rating, comment, image_url }) => {
   if (booking.status !== "completed")
     throw new Error("You can only review a completed booking");
 
-  // 2️⃣ Prevent duplicate review
+  // Prevent duplicate review
   const { data: existing } = await supabase
     .from("reviews")
     .select("id")
@@ -29,7 +29,7 @@ export const createReview = async ({ token, rating, comment, image_url }) => {
 
   if (existing) throw new Error("This booking already has a review");
 
-  // 3️⃣ Insert review
+  //Insert review
   const { data: created, error: createErr } = await supabase
     .from("reviews")
     .insert([
@@ -49,10 +49,16 @@ export const createReview = async ({ token, rating, comment, image_url }) => {
 };
 
 /* ==========================================
-   PUBLIC: Get approved reviews (website)
+   PUBLIC: Get approved reviews (paginated)
 ========================================== */
-export const getApprovedReviews = async (params) => {
-  const { data, error } = await supabase
+export const getApprovedReviews = async ({
+  page = 1,
+  limit = 6,
+}) => {
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  const { data, error, count } = await supabase
     .from("reviews")
     .select(
       `
@@ -62,26 +68,38 @@ export const getApprovedReviews = async (params) => {
       image_url,
       created_at,
       bookings(
-        id,
-        booking_date,
-        booking_time,
-        services(id,name),
+        services(name),
         customers(full_name)
       )
-    `,
+      `,
+      { count: "exact" }
     )
     .eq("is_approved", true)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
   if (error) throw new Error(error.message);
-  return data;
+
+  return {
+    data,
+    page,
+    limit,
+    totalCount: count,
+    totalPages: Math.ceil(count / limit),
+  };
 };
 
 /* ==========================================
-    ADMIN: Get all reviews (pending + approved)
+   ADMIN: Get all reviews (paginated)
 ========================================== */
-export const getAllReviewsAdmin = async () => {
-  const { data, error } = await supabase
+export const getAllReviewsAdmin = async ({
+  page = 1,
+  limit = 10,
+}) => {
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  const { data, error, count } = await supabase
     .from("reviews")
     .select(
       `
@@ -94,12 +112,21 @@ export const getAllReviewsAdmin = async () => {
         services(id,name),
         customers(id,full_name,email)
       )
-    `,
+      `,
+      { count: "exact" }
     )
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
   if (error) throw new Error(error.message);
-  return data;
+
+  return {
+    data,
+    page,
+    limit,
+    totalCount: count,
+    totalPages: Math.ceil(count / limit),
+  };
 };
 
 /* ==========================================

@@ -15,6 +15,7 @@ import paymentRouter from "./routes/Payment_Feature/paymentRoutes.js";
 import testEmailRoutes from "./routes/testEmail.js"
 import portfolioRoutes from "./routes/portfolio_Feature/portfolioRoutes.js";  
 import reviewsRoutes from "./routes/Review_Feature/reviewsRoutes.js"
+import policiesRoutes from "./routes/Policies_Feature/policiesRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -34,6 +35,7 @@ app.use("/api/payments", paymentRouter);
 app.use("/api/test-email", testEmailRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/reviews", reviewsRoutes);
+app.use("/api/policies" , policiesRoutes);
 
 
 // db or supabaseclienr

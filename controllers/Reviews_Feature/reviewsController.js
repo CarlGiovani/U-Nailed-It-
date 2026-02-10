@@ -10,7 +10,7 @@ import {
 
 export const createReview = async (req, res) => {
   try {
-    // ✅ galing sa body, hindi function args
+    // galing sa body, hindi function args
     const { token, rating, comment, image_url } = req.body;
 
     // normalize
@@ -21,7 +21,7 @@ export const createReview = async (req, res) => {
       image_url: image_url ?? null,
     };
 
-    // ✅ Joi validation
+    // Joi validation
     const errors = validate(createReviewSchema, payload);
     if (errors) {
       return res.status(400).json({
@@ -30,7 +30,7 @@ export const createReview = async (req, res) => {
       });
     }
 
-    // ✅ DELEGATE TO MODEL (important!)
+    // DELEGATE TO MODEL (important!)
     const data = await review.createReview(payload);
 
     return res.status(201).json(data);
@@ -40,17 +40,24 @@ export const createReview = async (req, res) => {
     });
   }
 };
+
+
 /* ==========================================
-   PUBLIC: GET /api/reviews (approved only)
+   PUBLIC: GET /api/reviews (paginated)
 ========================================== */
 export const getApprovedReviews = async (req, res) => {
   try {
-    const data = await review.getApprovedReviews();
-    res.json(data);
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 6;
+
+    const result = await review.getApprovedReviews({ page, limit });
+
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 /* ==========================================
    PUBLIC: Verify review token
@@ -67,16 +74,21 @@ export const verifyReviewToken = async (req, res) => {
 };
 
 /* ==========================================
-   ADMIN: GET /api/reviews/admin
+   ADMIN: GET /api/reviews/admin (paginated)
 ========================================== */
 export const getAllReviewsAdmin = async (req, res) => {
   try {
-    const data = await review.getAllReviewsAdmin();
-    res.json(data);
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+
+    const result = await review.getAllReviewsAdmin({ page, limit });
+
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 /* ==========================================
    ADMIN: PATCH /api/reviews/:id/approve
