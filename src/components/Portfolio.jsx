@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import Slider from "react-slick";
 import { getAllPortfolio } from "../../backend/portfolioApi";
 
-import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
+import "slick-carousel/slick/slick.css";
 import "../styles/portfolio.css";
 
 import {
@@ -144,10 +144,7 @@ const Portfolio = () => {
               <FaTimes />
             </button>
 
-            <button
-              className="slider-fullscreen"
-              onClick={toggleFullscreen}
-            >
+            <button className="slider-fullscreen" onClick={toggleFullscreen}>
               {isFullscreen ? <FaCompress /> : <FaExpand />}
             </button>
 

@@ -1,0 +1,149 @@
+/* =========================
+   POLICIES SECTION
+========================= */
+.policies {
+  padding: 80px 0;
+  background: linear-gradient(135deg, var(--pale-pink), var(--white));
+}
+
+.loading-text {
+  text-align: center;
+  margin-top: 40px;
+}
+
+/* =========================
+   TIMELINE WRAPPER
+========================= */
+.policies-timeline {
+  position: relative;
+  margin-top: 60px;
+}
+
+/* Vertical center line */
+.policies-timeline::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--light-pink);
+  transform: translateX(-50%);
+}
+
+/* =========================
+   TIMELINE ITEM
+========================= */
+.timeline-item {
+  position: relative;
+  width: 50%;
+  padding: 20px 40px;
+}
+
+.timeline-item.left {
+  left: 0;
+  text-align: right;
+}
+
+.timeline-item.right {
+  left: 50%;
+  text-align: left;
+}
+
+/* =========================
+   DOT
+========================= */
+.timeline-dot {
+  position: absolute;
+  top: 35px;
+  width: 18px;
+  height: 18px;
+  background: var(--primary-pink);
+  border-radius: 50%;
+  z-index: 2;
+}
+
+/* dot positioning */
+.timeline-item.left .timeline-dot {
+  right: -9px;
+}
+
+.timeline-item.right .timeline-dot {
+  left: -9px;
+}
+
+/* =========================
+   CARD
+========================= */
+.policy-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+  transition: 0.3s ease;
+  position: relative;
+}
+
+.policy-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 25px 55px rgba(255, 105, 180, 0.25);
+}
+
+/* =========================
+   TITLE
+========================= */
+.policy-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--primary-pink);
+}
+
+/* =========================
+   CONTENT
+========================= */
+.policy-content {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #444;
+}
+
+/* =========================
+   RESPONSIVE (Mobile View)
+========================= */
+@media (max-width: 768px) {
+  .policies-timeline::before {
+    left: 20px;
+  }
+
+  .timeline-item {
+    width: 100%;
+    padding-left: 60px;
+    padding-right: 20px;
+    text-align: left !important;
+  }
+
+  .timeline-item.right {
+    left: 0;
+  }
+
+  .timeline-dot {
+    left: 12px !important;
+    right: auto;
+  }
+}
+
+/* =========================
+   SCROLL REVEAL ANIMATION
+========================= */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(60px);
+  transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.reveal.show {
+  opacity: 1;
+  transform: translateY(0);
+}
