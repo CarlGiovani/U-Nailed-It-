@@ -10,7 +10,7 @@ export const fetchtActivePolicies = async (params) => {
     .eq("is_active", true)
     .order("created_at", { ascending: true });
 
-  if (error) throw new Error();
+  if (error) throw new Error(error.message);
   return data;
 };
 
@@ -56,7 +56,7 @@ export const updatePolicyById = async (id, payload) => {
     .select()
     .single();
 
-  if (error) throw new Error();
+  if (error) throw new Error(error.message);
   return data;
 };
 
@@ -66,5 +66,5 @@ export const updatePolicyById = async (id, payload) => {
 export const deletePolicyById = async (id) => {
   const { data, error } = await supabase.from("policies").delete().eq("id", id);
 
-  if (error) throw new error();
+  if (error) throw new Error(error.message);
 };
