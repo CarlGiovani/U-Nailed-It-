@@ -2,20 +2,21 @@ import { createClient } from "@supabase/supabase-js";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
-import { scheduleSlotCleanup } from "./utils/slotCron.js";
 import { scheduleBookingExpiry } from "./utils/bookingExpiryCron.js";
+import { scheduleSlotCleanup } from "./utils/slotCron.js";
 
 //ENDPOINTS IMPORT
+import announcementRoutes from "./routes/Announcement_Feature/announcementRoutes.js";
 import authRoutes from "./routes/Authentication_Feature/authRoutes.js";
 import bookingRouter from "./routes/Booking_Feature/bookingRoutes.js";
 import calendarRoutes from "./routes/Calendar_Feature/calendarRoutes.js";
 import customerRouter from "./routes/Customer_Feature/customerRoutes.js";
-import servicesRouter from "./routes/Services_Feature/serviceRoutes.js";
 import paymentRouter from "./routes/Payment_Feature/paymentRoutes.js";
-import testEmailRoutes from "./routes/testEmail.js"
-import portfolioRoutes from "./routes/portfolio_Feature/portfolioRoutes.js";  
-import reviewsRoutes from "./routes/Review_Feature/reviewsRoutes.js"
 import policiesRoutes from "./routes/Policies_Feature/policiesRoutes.js";
+import portfolioRoutes from "./routes/portfolio_Feature/portfolioRoutes.js";
+import reviewsRoutes from "./routes/Review_Feature/reviewsRoutes.js";
+import servicesRouter from "./routes/Services_Feature/serviceRoutes.js";
+import testEmailRoutes from "./routes/testEmail.js";
 dotenv.config();
 
 const app = express();
@@ -35,15 +36,14 @@ app.use("/api/payments", paymentRouter);
 app.use("/api/test-email", testEmailRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/reviews", reviewsRoutes);
-app.use("/api/policies" , policiesRoutes);
-
+app.use("/api/policies", policiesRoutes);
+app.use("/api/announcements", announcementRoutes);
 
 // db or supabaseclienr
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
+  process.env.SUPABASE_KEY,
 );
-
 
 // start cron job
 scheduleSlotCleanup();
