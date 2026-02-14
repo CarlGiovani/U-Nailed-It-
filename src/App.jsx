@@ -1,7 +1,6 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import AboutUs from "./components/AboutUs";
 import Booking from "./components/Booking";
-import CheckBooking from "./components/CheckBooking";
 import Footer from "./components/Footer";
 import Header from "./components/header";
 import Hero from "./components/hero";
@@ -9,7 +8,6 @@ import Policies from "./components/Policies";
 import Portfolio from "./components/Portfolio";
 import Promos from "./components/Promos";
 import Reviews from "./components/Reviews";
-import Services from "./components/Services";
 
 import ReviewPage from "./components/ReviewPage";
 
@@ -49,7 +47,6 @@ function App() {
                 <Promos />
                 <Booking services={services} />
                 <Reviews />
-                <CheckBooking />
               </main>
               <Footer />
             </div>

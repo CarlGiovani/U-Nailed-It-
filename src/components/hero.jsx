@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import logo from "../assets/images/logo.png";
 
 const Hero = () => {
   const heroRef = useRef(null);
@@ -27,6 +28,11 @@ const Hero = () => {
       <div className="glitter glitter-1 sparkle" />
       <div className="glitter glitter-2 sparkle" />
       <div className="glitter glitter-3 sparkle" />
+
+      {/* LOGO FLOATING */}
+      <div className="hero-logo animate-logo">
+        <img src={logo} alt="UNAiledIt Logo" />
+      </div>
 
       <div className="container hero-inner">
         <div className="hero-text">

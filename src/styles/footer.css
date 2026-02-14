@@ -124,7 +124,7 @@ footer {
     grid-template-columns: 1fr;
     gap: 30px;
   }
-  
+
   footer {
     padding: 50px 0 25px;
   }
@@ -134,15 +134,15 @@ footer {
   .footer-content {
     text-align: center;
   }
-  
+
   .footer-contact p {
     justify-content: center;
   }
-  
+
   .social-icons {
     justify-content: center;
   }
-  
+
   .copyright {
     font-size: 0.8rem;
   }

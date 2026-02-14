@@ -2755,14 +2755,6 @@ const Booking = () => {
               >
                 Clear Selected File
               </button>
-              ✅ 3 Optional: Clear selected file after successful upload Sa try
-              success part ng handlePaymentUpload, add:
-              setSelectedProofFile(null); ✅ 4 Confirm Booking button logic
-              stays the same Yung confirm button mo okay na, since it requires:
-              paymentProofUploaded paymentIntentId bookingId If gusto mo, pwede
-              ko rin i-adjust yung UX: after successful upload, automatic balik
-              sa Review (Step 4) or stay sa Payment step—sabihin mo lang kung
-              anong trip mo.
             </div>
 
             <div className="upload-tips premium">

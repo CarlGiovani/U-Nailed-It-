@@ -1,5 +1,5 @@
 /* =========================
-   HERO BASE (YOUR THEME)
+   HERO BASE
 ========================= */
 
 .hero {
@@ -24,16 +24,90 @@
   background-position: center right;
 }
 
+/* Bottom blend */
+.hero::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 260px;
+
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 245, 250, 0),
+    rgba(255, 240, 245, 0.6),
+    rgba(255, 240, 245, 1)
+  );
+
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Soft dark blend */
 .hero::after {
   content: "";
   position: absolute;
   inset: 0;
   background: linear-gradient(to left, rgba(0, 0, 0, 0.06), transparent 40%);
   pointer-events: none;
+  z-index: 0;
 }
 
 /* =========================
-   INNER LAYOUT (RILEY STYLE)
+   HERO LOGO WATERMARK
+========================= */
+.hero-logo {
+  position: absolute;
+  top: 22%;
+  right: 6%;
+  z-index: 3;
+
+  opacity: 1; /* FULLY VISIBLE */
+  animation: floatLogo 6s ease-in-out infinite;
+}
+
+.hero-logo img {
+  width: 320px; /* PALAKI */
+  height: auto;
+
+  filter: drop-shadow(0 20px 50px rgba(255, 105, 180, 0.35))
+    drop-shadow(0 10px 25px rgba(255, 215, 0, 0.25));
+}
+
+@keyframes glowPulse {
+  0% {
+    filter: drop-shadow(0 20px 50px rgba(255, 105, 180, 0.35))
+      drop-shadow(0 10px 25px rgba(255, 215, 0, 0.25));
+  }
+
+  50% {
+    filter: drop-shadow(0 25px 60px rgba(255, 105, 180, 0.6))
+      drop-shadow(0 15px 35px rgba(255, 215, 0, 0.45));
+  }
+
+  100% {
+    filter: drop-shadow(0 20px 50px rgba(255, 105, 180, 0.35))
+      drop-shadow(0 10px 25px rgba(255, 215, 0, 0.25));
+  }
+}
+
+
+/* Floating animation */
+@keyframes floatLogo {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-18px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+/* =========================
+   INNER CONTENT
 ========================= */
 
 .hero-inner {
@@ -42,36 +116,37 @@
 }
 
 .hero-text {
-  max-width: 540px;
+  max-width: 560px;
 }
 
 /* =========================
-   TEXT (LUXURY NAIL THEME)
+   HERO TEXT
 ========================= */
 
 .hero-text h1 {
-  font-size: 3.4rem;
-  font-weight: 800;
-  line-height: 1.15;
-  margin-bottom: 20px;
+  font-size: 3.6rem;
+  font-weight: 900;
+  line-height: 1.1;
+  margin-bottom: 22px;
   color: #1b1b1b;
+  letter-spacing: -1px;
 }
 
 .hero-text p {
   font-size: 1.1rem;
   line-height: 1.8;
   color: rgba(0, 0, 0, 0.75);
-  margin-bottom: 34px;
+  margin-bottom: 36px;
 }
 
 /* =========================
-   BUTTON (YOUR GRADIENT)
+   BUTTON
 ========================= */
 
 .hero-btn {
   border: none;
   cursor: pointer;
-  padding: 14px 34px;
+  padding: 14px 36px;
   border-radius: 999px;
   font-size: 0.95rem;
   font-weight: 700;
@@ -79,111 +154,17 @@
 
   background: linear-gradient(to right, var(--primary-pink), var(--gold));
 
-  box-shadow: 0 10px 28px rgba(255, 182, 193, 0.45);
-  transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease;
+  box-shadow: 0 12px 30px rgba(255, 182, 193, 0.45);
+  transition: all 0.25s ease;
 }
 
 .hero-btn:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: 0 18px 45px rgba(255, 182, 193, 0.6);
 }
 
 /* =========================
-   DECORATIVE ELEMENTS
-========================= */
-
-/* SUN (GOLD TONE) */
-.hero-sun {
-  position: absolute;
-  right: 14%;
-  top: 18%;
-  width: 170px;
-  height: 170px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #ffd27d, #f4b942);
-  box-shadow:
-    0 0 0 30px rgba(244, 185, 66, 0.25),
-    0 0 0 70px rgba(244, 185, 66, 0.15);
-}
-
-/* CLOUDS */
-.hero-cloud {
-  position: absolute;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 999px;
-}
-
-.cloud-1 {
-  width: 320px;
-  height: 120px;
-  left: 6%;
-  top: 55%;
-}
-
-.cloud-2 {
-  width: 220px;
-  height: 90px;
-  right: 18%;
-  bottom: 20%;
-}
-
-/* SPARKLES (PINK ACCENT) */
-.hero-sparkle {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  background: var(--primary-pink);
-  transform: rotate(45deg);
-  border-radius: 2px;
-  opacity: 0.75;
-}
-
-.sparkle-1 {
-  top: 32%;
-  left: 42%;
-}
-
-.sparkle-2 {
-  top: 68%;
-  right: 36%;
-}
-
-/* =========================
-   RESPONSIVE
-========================= */
-@media (max-width: 576px) {
-  .hero {
-    min-height: auto;
-    padding: 120px 0 100px;
-
-    background:
-      linear-gradient(rgba(255, 245, 250, 0.85), rgba(255, 245, 250, 0.85)),
-      url("../assets/background.jpg") no-repeat;
-
-    background-size: cover;
-    background-position: center top;
-  }
-
-  /* remove vignette on mobile */
-  .hero::after {
-    display: none;
-  }
-}
-
-.glitter {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  background: var(--gold);
-  border-radius: 50%;
-  opacity: 0.6;
-}
-
-
-/* =========================
-   HERO ENTRANCE
+   HERO ENTRANCE ANIMATION
 ========================= */
 
 .hero-reveal {
@@ -207,9 +188,15 @@
   animation: fadeUp 1s forwards;
 }
 
-.delay-1 { animation-delay: 0.2s; }
-.delay-2 { animation-delay: 0.4s; }
-.delay-3 { animation-delay: 0.6s; }
+.delay-1 {
+  animation-delay: 0.2s;
+}
+.delay-2 {
+  animation-delay: 0.4s;
+}
+.delay-3 {
+  animation-delay: 0.6s;
+}
 
 @keyframes fadeUp {
   to {
@@ -231,9 +218,15 @@
 }
 
 @keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-12px); }
-  100% { transform: translateY(0px); }
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
 }
 
 /* =========================
@@ -245,7 +238,37 @@
 }
 
 @keyframes sparkle {
-  0% { opacity: 0.5; }
-  50% { opacity: 1; }
-  100% { opacity: 0.5; }
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 768px) {
+  .hero {
+    padding: 120px 0 100px;
+    min-height: auto;
+    background-position: center;
+  }
+
+  .hero-logo {
+    display: none;
+  }
+
+  .hero-text h1 {
+    font-size: 2.5rem;
+  }
+
+  .hero-text p {
+    font-size: 1rem;
+  }
 }
