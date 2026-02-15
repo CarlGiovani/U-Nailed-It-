@@ -1,0 +1,14 @@
+:root {
+  --gold: #d4af37;
+  --pink: #f8c8dc;
+  --dark-gold: #b8962e;
+  --light-bg: #fff8f2;
+  --text-dark: #2c2c2c;
+}
+
+body {
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+  background-color: var(--light-bg);
+  color: var(--text-dark);
+}
