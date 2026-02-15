@@ -20,10 +20,10 @@ export const getAllServices = async () => {
       )
     `,
     )
+    .eq("is_active", true)
     .order("name", { ascending: true });
 
   if (error) throw new Error(error.message);
-
   return data;
 };
 
@@ -52,6 +52,42 @@ export const getServiceById = async (id) => {
 
   if (error) throw new Error(error.message);
 
+  return data;
+};
+
+// ADMIN : Admin service fetch
+// ADMIN: get all services (including inactive)
+export const getAllServicesAdmin = async () => {
+  const { data, error } = await supabase
+    .from("services")
+    .select(
+      `
+      id,
+      name,
+      description,
+      duration,
+      image_url,
+      is_active,
+      created_at,
+      updated_at,
+      service_categories (
+        id,
+        name,
+        is_active,
+        service_variants (
+          id,
+          body_part,
+          size,
+          price,
+          downpayment,
+          is_active
+        )
+      )
+    `,
+    )
+    .order("name", { ascending: true });
+
+  if (error) throw new Error(error.message);
   return data;
 };
 

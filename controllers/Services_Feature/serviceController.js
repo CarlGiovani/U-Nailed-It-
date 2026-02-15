@@ -1,5 +1,10 @@
 import * as Services from "../../models/Services_Feature/serviceModel.js";
-import { serviceSchema, categorySchema, variantSchema, validate } from "../../utils/validators/serviceValidation.js";
+import {
+  categorySchema,
+  serviceSchema,
+  validate,
+  variantSchema,
+} from "../../utils/validators/serviceValidation.js";
 
 // GET all services
 export const getServices = async (req, res) => {
@@ -18,6 +23,16 @@ export const getService = async (req, res) => {
     const service = await Services.getServiceById(id); // nested categories & active variants fetched
     if (!service) return res.status(404).json({ error: "Service not found" });
     res.json(service);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ADMIN GET SERVICE
+export const getServicesAdmin = async (req, res) => {
+  try {
+    const services = await Services.getAllServicesAdmin();
+    res.json(services);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -101,12 +116,12 @@ export const updateCategory = async (req, res) => {
   const errors = validate(categorySchema, req.body);
   if (errors) return res.status(400).json({ errors });
 
-  const { id } = req.params;  
+  const { id } = req.params;
   const { name } = req.body;
 
   try {
     const category = await Services.updateCategory(id, name);
-    res.json({ message: "category updated!!", category });  
+    res.json({ message: "category updated!!", category });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -119,7 +134,7 @@ export const deleteCategory = async (req, res) => {
     const category = await Services.deleteCategory(id); // soft delete now
     res.json({ message: "category deactivated!", category });
   } catch (error) {
-    res.status(500).json({ error: error.message });  
+    res.status(500).json({ error: error.message });
   }
 };
 
