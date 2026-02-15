@@ -1,10 +1,10 @@
 import { useState } from "react";
-// import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import "../../styles/AdminLogin.css";
 import { adminAuthLogin } from "../../services/BACKEND/adminAuthApi";
 
 const AdminLogin = () => {
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const [form, setForm] = useState({
     email: "",
@@ -36,7 +36,7 @@ const AdminLogin = () => {
       alert("Login successful!");
 
       // comment muna navigation since wala pa dashboard
-      // navigate("/dashboard");
+      navigate("/dashboard");
 
       
     } catch (err) {
