@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { FaBell, FaMoon, FaSun, FaUserCircle } from "react-icons/fa";
+import { FaBars, FaBell, FaMoon, FaSun, FaUserCircle } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
-const Topbar = () => {
+const Topbar = ({ setMobileOpen }) => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(
@@ -57,6 +57,11 @@ const Topbar = () => {
   return (
     <div className="topbar">
       <div className="topbar-left">
+        {/* MOBILE HAMBURGER */}
+        <button className="mobile-menu-btn" onClick={() => setMobileOpen(true)}>
+          <FaBars />
+        </button>
+
         <h3>Admin Panel</h3>
       </div>
 

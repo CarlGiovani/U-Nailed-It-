@@ -13,28 +13,43 @@ import {
 import { NavLink, useNavigate } from "react-router-dom";
 import "./Layout.css";
 
-const Sidebar = () => {
+const Sidebar = ({ mobileOpen, setMobileOpen }) => {
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const navigate = useNavigate();
 
+  /* =========================
+     DETECT SCREEN SIZE
+  ========================== */
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+
+      if (mobile) {
+        setCollapsed(false); // 🚀 disable collapse on mobile
+      } else {
+        setMobileOpen(false);
+      }
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [setMobileOpen]);
+
+  /* =========================
+     LOGOUT
+  ========================== */
   const handleLogout = () => {
     localStorage.removeItem("admin_session");
     localStorage.removeItem("admin_user");
     navigate("/");
   };
 
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > 768) {
-        setMobileOpen(false);
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
+  /* =========================
+     NAV ITEM
+  ========================== */
   const navItem = (to, icon, label) => (
     <NavLink
       to={to}
@@ -44,36 +59,32 @@ const Sidebar = () => {
       onClick={() => setMobileOpen(false)}
     >
       {icon}
-      {!collapsed && <span>{label}</span>}
+      {(!collapsed || isMobile) && <span>{label}</span>}
     </NavLink>
   );
 
   return (
     <>
-      {mobileOpen && (
+      {/* Overlay (Mobile Only) */}
+      {mobileOpen && isMobile && (
         <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />
       )}
 
       <div
-        className={`sidebar ${collapsed ? "collapsed" : ""} ${
+        className={`sidebar ${collapsed && !isMobile ? "collapsed" : ""} ${
           mobileOpen ? "open" : ""
         }`}
       >
         <div className="sidebar-header">
-          <h2 className="logo">{collapsed ? "U" : "UNAILEDIT"}</h2>
+          <h2 className="logo">{collapsed && !isMobile ? "U" : "UNAILEDIT"}</h2>
 
-          <div className="sidebar-controls">
+          {/* Collapse only on desktop */}
+          {!isMobile && (
             <FaBars
               className="collapse-btn"
-              onClick={() => {
-                if (window.innerWidth <= 768) {
-                  setMobileOpen(!mobileOpen);
-                } else {
-                  setCollapsed(!collapsed);
-                }
-              }}
+              onClick={() => setCollapsed(!collapsed)}
             />
-          </div>
+          )}
         </div>
 
         <nav>
@@ -88,7 +99,7 @@ const Sidebar = () => {
 
         <div className="logout-btn" onClick={handleLogout}>
           <FaSignOutAlt />
-          {!collapsed && <span>Logout</span>}
+          {(!collapsed || isMobile) && <span>Logout</span>}
         </div>
       </div>
     </>

@@ -1,14 +1,106 @@
+/* ======================================================
+   ROOT VARIABLES
+====================================================== */
+
 :root {
   --gold: #d4af37;
   --pink: #f8c8dc;
   --dark-gold: #b8962e;
   --light-bg: #fff8f2;
   --text-dark: #2c2c2c;
+
+  /* Responsive Typography */
+  --font-xs: 12px;
+  --font-sm: 14px;
+  --font-md: 16px;
+  --font-lg: 18px;
+  --font-xl: 22px;
+  --font-xxl: 28px;
+
+  /* Responsive Spacing */
+  --space-sm: 10px;
+  --space-md: 20px;
+  --space-lg: 30px;
 }
+
+/* ======================================================
+   GLOBAL RESET
+====================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ======================================================
+   BODY
+====================================================== */
 
 body {
   margin: 0;
   font-family: "Poppins", sans-serif;
   background-color: var(--light-bg);
   color: var(--text-dark);
+
+  font-size: var(--font-md);
+  line-height: 1.6;
+
+  min-height: 100vh;
+  overflow-x: hidden; /* Prevent horizontal scroll */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ======================================================
+   RESPONSIVE TYPOGRAPHY
+====================================================== */
+
+h1 {
+  font-size: var(--font-xxl);
+}
+
+h2 {
+  font-size: var(--font-xl);
+}
+
+h3 {
+  font-size: var(--font-lg);
+}
+
+p {
+  font-size: var(--font-md);
+}
+
+/* ======================================================
+   RESPONSIVE BREAKPOINTS
+====================================================== */
+
+@media (max-width: 1024px) {
+  :root {
+    --font-xxl: 24px;
+    --font-xl: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --font-md: 15px;
+    --font-lg: 17px;
+    --font-xl: 19px;
+    --font-xxl: 22px;
+  }
+
+  body {
+    line-height: 1.5;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --font-md: 14px;
+    --font-lg: 16px;
+    --font-xl: 18px;
+    --font-xxl: 20px;
+  }
 }
