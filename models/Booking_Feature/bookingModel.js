@@ -1,10 +1,10 @@
+import crypto from "crypto";
 import supabase from "../../utils/supabaseClient.js";
 import {
   blockSlotGlobally,
   unblockSlotGlobally,
 } from "../Calendar_Feature/calendarModel.js";
 import { getOrCreateCustomer } from "../Customer_Feature/customerModel.js";
-import crypto from "crypto";
 
 /* ==========================================
    HELPER: filter selected variant ONLY
@@ -44,8 +44,6 @@ const safeUnblockGlobalIfNoActiveBooking = async (date, time) => {
     await unblockSlotGlobally(date, time);
   }
 };
-
-
 
 /* ==========================================
    STEP 1: Create booking (pending_payment)
@@ -98,7 +96,7 @@ export const createBookingWithCustomer = async (bookingData) => {
           )
         )
       )
-    `
+    `,
     )
     .eq("customer_id", customer.id)
     .eq("service_id", service_id)
@@ -118,12 +116,15 @@ export const createBookingWithCustomer = async (bookingData) => {
 
     // keep only selected variant in response
     if (service_category_id && service_variant_id && existing.services) {
-      existing.services.service_categories = existing.services.service_categories
-        .filter((cat) => cat.id === service_category_id)
-        .map((cat) => {
-          cat.service_variants = cat.service_variants.filter((v) => v.id === service_variant_id);
-          return cat;
-        });
+      existing.services.service_categories =
+        existing.services.service_categories
+          .filter((cat) => cat.id === service_category_id)
+          .map((cat) => {
+            cat.service_variants = cat.service_variants.filter(
+              (v) => v.id === service_variant_id,
+            );
+            return cat;
+          });
     } else {
       filterSelectedVariant(existing);
     }
@@ -169,7 +170,7 @@ export const createBookingWithCustomer = async (bookingData) => {
           )
         )
       )
-    `
+    `,
     )
     .single();
 
@@ -179,7 +180,9 @@ export const createBookingWithCustomer = async (bookingData) => {
     booking.services.service_categories = booking.services.service_categories
       .filter((cat) => cat.id === service_category_id)
       .map((cat) => {
-        cat.service_variants = cat.service_variants.filter((v) => v.id === service_variant_id);
+        cat.service_variants = cat.service_variants.filter(
+          (v) => v.id === service_variant_id,
+        );
         return cat;
       });
   } else {
@@ -188,8 +191,6 @@ export const createBookingWithCustomer = async (bookingData) => {
 
   return booking;
 };
-
-
 
 /* ==========================================
    STEP 3: Confirm booking using payment_intent
@@ -208,7 +209,8 @@ export const createBookingWithPaymentIntent = async (intentId) => {
     .maybeSingle();
 
   if (intentErr) throw new Error(intentErr.message);
-  if (!intent) throw new Error("Payment intent not found or already used/expired");
+  if (!intent)
+    throw new Error("Payment intent not found or already used/expired");
 
   // 2) expiry check
   if (new Date(intent.expires_at).getTime() < Date.now()) {
@@ -281,7 +283,10 @@ export const createBookingWithPaymentIntent = async (intentId) => {
       .eq("id", lockedSlot.id);
 
     // rollback global only if no other active booking exists
-    await safeUnblockGlobalIfNoActiveBooking(intent.booking_date, intent.booking_time);
+    await safeUnblockGlobalIfNoActiveBooking(
+      intent.booking_date,
+      intent.booking_time,
+    );
 
     throw err;
   }
@@ -291,36 +296,68 @@ export const createBookingWithPaymentIntent = async (intentId) => {
    ADMIN: get all bookings
    NOTE: optional filtering per row to show only chosen variant
 ========================================== */
-export const getAllBookings = async () => {
-  const { data, error } = await supabase
+export const getAllBookings = async ({
+  page = 1,
+  limit = 10,
+  search = "",
+  status = "",
+  sortBy = "created_at",
+  order = "desc",
+}) => {
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  let query = supabase
     .from("bookings")
     .select(
       `
       *,
       services(
-        *,
+        id,
+        name
+      ),
+      customers(
+        id,
+        full_name,
+        email,
+        phone,
+        facebook_link
+      ),
+      service_variants(
+        id,
+        body_part,
+        size,
+        price,
+        downpayment,
         service_categories(
           id,
-          name,
-          service_variants(
-            id,
-            body_part,
-            size,
-            price,
-            downpayment,
-            is_active
-          )
+          name
         )
-      ),
-      customers(full_name,email)
-    `,
+      )
+      `,
+      { count: "exact" }, // ✅ IMPORTANT
     )
-    .order("created_at", { ascending: false });
+    .range(from, to)
+    .order(sortBy, { ascending: order === "asc" });
+
+  if (status && status !== "all") {
+    query = query.eq("status", status);
+  }
+
+  if (search) {
+    query = query.or(
+      `customers.full_name.ilike.%${search}%,customers.email.ilike.%${search}%`,
+    );
+  }
+
+  const { data, error, count } = await query;
 
   if (error) throw new Error(error.message);
 
-  // Optional: keep only selected variant in list (remove if admin wants to see all)
-  return (data || []).map((b) => filterSelectedVariant(b));
+  return {
+    data,
+    total: count,
+  };
 };
 
 /* ==========================================
@@ -411,7 +448,10 @@ export const rejectBooking = async (id) => {
     .eq("time", updated.booking_time);
 
   // SAFE UNBLOCK GLOBAL (if no other active booking)
-  await safeUnblockGlobalIfNoActiveBooking(updated.booking_date, updated.booking_time);
+  await safeUnblockGlobalIfNoActiveBooking(
+    updated.booking_date,
+    updated.booking_time,
+  );
 
   // (rest stays the same)
   const { data, error: fetchError } = await supabase
@@ -435,7 +475,7 @@ export const rejectBooking = async (id) => {
         )
       ),
       customers(full_name, email)
-    `
+    `,
     )
     .eq("id", id)
     .single();
@@ -489,11 +529,13 @@ export const cancelBooking = async (id) => {
     .eq("time", booking.booking_time);
 
   // 2) SAFE UNBLOCK GLOBAL
-  await safeUnblockGlobalIfNoActiveBooking(booking.booking_date, booking.booking_time);
+  await safeUnblockGlobalIfNoActiveBooking(
+    booking.booking_date,
+    booking.booking_time,
+  );
 
   return data;
 };
-
 
 /* ==========================================
    PUBLIC: Get booking details by ID (Review page)
@@ -552,7 +594,8 @@ export const confirmBookingForBookingId = async (bookingId, intentId) => {
 
   if (intentErr) throw new Error(intentErr.message);
   if (!intent) throw new Error("Payment intent not found");
-  if (intent.status !== "pending") throw new Error("Payment intent is not pending");
+  if (intent.status !== "pending")
+    throw new Error("Payment intent is not pending");
 
   // 2) SECURITY: ensure this intent is for THIS booking
   if (Number(intent.booking_id) !== bookingIdNum) {
@@ -565,9 +608,6 @@ export const confirmBookingForBookingId = async (bookingId, intentId) => {
   // 4) return full booking (filtered)
   return await getBookingById(updatedBooking.id);
 };
-
-
-
 
 /* ==========================================
    ADMIN: complete booking
@@ -620,7 +660,7 @@ export const completeBooking = async (id) => {
         )
       ),
       customers(full_name,email)
-    `
+    `,
     )
     .eq("id", bookingId)
     .single();

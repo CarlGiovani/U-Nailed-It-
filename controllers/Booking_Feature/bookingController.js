@@ -91,8 +91,25 @@ export const confirmBooking = async (req, res) => {
 ========================================== */
 export const getAllBookings = async (req, res) => {
   try {
-    const bookings = await booking.getAllBookings();
-    res.json(bookings);
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      status = "",
+      sortBy = "created_at",
+      order = "desc",
+    } = req.query;
+
+    const result = await booking.getAllBookings({
+      page: Number(page),
+      limit: Number(limit),
+      search,
+      status,
+      sortBy,
+      order,
+    });
+
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
