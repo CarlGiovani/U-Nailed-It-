@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import AdminLogin from "./pages/auth/AdminLogin";
+import Bookings from "./pages/bookings/bookings.jsx";
 import Dashboard from "./pages/dashboard/Dashboard";
 import AdminProtectedRoute from "./routes/adminProtectedRoute.jsx";
 
@@ -13,7 +14,16 @@ function App() {
           path="/dashboard"
           element={
             <AdminProtectedRoute>
-               <Dashboard /> 
+              <Dashboard />
+            </AdminProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/bookings"
+          element={
+            <AdminProtectedRoute>
+              <Bookings />
             </AdminProtectedRoute>
           }
         />

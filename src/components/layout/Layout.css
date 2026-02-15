@@ -271,3 +271,448 @@ body.dark .sidebar {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==============================
+   ADMIN TABLE
+============================== */
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 12px 15px;
+  text-align: left;
+}
+
+.admin-table thead {
+  background: #f5f5f5;
+}
+
+.admin-table tr {
+  border-bottom: 1px solid #eee;
+}
+
+.admin-table tr:hover {
+  background: #fafafa;
+}
+
+.admin-table button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #d4af37;
+  color: white;
+  font-size: 12px;
+}
+
+.admin-table button:hover {
+  opacity: 0.9;
+}
+
+/* =========================================
+   PAGE BACKGROUND
+========================================= */
+body {
+  background: linear-gradient(135deg, #fff0f5, #ffe6f0);
+}
+
+/* =========================================
+   BOOKING FILTERS
+========================================= */
+.booking-filters {
+  display: flex;
+  gap: 15px;
+  margin: 20px 0 30px;
+  flex-wrap: wrap;
+}
+
+.booking-filters input,
+.booking-filters select {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #f5c6d6;
+  background: white;
+  outline: none;
+  transition: 0.3s;
+  font-size: 14px;
+}
+
+.booking-filters input:focus,
+.booking-filters select:focus {
+  border-color: #d4af37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+}
+
+/* =========================================
+   PREMIUM TABLE
+========================================= */
+.premium-table {
+  background: white;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.05);
+}
+
+.premium-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.premium-table thead {
+  background: linear-gradient(90deg, #ffd9e6, #ffe6f0);
+}
+
+.premium-table th {
+  padding: 16px;
+  text-align: left;
+  color: #b88a2a;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.premium-table td {
+  padding: 14px 16px;
+  border-top: 1px solid #f9e5ec;
+  font-size: 14px;
+  color: #555;
+}
+
+.premium-table tr:hover {
+  background: #fff6fa;
+}
+
+.clickable {
+  cursor: pointer;
+  font-weight: 600;
+  color: #c28c2d;
+  transition: 0.2s;
+}
+
+.clickable:hover {
+  text-decoration: underline;
+}
+
+/* =========================================
+   STATUS BADGES
+========================================= */
+.status-badge {
+  padding: 6px 14px;
+  border-radius: 25px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  text-transform: capitalize;
+}
+
+/* Status colors */
+.status-badge.pending_payment {
+  background: #f39c12;
+}
+
+.status-badge.pending_approval {
+  background: #e67e22;
+}
+
+.status-badge.approved {
+  background: #2ecc71;
+}
+
+.status-badge.rejected {
+  background: #e74c3c;
+}
+
+.status-badge.completed {
+  background: #3498db;
+}
+
+.status-badge.cancelled {
+  background: #95a5a6;
+}
+
+/* =========================================
+   MODAL OVERLAY
+========================================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 182, 193, 0.25);
+  backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+/* =========================================
+   PREMIUM MODAL BOX
+========================================= */
+.premium-modal {
+  background: white;
+  padding: 35px;
+  border-radius: 24px;
+  width: 750px;
+  max-width: 95%;
+  box-shadow: 0 25px 60px rgba(212, 175, 55, 0.15);
+  animation: scaleIn 0.25s ease;
+  border: 1px solid #ffe3ee;
+}
+
+.premium-modal h2 {
+  color: #d4af37;
+  margin-bottom: 25px;
+}
+
+.modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+.modal-grid h4 {
+  color: #c28c2d;
+  margin-bottom: 10px;
+}
+
+/* =========================================
+   PAYMENT SECTION
+========================================= */
+.payment-section {
+  margin-top: 25px;
+  padding: 20px;
+  background: #fff6fa;
+  border-radius: 16px;
+  border: 1px solid #ffe3ee;
+}
+
+.btn-proof {
+  margin-top: 12px;
+  background: linear-gradient(135deg, #d4af37, #c49b2d);
+  color: white;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.3s;
+}
+
+.btn-proof:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(212, 175, 55, 0.3);
+}
+
+/* =========================================
+   MODAL ACTION BUTTONS
+========================================= */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.btn-approve {
+  background: #2ecc71;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btn-reject {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btn-complete {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btn-close {
+  background: #f1f1f1;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* =========================================
+   IMAGE PROOF PREVIEW (FIXED PREMIUM)
+========================================= */
+.proof-modal {
+  background: white;
+  padding: 25px;
+  border-radius: 20px;
+  width: 600px;
+  max-width: 95%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+}
+
+.proof-image-wrapper {
+  background: #fff0f5;
+  padding: 15px;
+  border-radius: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.proof-modal img {
+  max-width: 100%;
+  max-height: 500px;
+  border-radius: 14px;
+  object-fit: contain;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* =========================================
+   LOADING
+========================================= */
+.loading {
+  padding: 30px;
+  text-align: center;
+  font-weight: 600;
+  color: #c28c2d;
+}
+
+/* =========================================
+   ANIMATIONS
+========================================= */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* =========================================
+   ORGANIZED MODAL (SMALLER VERSION)
+========================================= */
+.organized-modal {
+  background: white;
+  width: 640px; /* from 750px → 640px */
+  max-width: 92%;
+  border-radius: 20px;
+  padding: 25px 30px; /* reduced padding */
+  box-shadow: 0 20px 60px rgba(212, 175, 55, 0.12);
+  animation: scaleIn 0.2s ease;
+  border: 1px solid #ffe3ee;
+}
+
+/* HEADER */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px; /* reduced */
+}
+
+.modal-header h2 {
+  font-size: 22px; /* slightly smaller */
+  margin-bottom: 6px;
+  color: #c28c2d;
+}
+
+.modal-close {
+  background: #f5f5f5;
+  border: none;
+  width: 32px; /* smaller */
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* BODY GRID */
+.modal-body-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px; /* from 30px → 18px */
+}
+
+/* COLUMN */
+.modal-column {
+  display: flex;
+  flex-direction: column;
+  gap: 18px; /* reduced spacing */
+}
+
+/* INFO CARDS */
+.info-card {
+  background: #fff6fa;
+  padding: 16px 18px; /* reduced */
+  border-radius: 14px;
+  border: 1px solid #ffe3ee;
+}
+
+.info-card h3 {
+  font-size: 15px;
+  margin-bottom: 10px;
+  color: #c28c2d;
+}
+
+.info-card p {
+  font-size: 13px; /* slightly smaller */
+  margin-bottom: 6px;
+  color: #555;
+}
+
+/* PAYMENT CARD */
+.payment-card {
+  background: #fff4f8;
+}
+
+/* ACTIONS */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px; /* reduced */
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .organized-modal {
+    width: 95%;
+    padding: 20px;
+  }
+
+  .modal-body-grid {
+    grid-template-columns: 1fr;
+  }
+}
