@@ -11,6 +11,7 @@ import {
   updateService,
   updateVariant,
 } from "../../services/BACKEND/adminServiceApi";
+import "../../styles/services.css";
 
 const Services = () => {
   const [services, setServices] = useState([]);

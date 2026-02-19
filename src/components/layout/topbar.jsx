@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FaBars, FaBell, FaMoon, FaSun, FaUserCircle } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import "../../styles/topbar.css";
 
 const Topbar = ({ setMobileOpen }) => {
   const [notifOpen, setNotifOpen] = useState(false);

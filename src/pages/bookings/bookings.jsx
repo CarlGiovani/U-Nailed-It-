@@ -7,6 +7,7 @@ import {
   rejectBooking,
 } from "../../services/BACKEND/adminBookingApi";
 import { getPaymentProofUrl } from "../../services/BACKEND/adminPaymentApi";
+import "../../styles/booking.css"
 
 const Bookings = () => {
   const [bookings, setBookings] = useState([]);

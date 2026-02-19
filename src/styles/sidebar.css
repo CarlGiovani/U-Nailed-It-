@@ -1,0 +1,67 @@
+/* ======================================================
+   SIDEBAR BASE (DESKTOP DEFAULT)
+====================================================== */
+
+.sidebar {
+  position: relative;
+  width: 250px;
+  min-width: 250px;
+  height: 100vh;
+  background: linear-gradient(180deg, #d4af37, #b8962e);
+  color: white;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08);
+  z-index: 500;
+}
+
+/* Collapsed Desktop */
+.sidebar.collapsed {
+  width: 80px;
+  min-width: 80px;
+}
+
+/* Desktop collapse icon only */
+.desktop-only {
+  display: block;
+}
+
+/* ======================================================
+   MOBILE RESPONSIVE
+====================================================== */
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: -260px;
+    top: 0;
+    width: 260px;
+    min-width: 260px;
+    height: 100%;
+    z-index: 600;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  /* Disable collapse on mobile */
+  .sidebar.collapsed {
+    width: 260px;
+    min-width: 260px;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    z-index: 500;
+  }
+}

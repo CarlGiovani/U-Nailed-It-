@@ -1,7 +1,8 @@
 import { useState } from "react";
+// import "../../styles/adminLayout.css";
 import Sidebar from "../layout/sidebar";
 import Topbar from "../layout/topbar";
-import "./Layout.css";
+import "./layout.css";
 
 const AdminLayout = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);

@@ -11,7 +11,7 @@ import {
   FaTachometerAlt,
 } from "react-icons/fa";
 import { NavLink, useNavigate } from "react-router-dom";
-import "./Layout.css";
+import "../../styles/sidebar.css";
 
 const Sidebar = ({ mobileOpen, setMobileOpen }) => {
   const [collapsed, setCollapsed] = useState(false);
