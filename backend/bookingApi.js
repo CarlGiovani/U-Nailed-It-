@@ -27,3 +27,5 @@ export const confirmBooking = async (bookingId, paymentIntentId) => {
   });
   return res.data;
 };
+
+

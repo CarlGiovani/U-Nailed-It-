@@ -12,6 +12,7 @@ import {
 import { getAllServices } from "../../backend/servicesApi.js";
 import "../styles/booking-system.css";
 
+
 // DATE FORMATTER (YYYY-MM-DD)
 const formatLocalDate = (date) => {
   const year = date.getFullYear();
@@ -20,12 +21,14 @@ const formatLocalDate = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+
 // SAFE DATE PARSING - FIXES TIMEZONE ISSUES
 const parseLocalDate = (dateStr) => {
   if (!dateStr) return null;
   // Always parse with local timezone (append T00:00:00)
   return new Date(dateStr + "T00:00:00");
 };
+
 
 //HELPER
 const sameId = (a, b) => Number(a) === Number(b);
@@ -196,6 +199,7 @@ const Booking = () => {
     });
   }, []);
 
+
   // ===============================
   // STEP GUARD
   // ===============================
@@ -223,6 +227,7 @@ const Booking = () => {
       return;
     }
   }, [step, bookingId, bookingPreview, resuming]);
+
 
   // ===============================
   // MAIN MODAL COMPONENT
@@ -1021,7 +1026,7 @@ const Booking = () => {
   useEffect(() => {
     if (showResumePrompt) return;
 
-    // ✅ SINGLE EXPIRY SOURCE: bookingPreview.expires_at
+    // SINGLE EXPIRY SOURCE: bookingPreview.expires_at
     const expMs = toMs(bookingPreview?.expires_at);
 
     if (!expMs) {
@@ -1648,6 +1653,9 @@ const Booking = () => {
 
   const getAvailableDatesCount = () =>
     Object.values(monthlyAvailability).filter((v) => v === true).length;
+
+
+
 
   /* ==========================================
      PREMIUM PROGRESS BAR
