@@ -51,7 +51,6 @@ const AdminCalendar = () => {
   const [weeklyRecurring, setWeeklyRecurring] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  
 
   /* LOAD SERVICES */
   useEffect(() => {
@@ -202,7 +201,7 @@ const AdminCalendar = () => {
         {/* HEADER */}
         <div className="calendar-header card">
           <div>
-            <h1>Advanced Calendar Management</h1>
+            <h1>Calendar Management</h1>
             <p className="subtitle">
               Manage availability, slots and recurring schedules
             </p>
@@ -252,13 +251,13 @@ const AdminCalendar = () => {
                   className="btn-primary"
                   onClick={() => setShowGenerator(true)}
                 >
-                  Bulk Generate
+                  Create Slots
                 </button>
                 <button className="btn-danger" onClick={handleBlockDay}>
-                  Block Day
+                  Bulk Block Day
                 </button>
                 <button className="btn-success" onClick={handleUnblockDay}>
-                  Unblock
+                  Bulk Unblock
                 </button>
               </div>
             </div>
