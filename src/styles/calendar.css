@@ -1,0 +1,127 @@
+:root {
+  --gold: #d4af37;
+  --gold-dark: #c49b2d;
+  --pink-soft: #fff4f8;
+  --danger: #e74c3c;
+  --success: #2ecc71;
+  --neutral: #f1f1f1;
+  --radius: 20px;
+}
+
+/* CONTAINER */
+.calendar-container {
+  animation: fadeIn 0.4s ease;
+}
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.calendar-header h1 {
+  font-weight: 700;
+  color: #c49b2d;
+}
+
+.calendar-header select {
+  padding: 8px 14px;
+  border-radius: 8px;
+}
+
+.rbc-day-bg:hover {
+  background: #fffaf0;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.slot-panel {
+  margin-top: 30px;
+  padding: 30px;
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 20px 60px rgba(212, 175, 55, 0.12);
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.slot-card {
+  padding: 12px;
+  text-align: center;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.slot-card:hover {
+  transform: translateY(-3px);
+}
+
+.slot-available {
+  background: #eafaf1;
+  color: #27ae60;
+}
+
+.slot-blocked {
+  background: #fdecea;
+  color: #e74c3c;
+}
+
+.calendar-actions {
+  margin-top: 20px;
+}
+
+.calendar-actions button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, #d4af37, #c49b2d);
+  color: white;
+  font-weight: 600;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.generator-modal {
+  background: white;
+  padding: 30px;
+  border-radius: 20px;
+  width: 400px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.25);
+}
+
+.generator-modal input {
+  width: 100%;
+  padding: 8px;
+  margin: 10px 0;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.danger-btn {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: white;
+}
+
+.success-btn {
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
+  color: white;
+}

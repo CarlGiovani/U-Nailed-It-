@@ -16,9 +16,7 @@ const Topbar = ({ setMobileOpen }) => {
 
   const user = JSON.parse(localStorage.getItem("admin_user"));
 
-  /* =========================
-     DARK MODE TOGGLE
-  ========================== */
+  /* ================= DARK MODE ================= */
   useEffect(() => {
     if (darkMode) {
       document.body.classList.add("dark");
@@ -29,9 +27,7 @@ const Topbar = ({ setMobileOpen }) => {
     }
   }, [darkMode]);
 
-  /* =========================
-     CLOSE DROPDOWN ON OUTSIDE CLICK
-  ========================== */
+  /* ================= CLOSE DROPDOWN ================= */
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notifRef.current && !notifRef.current.contains(event.target)) {
@@ -46,9 +42,7 @@ const Topbar = ({ setMobileOpen }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  /* =========================
-     LOGOUT
-  ========================== */
+  /* ================= LOGOUT ================= */
   const handleLogout = () => {
     localStorage.removeItem("admin_session");
     localStorage.removeItem("admin_user");
@@ -58,7 +52,6 @@ const Topbar = ({ setMobileOpen }) => {
   return (
     <div className="topbar">
       <div className="topbar-left">
-        {/* MOBILE HAMBURGER */}
         <button className="mobile-menu-btn" onClick={() => setMobileOpen(true)}>
           <FaBars />
         </button>
@@ -67,7 +60,6 @@ const Topbar = ({ setMobileOpen }) => {
       </div>
 
       <div className="topbar-right">
-        {/* DARK MODE TOGGLE */}
         <div className="icon-wrapper">
           {darkMode ? (
             <FaSun onClick={() => setDarkMode(false)} />
@@ -76,7 +68,6 @@ const Topbar = ({ setMobileOpen }) => {
           )}
         </div>
 
-        {/* NOTIFICATION */}
         <div className="icon-wrapper" ref={notifRef}>
           <FaBell onClick={() => setNotifOpen(!notifOpen)} />
 
@@ -87,7 +78,6 @@ const Topbar = ({ setMobileOpen }) => {
           )}
         </div>
 
-        {/* PROFILE */}
         <div className="icon-wrapper" ref={profileRef}>
           <FaUserCircle onClick={() => setProfileOpen(!profileOpen)} />
 

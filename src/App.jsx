@@ -3,6 +3,7 @@ import AdminLogin from "./pages/auth/AdminLogin";
 import Bookings from "./pages/bookings/bookings.jsx";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Services from "./pages/services/Services.jsx";
+import AdminCalendar from "./pages/calendar/calendar.jsx";
 import AdminProtectedRoute from "./routes/adminProtectedRoute.jsx";
 
 function App() {
@@ -39,6 +40,15 @@ function App() {
             </AdminProtectedRoute>
           }
         />
+
+        <Route
+        path="/calendar"
+        element={
+          <AdminProtectedRoute>
+            <AdminCalendar />
+          </AdminProtectedRoute>
+        }
+      />    
       </Routes>
     </BrowserRouter>
   );

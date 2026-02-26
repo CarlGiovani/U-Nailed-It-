@@ -3,6 +3,7 @@ import {
   FaBars,
   FaBullhorn,
   FaCalendarAlt,
+  FaClipboardList,
   FaFileAlt,
   FaImages,
   FaServicestack,
@@ -18,16 +19,14 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const navigate = useNavigate();
 
-  /* =========================
-     DETECT SCREEN SIZE
-  ========================== */
+  /* ================= SCREEN DETECT ================= */
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth <= 768;
       setIsMobile(mobile);
 
       if (mobile) {
-        setCollapsed(false); // 🚀 disable collapse on mobile
+        setCollapsed(false);
       } else {
         setMobileOpen(false);
       }
@@ -38,18 +37,14 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, [setMobileOpen]);
 
-  /* =========================
-     LOGOUT
-  ========================== */
+  /* ================= LOGOUT ================= */
   const handleLogout = () => {
     localStorage.removeItem("admin_session");
     localStorage.removeItem("admin_user");
     navigate("/");
   };
 
-  /* =========================
-     NAV ITEM
-  ========================== */
+  /* ================= NAV ITEM ================= */
   const navItem = (to, icon, label) => (
     <NavLink
       to={to}
@@ -65,7 +60,6 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
 
   return (
     <>
-      {/* Overlay (Mobile Only) */}
       {mobileOpen && isMobile && (
         <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />
       )}
@@ -76,9 +70,10 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
         }`}
       >
         <div className="sidebar-header">
-          <h2 className="logo">{collapsed && !isMobile ? "U" : "UNAILEDIT"}</h2>
+          <h2 className="logo">
+            {collapsed && !isMobile ? "U" : "UNAILEDIT"}
+          </h2>
 
-          {/* Collapse only on desktop */}
           {!isMobile && (
             <FaBars
               className="collapse-btn"
@@ -89,7 +84,8 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
 
         <nav>
           {navItem("/dashboard", <FaTachometerAlt />, "Dashboard")}
-          {navItem("/bookings", <FaCalendarAlt />, "Bookings")}
+          {navItem("/calendar", <FaCalendarAlt />, "Calendar")}
+          {navItem("/bookings", <FaClipboardList />, "Bookings")}
           {navItem("/services", <FaServicestack />, "Services")}
           {navItem("/reviews", <FaStar />, "Reviews")}
           {navItem("/portfolio", <FaImages />, "Portfolio")}
