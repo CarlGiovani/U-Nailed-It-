@@ -1,22 +1,23 @@
+import addWeeks from "date-fns/addWeeks";
 import format from "date-fns/format";
 import getDay from "date-fns/getDay";
 import enUS from "date-fns/locale/en-US";
 import parse from "date-fns/parse";
 import startOfWeek from "date-fns/startOfWeek";
-import addWeeks from "date-fns/addWeeks";
 import { useEffect, useState } from "react";
 import { Calendar, dateFnsLocalizer, Views } from "react-big-calendar";
+import toast, { Toaster } from "react-hot-toast";
 
 import AdminLayout from "../../components/layout/adminLayout";
-import { getAllServicesAdmin } from "../../services/BACKEND/adminServiceApi";
 import {
   blockDayGlobally,
-  unblockDayGlobally,
   createSlotsBulk,
   getAvailableSlots,
   getMonthlyAvailability,
+  unblockDayGlobally,
   updateSlot,
 } from "../../services/BACKEND/adminCalendarApi";
+import { getAllServicesAdmin } from "../../services/BACKEND/adminServiceApi";
 
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "../../styles/calendar.css";
@@ -43,12 +44,16 @@ const AdminCalendar = () => {
   const [rangeEnd, setRangeEnd] = useState("");
 
   const [slots, setSlots] = useState([]);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   const [showGenerator, setShowGenerator] = useState(false);
   const [timesInput, setTimesInput] = useState("");
   const [weeklyRecurring, setWeeklyRecurring] = useState(false);
 
-  /* ================= LOAD SERVICES ================= */
+  const [loading, setLoading] = useState(false);
+  
+
+  /* LOAD SERVICES */
   useEffect(() => {
     const fetchServices = async () => {
       const data = await getAllServicesAdmin();
@@ -58,7 +63,7 @@ const AdminCalendar = () => {
     fetchServices();
   }, []);
 
-  /* ================= LOAD MONTH ================= */
+  /* LOAD MONTH AVAILABILITY */
   useEffect(() => {
     if (!selectedService) return;
 
@@ -69,7 +74,7 @@ const AdminCalendar = () => {
       const availability = await getMonthlyAvailability(
         selectedService,
         year,
-        month
+        month,
       );
 
       const mapped = availability.map((d) => ({
@@ -86,14 +91,25 @@ const AdminCalendar = () => {
     fetchMonth();
   }, [currentDate, selectedService]);
 
-  /* ================= LOAD SLOTS ================= */
+  /* LOAD SLOTS */
   const loadSlots = async (dateStr) => {
     if (!selectedService) return;
-    const data = await getAvailableSlots(selectedService, dateStr);
-    setSlots(data || []);
-  };
 
-  /* ================= SELECT DAY OR RANGE ================= */
+    const data = await getAvailableSlots(selectedService, dateStr);
+    const slotData = data || [];
+
+    setSlots(slotData);
+
+    if (slotData.length === 0) {
+      // No slots created yet = NOT blocked
+      setIsBlocked(false);
+      return;
+    }
+
+    const hasAvailable = slotData.some((s) => s.is_available);
+    setIsBlocked(!hasAvailable);
+  };
+  /* SELECT DAY */
   const handleSelectSlot = ({ start, end }) => {
     const startDate = format(start, "yyyy-MM-dd");
     const endDate = format(end, "yyyy-MM-dd");
@@ -105,53 +121,61 @@ const AdminCalendar = () => {
     loadSlots(startDate);
   };
 
-  /* ================= TOGGLE SLOT ================= */
+  /* TOGGLE SLOT */
   const toggleSlot = async (slot) => {
+    setLoading(true);
     await updateSlot(slot.id, {
       is_available: !slot.is_available,
     });
-
     await loadSlots(selectedDate);
+    setLoading(false);
   };
 
-  /* ================= BLOCK / UNBLOCK DAY ================= */
+  /* BLOCK / UNBLOCK DAY */
   const handleBlockDay = async () => {
-    if (!selectedDate) return alert("Select a date first.");
+    if (!selectedDate) return;
+    if (!window.confirm("Block this entire day?")) return;
 
+    setLoading(true);
     await blockDayGlobally(selectedDate);
     await loadSlots(selectedDate);
-    alert("Day blocked successfully.");
+    toast.success("Day blocked.");
+    setLoading(false);
   };
 
   const handleUnblockDay = async () => {
-    if (!selectedDate) return alert("Select a date first.");
+    if (!selectedDate) return;
+    if (!window.confirm("Unblock this day?")) return;
 
+    setLoading(true);
     await unblockDayGlobally(selectedDate);
     await loadSlots(selectedDate);
-    alert("Day unblocked successfully.");
+    toast.success("Day unblocked.");
+    setLoading(false);
   };
 
-  /* ================= AUTO TIME GENERATOR ================= */
+  /* AUTO TIME */
   const autoGenerateTimes = () => {
     const generated = [];
     for (let h = 9; h < 18; h++) {
       generated.push(`${String(h).padStart(2, "0")}:00`);
       generated.push(`${String(h).padStart(2, "0")}:30`);
     }
-    setTimesInput(generated.join(","));
+    setTimesInput(generated.join(", "));
   };
 
-  /* ================= BULK CREATE ================= */
+  /* BULK GENERATE */
   const handleGenerate = async () => {
-    if (!selectedService) return alert("Select a service.");
-    if (!rangeStart) return alert("Select date or drag range.");
+    if (isBlocked) return toast.error("Cannot generate. Day is blocked.");
 
     const times = timesInput
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean);
 
-    if (!times.length) return alert("Enter times.");
+    if (!times.length) return toast.error("Enter times.");
+
+    setLoading(true);
 
     const finalEnd = weeklyRecurring
       ? format(addWeeks(new Date(rangeStart), 4), "yyyy-MM-dd")
@@ -164,121 +188,139 @@ const AdminCalendar = () => {
       times,
     });
 
-    setShowGenerator(false);
     await loadSlots(rangeStart);
-    alert("Slots generated successfully.");
+    setShowGenerator(false);
+    toast.success("Slots generated!");
+    setLoading(false);
   };
 
   return (
     <AdminLayout>
-      <div className="calendar-header">
-        <h1>Advanced Calendar Management</h1>
+      <Toaster position="top-right" />
 
-        <select
-          value={selectedService || ""}
-          onChange={(e) => setSelectedService(Number(e.target.value))}
-        >
-          {services.map((service) => (
-            <option key={service.id} value={service.id}>
-              {service.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <Calendar
-        localizer={localizer}
-        events={events}
-        views={[Views.MONTH, Views.WEEK]}
-        selectable
-        style={{ height: 600 }}
-        onSelectSlot={handleSelectSlot}
-        onNavigate={(date) => setCurrentDate(date)}
-        dayPropGetter={(date) => {
-          const formatted = format(date, "yyyy-MM-dd");
-          if (formatted === selectedDate) {
-            return {
-              style: {
-                backgroundColor: "#fff4d6",
-                border: "2px solid #d4af37",
-              },
-            };
-          }
-          return {};
-        }}
-        eventPropGetter={(event) => ({
-          style: {
-            backgroundColor: event.resource ? "#2ecc71" : "#e74c3c",
-            borderRadius: "6px",
-          },
-        })}
-      />
-
-      {selectedDate && (
-        <div className="slot-panel">
-          <h3>Slots for {selectedDate}</h3>
-
-          <div className="slot-grid">
-            {slots.map((slot) => (
-              <div
-                key={slot.id}
-                className={`slot-card ${
-                  slot.is_available ? "slot-available" : "slot-blocked"
-                }`}
-                onClick={() => toggleSlot(slot)}
-              >
-                {slot.time}
-              </div>
-            ))}
+      <div className="calendar-container">
+        {/* HEADER */}
+        <div className="calendar-header card">
+          <div>
+            <h1>Advanced Calendar Management</h1>
+            <p className="subtitle">
+              Manage availability, slots and recurring schedules
+            </p>
           </div>
 
-          <div className="calendar-actions">
-            <button onClick={() => setShowGenerator(true)}>
-              Bulk Generate
-            </button>
-
-            <button onClick={handleBlockDay} className="danger-btn">
-              Block Entire Day
-            </button>
-
-            <button onClick={handleUnblockDay} className="success-btn">
-              Unblock Day
-            </button>
+          <div className="service-select">
+            <label>Service</label>
+            <select
+              value={selectedService || ""}
+              onChange={(e) => setSelectedService(Number(e.target.value))}
+            >
+              {services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
-      )}
 
-      {showGenerator && (
-        <div className="modal-overlay">
-          <div className="generator-modal">
-            <h3>Bulk Slot Generator</h3>
+        {/* CALENDAR */}
+        <div className="card calendar-card">
+          <Calendar
+            localizer={localizer}
+            events={events}
+            views={[Views.MONTH, Views.WEEK]}
+            selectable
+            style={{ height: 650 }}
+            onSelectSlot={handleSelectSlot}
+            onNavigate={(date) => setCurrentDate(date)}
+          />
+        </div>
 
-            <input
-              value={timesInput}
-              onChange={(e) => setTimesInput(e.target.value)}
-              placeholder="09:00,10:00"
-            />
+        {/* SLOT PANEL */}
+        {selectedDate && (
+          <div className="card slot-panel">
+            <div className="slot-header">
+              <div>
+                <h3>Slots for {selectedDate}</h3>
+                {isBlocked && (
+                  <span className="blocked-badge">Day Blocked</span>
+                )}
+              </div>
 
-            <button onClick={autoGenerateTimes}>
-              Auto 9AM–6PM (30min)
-            </button>
+              <div className="calendar-actions">
+                <button
+                  className="btn-primary"
+                  onClick={() => setShowGenerator(true)}
+                >
+                  Bulk Generate
+                </button>
+                <button className="btn-danger" onClick={handleBlockDay}>
+                  Block Day
+                </button>
+                <button className="btn-success" onClick={handleUnblockDay}>
+                  Unblock
+                </button>
+              </div>
+            </div>
 
-            <label>
-              <input
-                type="checkbox"
-                checked={weeklyRecurring}
-                onChange={() => setWeeklyRecurring(!weeklyRecurring)}
-              />
-              Weekly Recurring (4 weeks)
-            </label>
+            {loading && <div className="loading-spinner"></div>}
 
-            <div className="modal-actions">
-              <button onClick={handleGenerate}>Generate</button>
-              <button onClick={() => setShowGenerator(false)}>Cancel</button>
+            <div className="slot-grid">
+              {slots.map((slot) => (
+                <div
+                  key={slot.id}
+                  className={`slot-card ${
+                    slot.is_available ? "slot-available" : "slot-blocked"
+                  }`}
+                  onClick={() => toggleSlot(slot)}
+                >
+                  {slot.time}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* MODAL */}
+        {showGenerator && (
+          <div className="modal-overlay">
+            <div className="generator-modal">
+              <h3>Bulk Slot Generator</h3>
+
+              <input
+                value={timesInput}
+                onChange={(e) => setTimesInput(e.target.value)}
+                placeholder="09:00, 10:00"
+              />
+
+              <button className="btn-outline" onClick={autoGenerateTimes}>
+                Auto 9AM–6PM (30min)
+              </button>
+
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={weeklyRecurring}
+                  onChange={() => setWeeklyRecurring(!weeklyRecurring)}
+                />
+                Weekly Recurring (4 weeks)
+              </label>
+
+              <div className="modal-actions">
+                <button className="btn-primary" onClick={handleGenerate}>
+                  Generate
+                </button>
+                <button
+                  className="btn-outline"
+                  onClick={() => setShowGenerator(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </AdminLayout>
   );
 };
