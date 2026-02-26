@@ -41,6 +41,8 @@ export const createBookingSchema = Joi.object({
   }),
   notes: Joi.string().allow("").optional(),
 });
+
+
 // ADMIN: update booking status
 export const updateBookingStatusSchema = Joi.object({
   status: Joi.string()

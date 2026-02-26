@@ -134,6 +134,11 @@ export const deleteSlot = async (id) => {
   return data;
 };
 
+
+
+
+
+
 /* =========================
    GLOBAL BLOCK / UNBLOCK
 ========================= */
@@ -149,7 +154,7 @@ export const blockSlotGlobally = async (date, time) => {
   return data;
 };
 
-// ⚠️ NOTE: this is "force unblock". Huwag gamitin sa normal reject/cancel flow.
+// NOTE: this is "force unblock". Huwag gamitin sa normal reject/cancel flow.
 export const unblockSlotGlobally = async (date, time) => {
   const { data, error } = await supabase
     .from("calendar_slots")
@@ -161,6 +166,10 @@ export const unblockSlotGlobally = async (date, time) => {
   if (error) throw new Error(error.message);
   return data;
 };
+
+
+
+
 
 /* =========================
    BULK SLOT CREATION

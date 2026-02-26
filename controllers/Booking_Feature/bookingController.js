@@ -115,6 +115,11 @@ export const getAllBookings = async (req, res) => {
   }
 };
 
+
+
+
+
+
 /* ==========================================
    ADMIN: update booking status (generic)
 ========================================== */
@@ -157,6 +162,8 @@ export const approveBooking = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+
+
 
 /* ==========================================
    ADMIN: reject booking

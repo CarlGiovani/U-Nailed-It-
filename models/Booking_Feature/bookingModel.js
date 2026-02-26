@@ -200,7 +200,7 @@ export const createBookingWithCustomer = async (bookingData) => {
    - rollback if anything fails
 ========================================== */
 export const createBookingWithPaymentIntent = async (intentId) => {
-  // 1) fetch intent (must be pending)
+  // fetch intent dapat pending pa, and get booking_id from there
   const { data: intent, error: intentErr } = await supabase
     .from("payment_intents")
     .select("*")
@@ -212,7 +212,7 @@ export const createBookingWithPaymentIntent = async (intentId) => {
   if (!intent)
     throw new Error("Payment intent not found or already used/expired");
 
-  // 2) expiry check
+  // expiry check
   if (new Date(intent.expires_at).getTime() < Date.now()) {
     await supabase
       .from("payment_intents")
@@ -222,7 +222,7 @@ export const createBookingWithPaymentIntent = async (intentId) => {
     throw new Error("Payment proof expired");
   }
 
-  // 3) booking must be pending_payment
+  // booking must be pending_payment
   const { data: bookingRow, error: bookingErr } = await supabase
     .from("bookings")
     .select("id, status")
@@ -235,7 +235,7 @@ export const createBookingWithPaymentIntent = async (intentId) => {
     throw new Error("Booking is not eligible for confirmation");
   }
 
-  // 4) atomic lock the service slot
+  // atomic lock the service slot
   const { data: lockedSlot, error: lockErr } = await supabase
     .from("calendar_slots")
     .update({ is_available: false })
@@ -250,10 +250,10 @@ export const createBookingWithPaymentIntent = async (intentId) => {
   if (!lockedSlot) throw new Error("Selected slot is no longer available");
 
   try {
-    // 5) global block
+    // global block
     await blockSlotGlobally(intent.booking_date, intent.booking_time);
 
-    // 6) update booking -> pending_approval
+    // update booking -> pending_approval
     const { data: updatedBooking, error: updateErr } = await supabase
       .from("bookings")
       .update({
@@ -266,7 +266,7 @@ export const createBookingWithPaymentIntent = async (intentId) => {
 
     if (updateErr) throw new Error(updateErr.message);
 
-    // 7) mark intent used
+    // mark intent used
     const { error: intentUsedErr } = await supabase
       .from("payment_intents")
       .update({ status: "used" })
@@ -291,6 +291,7 @@ export const createBookingWithPaymentIntent = async (intentId) => {
     throw err;
   }
 };
+
 
 /* ==========================================
    ADMIN: get all bookings
@@ -335,7 +336,7 @@ export const getAllBookings = async ({
         )
       )
       `,
-      { count: "exact" }, // ✅ IMPORTANT
+      { count: "exact" }, 
     )
     .range(from, to)
     .order(sortBy, { ascending: order === "asc" });
