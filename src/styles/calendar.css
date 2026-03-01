@@ -63,6 +63,7 @@
   font-size: clamp(1.5rem, 5vw, 2rem);
   margin: 0;
   background: linear-gradient(135deg, var(--gold-dark), var(--pink-dark));
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -604,4 +605,35 @@
   padding: 8px;
   border-radius: 8px;
   border: 1px solid #ddd;
+}
+
+.range-preview {
+  background: #f4f6f9;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.range-preview p {
+  margin: 4px 0;
+}
+
+.slot-booked {
+  background-color: #ffe0e0;
+  border: 1px solid #ff4d4d;
+}
+
+.slot-past {
+  opacity: 0.6;
+}
+
+.slot-badge {
+  font-size: 10px;
+  margin-top: 4px;
+  font-weight: bold;
+}
+
+.past-badge {
+  color: #777;
 }

@@ -38,30 +38,23 @@ const localizer = dateFnsLocalizer({
 const AdminCalendar = () => {
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
-
   const [events, setEvents] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
-
   const [selectedDate, setSelectedDate] = useState(null);
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
-
   const [slots, setSlots] = useState([]);
   const [isBlocked, setIsBlocked] = useState(false);
-
   const [showGenerator, setShowGenerator] = useState(false);
   const [timesInput, setTimesInput] = useState("");
   const [weeklyRecurring, setWeeklyRecurring] = useState(false);
-
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showSlotModal, setShowSlotModal] = useState(false);
-
   const [bookings, setBookings] = useState([]);
-
   const [loading, setLoading] = useState(false);
-
   const [editMode, setEditMode] = useState(false);
   const [editedTime, setEditedTime] = useState("");
+  const [editError, setEditError] = useState("");
 
   /* ================= LOAD SERVICES ================= */
   useEffect(() => {
@@ -130,7 +123,7 @@ const AdminCalendar = () => {
     const data = await getAvailableSlots(selectedService, dateStr);
     const slotData = data || [];
 
-    setSlots(slotData);
+    setSlots([...slotData].sort((a, b) => a.time.localeCompare(b.time)));
 
     if (slotData.length === 0) {
       setIsBlocked(false);
@@ -143,8 +136,19 @@ const AdminCalendar = () => {
 
   /* ================= SELECT DAY ================= */
   const handleSelectSlot = ({ start, end }) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (start < today) {
+      toast.error("Cannot select past dates.");
+      return;
+    }
+
     const startDate = format(start, "yyyy-MM-dd");
-    const endDate = format(end, "yyyy-MM-dd");
+
+    const adjustedEnd = new Date(end);
+    adjustedEnd.setDate(adjustedEnd.getDate() - 1);
+    const endDate = format(adjustedEnd, "yyyy-MM-dd");
 
     setSelectedDate(startDate);
     setRangeStart(startDate);
@@ -155,6 +159,8 @@ const AdminCalendar = () => {
 
   /* ================= VALIDATIONS ================= */
   const isSlotBooked = (slot) => {
+    if (!Array.isArray(bookings)) return false;
+
     return bookings.some(
       (b) =>
         b.date === selectedDate &&
@@ -165,9 +171,16 @@ const AdminCalendar = () => {
   };
 
   const isPastTime = (slot) => {
+    if (!selectedDate) return false;
+
     const now = new Date();
-    const slotDateTime = new Date(`${selectedDate}T${slot.time}`);
+    const slotDateTime = new Date(`${selectedDate}T${slot.time}:00`);
+
     return slotDateTime < now;
+  };
+
+  const isDuplicateTime = (time) => {
+    return slots.some((s) => s.time === time && s.id !== selectedSlot?.id);
   };
 
   /* ================= TOGGLE SLOT ================= */
@@ -255,9 +268,22 @@ const AdminCalendar = () => {
 
     setLoading(true);
 
-    const finalEnd = weeklyRecurring
-      ? format(addWeeks(new Date(rangeStart), 4), "yyyy-MM-dd")
-      : rangeEnd || rangeStart;
+    let finalEnd;
+
+    if (weeklyRecurring) {
+      finalEnd = format(addWeeks(new Date(rangeStart), 4), "yyyy-MM-dd");
+    } else {
+      // If user dragged multiple days → use rangeEnd
+      // If single click → rangeEnd === rangeStart
+      finalEnd = rangeEnd || rangeStart;
+    }
+    // Check if slots already exist for selected date
+    if (!weeklyRecurring && slots.length > 0) {
+      if (!window.confirm("Slots already exist for this date. Continue?")) {
+        setLoading(false);
+        return;
+      }
+    }
 
     await createSlotsBulk({
       service_id: selectedService,
@@ -352,12 +378,15 @@ const AdminCalendar = () => {
                   <div
                     key={slot.id}
                     className={`slot-card
-        ${slot.is_available ? "slot-available" : "slot-blocked"}
-        ${booked ? "slot-booked" : ""}
-        ${past ? "slot-past" : ""}
-      `}
+                    ${slot.is_available ? "slot-available" : "slot-blocked"}
+                    ${booked ? "slot-booked" : ""}
+                    ${past ? "slot-past" : ""}
+                  `}
                     onClick={() => {
                       if (booked || past) return;
+                      setEditMode(false);
+                      setEditedTime("");
+                      setEditError("");
                       setSelectedSlot(slot);
                       setShowSlotModal(true);
                     }}
@@ -393,11 +422,26 @@ const AdminCalendar = () => {
 
               {/* EDIT INPUT */}
               {editMode && (
-                <input
-                  type="time"
-                  value={editedTime}
-                  onChange={(e) => setEditedTime(e.target.value)}
-                />
+                <>
+                  <input
+                    type="time"
+                    value={editedTime}
+                    onChange={(e) => {
+                      const newTime = e.target.value;
+                      setEditedTime(newTime);
+
+                      if (!newTime) {
+                        setEditError("Please select a time.");
+                      } else if (isDuplicateTime(newTime)) {
+                        setEditError("Time already exists for this day.");
+                      } else {
+                        setEditError("");
+                      }
+                    }}
+                  />
+
+                  {editError && <div className="warning-text">{editError}</div>}
+                </>
               )}
 
               {/* EDIT BUTTON */}
@@ -420,12 +464,22 @@ const AdminCalendar = () => {
               {editMode && (
                 <button
                   className="btn-primary"
+                  disabled={!editedTime || editError}
                   onClick={async () => {
                     if (!editedTime) return toast.error("Enter valid time.");
 
-                    await updateSlot(selectedSlot.id, {
-                      time: editedTime,
-                    });
+                    if (isDuplicateTime(editedTime))
+                      return toast.error("Time already exists.");
+
+                    if (isPastTime({ time: editedTime }))
+                      return toast.error("Cannot move to past time.");
+
+                    try {
+                      await updateSlot(selectedSlot.id, { time: editedTime });
+                      toast.success("Slot updated!");
+                    } catch {
+                      toast.error("Something went wrong.");
+                    }
 
                     await loadSlots(selectedDate);
                     setEditMode(false);
@@ -461,6 +515,8 @@ const AdminCalendar = () => {
                 className="btn-outline"
                 onClick={() => {
                   setEditMode(false);
+                  setEditedTime("");
+                  setEditError("");
                   setShowSlotModal(false);
                 }}
               >
@@ -475,6 +531,18 @@ const AdminCalendar = () => {
           <div className="modal-overlay">
             <div className="generator-modal">
               <h3>Bulk Slot Generator</h3>
+
+              <div className="range-preview">
+                <p>
+                  <strong>From:</strong> {rangeStart}
+                </p>
+                <p>
+                  <strong>To:</strong>{" "}
+                  {weeklyRecurring
+                    ? format(addWeeks(new Date(rangeStart), 4), "yyyy-MM-dd")
+                    : rangeEnd || rangeStart}
+                </p>
+              </div>
 
               <input
                 value={timesInput}
