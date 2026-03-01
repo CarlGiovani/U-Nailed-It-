@@ -72,10 +72,10 @@ const AdminCalendar = () => {
       try {
         const result = await getAllBookings();
 
-        // handle different possible return structures
-        if (Array.isArray(result)) {
-          setBookings(result);
-        } else if (Array.isArray(result?.data)) {
+        console.log("RAW BOOKINGS RESULT:", result);
+
+        // 🔥 FORCE correct structure
+        if (result?.data) {
           setBookings(result.data);
         } else {
           setBookings([]);
@@ -102,19 +102,33 @@ const AdminCalendar = () => {
         year,
         month,
       );
+      console.log("Bookings:", bookings); // 👈 DITO MO ILAGAY
+      console.log("Availability:", availability); // 👈 dagdag mo na rin to
+      const mapped = availability.map((d) => {
+        const count = bookings.filter((b) => {
+          const bookingDate = b.booking_date?.split("T")[0]; // ✅ FIXED
 
-      const mapped = availability.map((d) => ({
-        title: d.available ? "Available" : "Blocked",
-        start: new Date(d.date),
-        end: new Date(d.date),
-        allDay: true,
-      }));
+          return (
+            bookingDate === d.date &&
+            Number(b.service_id) === Number(selectedService) &&
+            b.status !== "rejected"
+          );
+        }).length;
 
+        return {
+          title: d.available
+            ? `Available (${count} booked)`
+            : `Blocked (${count} booked)`,
+          start: new Date(d.date),
+          end: new Date(d.date),
+          allDay: true,
+        };
+      });
       setEvents(mapped);
     };
 
     fetchMonth();
-  }, [currentDate, selectedService]);
+  }, [currentDate, selectedService, bookings]);
 
   /* ================= LOAD SLOTS ================= */
   const loadSlots = async (dateStr) => {
@@ -132,6 +146,23 @@ const AdminCalendar = () => {
 
     const hasAvailable = slotData.some((s) => s.is_available);
     setIsBlocked(!hasAvailable);
+  };
+
+  const dayPropGetter = (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (date < today) {
+      return {
+        style: {
+          backgroundColor: "#f3f4f6",
+          pointerEvents: "none",
+          opacity: 0.6,
+        },
+      };
+    }
+
+    return {};
   };
 
   /* ================= SELECT DAY ================= */
@@ -337,6 +368,7 @@ const AdminCalendar = () => {
             style={{ height: 650 }}
             onSelectSlot={handleSelectSlot}
             onNavigate={(date) => setCurrentDate(date)}
+            dayPropGetter={dayPropGetter}
           />
         </div>
 
