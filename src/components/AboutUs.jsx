@@ -51,7 +51,7 @@ const AboutUs = () => {
               />
             </div>
 
-            <h3>Liana Santos</h3>
+            <h3>Alliyah Bangayan</h3>
             <span className="owner-role">Founder & Lead Nail Artist</span>
 
             <p className="owner-bio">
