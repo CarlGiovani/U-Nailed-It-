@@ -1,28 +1,45 @@
 import cron from "node-cron";
+import formatLocalDate from "./dateFormatter.js";
 import supabase from "./supabaseClient.js";
-import formatLocalDate from "./dateFormatter.js"; // kung meron ka nang date formatter
 
 export const scheduleSlotCleanup = () => {
-  // Tatakbo araw-araw sa 12:05 AM (pwede baguhin ang oras)
-  cron.schedule("5 0 * * *", async () => {
+  cron.schedule("0 1 * * *", async () => {
     const now = new Date();
-    const todayStr = formatLocalDate(now); // YYYY-MM-DD
-    const currentTime = now.toTimeString().slice(0, 5); // HH:mm
+    const todayStr = formatLocalDate(now);
+    const currentTime = now.toTimeString().slice(0, 5);
 
-    console.log(`[CRON] Running slot cleanup. Today: ${todayStr}, Current Time: ${currentTime}`);
+    console.log(`[CRON] Running slot cleanup. Today: ${todayStr}`);
 
     try {
-      // 1️⃣ Block all past dates
-      const { data: pastDatesData, error: pastDatesError } = await supabase
+      //Get past slots
+      const { data: pastSlots, error: pastError } = await supabase
         .from("calendar_slots")
-        .update({ is_available: false })
-        .lt("date", todayStr)
-        .select();
+        .select("id, date, time")
+        .lt("date", todayStr);
 
-      if (pastDatesError) console.error("[CRON ERROR - past dates]", pastDatesError.message);
-      else console.log(`[CRON] Past dates blocked: ${pastDatesData.length}`);
+      if (pastError) throw pastError;
 
-      // 2️⃣ Block past times in current day
+      let deletedCount = 0;
+
+      for (const slot of pastSlots) {
+        const { data: booking } = await supabase
+          .from("bookings")
+          .select("id")
+          .eq("booking_date", slot.date)
+          .eq("booking_time", slot.time)
+          .in("status", ["pending_approval", "approved"])
+          .maybeSingle();
+
+        if (!booking) {
+          await supabase.from("calendar_slots").delete().eq("id", slot.id);
+
+          deletedCount++;
+        }
+      }
+
+      console.log(`[CRON] Deleted unused past slots: ${deletedCount}`);
+
+      // 2️⃣ Block past times today
       const { data: todayData, error: todayError } = await supabase
         .from("calendar_slots")
         .update({ is_available: false })
@@ -30,9 +47,9 @@ export const scheduleSlotCleanup = () => {
         .lt("time", currentTime)
         .select();
 
-      if (todayError) console.error("[CRON ERROR - today past times]", todayError.message);
-      else console.log(`[CRON] Today past slots blocked: ${todayData.length}`);
+      if (todayError) throw todayError;
 
+      console.log(`[CRON] Today past slots blocked: ${todayData.length}`);
     } catch (err) {
       console.error("[CRON ERROR]", err);
     }
