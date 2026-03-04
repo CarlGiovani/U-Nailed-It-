@@ -55,6 +55,7 @@ const AdminCalendar = () => {
   const [editMode, setEditMode] = useState(false);
   const [editedTime, setEditedTime] = useState("");
   const [editError, setEditError] = useState("");
+  const [selectedRange, setSelectedRange] = useState(null);
 
   /* ================= LOAD SERVICES ================= */
   useEffect(() => {
@@ -147,7 +148,6 @@ const AdminCalendar = () => {
     const hasAvailable = slotData.some((s) => s.is_available);
     setIsBlocked(!hasAvailable);
   };
-
   const dayPropGetter = (date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -162,11 +162,24 @@ const AdminCalendar = () => {
       };
     }
 
+    // 🔥 highlight selected range
+    if (
+      selectedRange &&
+      date >= selectedRange.start &&
+      date <= selectedRange.end
+    ) {
+      return {
+        style: {
+          backgroundColor: "#c7e3ff",
+          border: "2px solid #3b82f6",
+        },
+      };
+    }
+
     return {};
   };
-
   /* ================= SELECT DAY ================= */
-  const handleSelectSlot = ({ start, end }) => {
+  const handleSelectSlot = ({ start, end, action }) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -185,9 +198,17 @@ const AdminCalendar = () => {
     setRangeStart(startDate);
     setRangeEnd(endDate);
 
-    loadSlots(startDate);
-  };
+    setSelectedRange({
+      start,
+      end: adjustedEnd,
+    });
 
+    loadSlots(startDate);
+
+    if (action === "select" && startDate !== endDate) {
+      setShowGenerator(true);
+    }
+  };
   /* ================= VALIDATIONS ================= */
   const isSlotBooked = (slot) => {
     if (!Array.isArray(bookings)) return false;
