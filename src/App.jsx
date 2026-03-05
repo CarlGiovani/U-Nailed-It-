@@ -8,6 +8,7 @@ import AdminProtectedRoute from "./routes/adminProtectedRoute.jsx";
 import Portfolio from "./pages/portfolio/portfolio.jsx";
 import AdminReviews from "./pages/reviews/reviews.jsx";
 import Announcements from "./pages/announcement/announcement.jsx";
+import Policies from "./pages/policies/policies.jsx";
 
 function App() {
   return (
@@ -49,6 +50,15 @@ function App() {
           element={
             <AdminProtectedRoute>
               <Services />
+            </AdminProtectedRoute>
+          }
+        />
+
+            <Route
+          path="/policies"
+          element={
+            <AdminProtectedRoute>
+              <Policies />
             </AdminProtectedRoute>
           }
         />

@@ -1,0 +1,278 @@
+/* ========================================
+   PAGE
+======================================== */
+
+.policies-page {
+  padding: 30px;
+}
+
+.policies-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.policies-header h1 {
+  font-size: 26px;
+  font-weight: 600;
+}
+
+/* ========================================
+   GRID
+======================================== */
+
+.policies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+/* ========================================
+   POLICY CARD
+======================================== */
+
+.policy-card {
+  background: white;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: 0.2s;
+}
+
+.policy-card:hover {
+  transform: translateY(-3px);
+}
+
+.policy-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.policy-card-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.policy-card-content {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ========================================
+   STATUS
+======================================== */
+
+.status-active {
+  background: #e8f7ee;
+  color: #2e7d32;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+.status-inactive {
+  background: #fdecea;
+  color: #d32f2f;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+/* ========================================
+   ACTIONS
+======================================== */
+
+.policy-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+/* ========================================
+   BUTTONS
+======================================== */
+
+.btn-primary {
+  background: #111;
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  background: #eee;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-danger {
+  background: #ff4d4f;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: black;
+}
+
+.btn-secondary:hover {
+  background: #ddd;
+}
+
+.btn-danger:hover {
+  background: #e63946;
+}
+
+/* ========================================
+   MODAL
+======================================== */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.premium-modal {
+  background: white;
+  padding: 25px;
+  width: 420px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.premium-modal input,
+.premium-modal textarea {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.premium-modal textarea {
+  min-height: 100px;
+}
+
+.policy-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.policy-toggle input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.policy-toggle span {
+  display: inline-block;
+}
+
+.form-error {
+  font-size: 12px;
+  color: #ff4d4f;
+}
+
+/* ========================================
+   DELETE MODAL
+======================================== */
+
+.delete-modal p {
+  color: #555;
+  margin: 10px 0 20px;
+}
+
+.delete-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ========================================
+   PAGINATION
+======================================== */
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+  gap: 10px;
+}
+
+.pagination button {
+  padding: 8px 14px;
+  border: none;
+  background: #eee;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.pagination button:hover {
+  background: #ddd;
+}
+
+.active-page {
+  background: #111;
+  color: white;
+}
+
+.pagination button:disabled {
+  opacity: 0.4;
+}
+
+/* ========================================
+   MOBILE
+======================================== */
+
+@media (max-width: 768px) {
+  .policies-page {
+    padding: 20px 15px;
+  }
+
+  .policies-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .policies-header h1 {
+    font-size: 22px;
+  }
+
+  .policies-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .premium-modal {
+    width: 95%;
+  }
+}
