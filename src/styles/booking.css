@@ -42,13 +42,23 @@ body {
   background: white;
   border-radius: 20px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.05);
 }
-
 .premium-table table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 700px;
+  min-width: 650px;
+}
+
+@media (max-width: 768px) {
+  .premium-table::after {
+    display: block;
+    text-align: right;
+    font-size: 12px;
+    padding: 6px 10px;
+    color: #999;
+  }
 }
 
 .premium-table thead {
@@ -125,6 +135,7 @@ body {
 ========================================= */
 
 .modal-overlay {
+  overflow-y: auto;
   position: fixed;
   inset: 0;
   background: rgba(20, 20, 20, 0.45);
@@ -392,6 +403,13 @@ body {
 
   .premium-table table {
     min-width: 600px;
+    scrollbar-width: thin;
+  }
+
+  .premium-table td {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 

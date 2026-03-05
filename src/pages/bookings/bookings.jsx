@@ -7,7 +7,7 @@ import {
   rejectBooking,
 } from "../../services/BACKEND/adminBookingApi";
 import { getPaymentProofUrl } from "../../services/BACKEND/adminPaymentApi";
-import "../../styles/booking.css"
+import "../../styles/booking.css";
 
 const Bookings = () => {
   const [bookings, setBookings] = useState([]);
@@ -152,7 +152,7 @@ const Bookings = () => {
                     </td>
 
                     <td>{b.services?.name}</td>
-                    <td>{b.booking_date}</td>
+                    <td>{new Date(b.booking_date).toLocaleDateString()}</td>
                     <td>{statusBadge(b.status)}</td>
                   </tr>
                 ))
