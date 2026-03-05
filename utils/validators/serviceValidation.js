@@ -29,7 +29,7 @@ export const variantSchema = Joi.object({
     "string.empty": "body_part cannot be empty",
   }),
   size: Joi.string().optional().allow(""),
-  price: Joi.number().required().messages({
+  price: Joi.number().required().strict(false).messages({
     "any.required": "price is required",
     "number.base": "price must be a number",
   }),
