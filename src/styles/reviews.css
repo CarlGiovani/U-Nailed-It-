@@ -158,13 +158,6 @@ body {
   border-radius: 10px;
 }
 
-.btn-close {
-  background: #999;
-  color: white;
-  padding: 10px 16px;
-  border-radius: 10px;
-}
-
 .clickable-image {
   cursor: zoom-in;
   transition: transform 0.2s;
@@ -180,6 +173,10 @@ body {
   border-radius: 18px;
   text-align: center;
   max-width: 90%;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .image-preview-modal img {

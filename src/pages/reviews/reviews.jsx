@@ -323,28 +323,29 @@ const AdminReviews = () => {
       {confirmAction && (
         <div className="modal-overlay">
           <div className="confirm-modal">
-            <h3 className="confirm-title">
-              {confirmAction.type === "approve"
-                ? "Approve this review?"
-                : "Reject this review?"}
-            </h3>
+          <h3 className="confirm-title">
+  {confirmAction.type === "approve"
+    ? "Approve this review?"
+    : "Reject this review?"}
+</h3>
 
-            <div className="confirm-actions">
-              <button
-                className="confirm-btn confirm-btn-yes"
-                onClick={executeAction}
-                disabled={actionLoading}
-              >
-                {actionLoading ? <span className="spinner"></span> : "Confirm"}
-              </button>
+<div className="confirm-actions">
+  <button
+    className="confirm-btn confirm-btn-yes"
+    onClick={executeAction}
+    disabled={actionLoading}
+  >
+    {actionLoading ? <span className="spinner"></span> : "Confirm"}
+  </button>
 
-              <button
-                className="confirm-btn confirm-btn-cancel"
-                onClick={() => setConfirmAction(null)}
-              >
-                Cancel
-              </button>
-            </div>
+  <button
+    className="confirm-btn confirm-btn-cancel"
+    onClick={() => setConfirmAction(null)}
+  >
+    Cancel
+  </button>
+</div>
+
           </div>
         </div>
       )}
@@ -356,7 +357,6 @@ const AdminReviews = () => {
           >
             <img src={previewImage} alt="Review Preview" />
             <button className="btn-close" onClick={() => setPreviewImage(null)}>
-              Close
             </button>
           </div>
         </div>
