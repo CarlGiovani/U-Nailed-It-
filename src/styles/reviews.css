@@ -1,0 +1,220 @@
+/* =============================
+   PAGE BACKGROUND
+============================= */
+
+body {
+  background: linear-gradient(135deg, #fff0f5, #ffe6f0);
+}
+
+/* =============================
+   FILTERS
+============================= */
+
+.review-filters {
+  display: flex;
+  gap: 15px;
+  margin: 20px 0 30px;
+  flex-wrap: wrap;
+}
+
+.review-filters input,
+.review-filters select {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #f5c6d6;
+  background: white;
+  outline: none;
+  transition: 0.3s;
+  font-size: 14px;
+  min-width: 180px;
+}
+
+.review-filters input:focus,
+.review-filters select:focus {
+  border-color: #d4af37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+}
+
+/* =============================
+   STATUS BADGE
+============================= */
+
+.review-status {
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.review-status.approved {
+  background: #e6f9ed;
+  color: #1b8a4b;
+}
+
+.review-status.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+/* =============================
+   REVIEW MODAL
+============================= */
+
+.review-modal {
+  background: white;
+  border-radius: 18px;
+  padding: 30px;
+  width: 650px;
+  max-width: 90%;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+.review-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+  margin-top: 25px;
+}
+
+.info-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #f5c6d6;
+}
+
+.review-stars {
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+.review-comment {
+  font-style: italic;
+}
+
+.review-image {
+  margin-top: 10px;
+  width: 100%;
+  border-radius: 12px;
+}
+
+.confirm-modal {
+  background: white;
+  padding: 28px;
+  border-radius: 16px;
+  text-align: center;
+  width: 320px;
+  max-width: 90%;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+}
+.confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.confirm-btn {
+  border: none;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.confirm-btn-yes {
+  background: #1b8a4b;
+  color: white;
+}
+
+.confirm-btn-yes:hover {
+  background: #166a3a;
+}
+
+.confirm-btn-cancel {
+  background: #e4e4e4;
+  color: #333;
+}
+
+.confirm-btn-cancel:hover {
+  background: #d2d2d2;
+}
+/* =============================
+   BUTTONS
+============================= */
+
+.btn-approve {
+  background: #1b8a4b;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 10px;
+}
+
+.btn-reject {
+  background: #c0392b;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 10px;
+}
+
+.btn-close {
+  background: #999;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 10px;
+}
+
+.clickable-image {
+  cursor: zoom-in;
+  transition: transform 0.2s;
+}
+
+.clickable-image:hover {
+  transform: scale(1.03);
+}
+
+.image-preview-modal {
+  background: white;
+  padding: 20px;
+  border-radius: 18px;
+  text-align: center;
+  max-width: 90%;
+}
+
+.image-preview-modal img {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 12px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid white;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.lazy-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  color: #777;
+}
+
+.lazy-end {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+}

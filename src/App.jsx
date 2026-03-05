@@ -6,6 +6,7 @@ import Services from "./pages/services/Services.jsx";
 import AdminCalendar from "./pages/calendar/calendar.jsx";
 import AdminProtectedRoute from "./routes/adminProtectedRoute.jsx";
 import Portfolio from "./pages/portfolio/portfolio.jsx";
+import AdminReviews from "./pages/reviews/reviews.jsx";
 
 function App() {
   return (
@@ -29,6 +30,15 @@ function App() {
           element={
             <AdminProtectedRoute>
               <Bookings />
+            </AdminProtectedRoute>
+          }
+        />
+
+           <Route
+          path="/reviews"
+          element={
+            <AdminProtectedRoute>
+              <AdminReviews />
             </AdminProtectedRoute>
           }
         />
