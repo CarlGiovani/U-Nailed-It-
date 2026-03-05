@@ -7,6 +7,7 @@ import AdminCalendar from "./pages/calendar/calendar.jsx";
 import AdminProtectedRoute from "./routes/adminProtectedRoute.jsx";
 import Portfolio from "./pages/portfolio/portfolio.jsx";
 import AdminReviews from "./pages/reviews/reviews.jsx";
+import Announcements from "./pages/announcement/announcement.jsx";
 
 function App() {
   return (
@@ -61,6 +62,17 @@ function App() {
             </AdminProtectedRoute>
           }
         />
+
+
+          <Route
+          path="/announcements"
+          element={
+            <AdminProtectedRoute>
+              <Announcements />
+            </AdminProtectedRoute>
+          }
+        />
+
 
 
         <Route
