@@ -5,6 +5,7 @@ import Dashboard from "./pages/dashboard/Dashboard";
 import Services from "./pages/services/Services.jsx";
 import AdminCalendar from "./pages/calendar/calendar.jsx";
 import AdminProtectedRoute from "./routes/adminProtectedRoute.jsx";
+import Portfolio from "./pages/portfolio/portfolio.jsx";
 
 function App() {
   return (
@@ -40,6 +41,17 @@ function App() {
             </AdminProtectedRoute>
           }
         />
+
+        
+        <Route
+          path="/portfolio"
+          element={
+            <AdminProtectedRoute>
+              <Portfolio />
+            </AdminProtectedRoute>
+          }
+        />
+
 
         <Route
         path="/calendar"
