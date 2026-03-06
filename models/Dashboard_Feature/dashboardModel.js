@@ -1,9 +1,8 @@
 import supabase from "../../utils/supabaseClient.js";
 
 /* ===============================
-   GET TOTAL BOOKINGS
+   TOTAL BOOKINGS
 =============================== */
-
 export const getTotalBookings = async () => {
   const { count, error } = await supabase
     .from("bookings")
@@ -11,27 +10,28 @@ export const getTotalBookings = async () => {
 
   if (error) throw new Error(error.message);
 
-  return count;
+  return count || 0;
 };
 
 /* ===============================
-   GET TOTAL REVENUE
+   TOTAL REVENUE
 =============================== */
-
 export const getTotalRevenue = async () => {
-  const { data, error } = await supabase.from("revenue_logs").select("amount");
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("total_price")
+    .eq("status", "completed");
 
   if (error) throw new Error(error.message);
 
-  const total = data?.reduce((sum, r) => sum + Number(r.amount || 0), 0) || 0;
+  const revenue = data?.reduce((sum, b) => sum + (b.total_price || 0), 0) || 0;
 
-  return total;
+  return revenue;
 };
 
 /* ===============================
-   GET PENDING REVIEWS
+   PENDING REVIEWS
 =============================== */
-
 export const getPendingReviews = async () => {
   const { count, error } = await supabase
     .from("reviews")
@@ -40,13 +40,12 @@ export const getPendingReviews = async () => {
 
   if (error) throw new Error(error.message);
 
-  return count;
+  return count || 0;
 };
 
 /* ===============================
-   GET ACTIVE SERVICES
+   ACTIVE SERVICES
 =============================== */
-
 export const getActiveServices = async () => {
   const { count, error } = await supabase
     .from("services")
@@ -55,13 +54,12 @@ export const getActiveServices = async () => {
 
   if (error) throw new Error(error.message);
 
-  return count;
+  return count || 0;
 };
 
 /* ===============================
-   BOOKING ANALYTICS
+   ANALYTICS
 =============================== */
-
 export const getBookingAnalytics = async () => {
   const { data, error } = await supabase
     .from("bookings")
@@ -81,7 +79,7 @@ export const getBookingAnalytics = async () => {
 
     if (b.status === "completed") {
       revenuePerMonth[month] =
-        (revenuePerMonth[month] || 0) + Number(b.total_price || 0);
+        (revenuePerMonth[month] || 0) + (b.total_price || 0);
     }
   });
 
@@ -89,4 +87,28 @@ export const getBookingAnalytics = async () => {
     bookingsPerMonth,
     revenuePerMonth,
   };
+};
+
+/* ===============================
+   RECENT BOOKINGS
+=============================== */
+
+export const getRecentBookings = async () => {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(
+      `
+      id,
+      booking_date,
+      status,
+      customers(full_name),
+      services(name)
+    `,
+    )
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (error) throw new Error(error.message);
+
+  return data || [];
 };

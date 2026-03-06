@@ -6,6 +6,7 @@ export const getDashboardData = async () => {
   const pendingReviews = await dashboard.getPendingReviews();
   const activeServices = await dashboard.getActiveServices();
   const analytics = await dashboard.getBookingAnalytics();
+  const recentBookings = await dashboard.getRecentBookings(); 
 
   return {
     stats: {
@@ -15,5 +16,6 @@ export const getDashboardData = async () => {
       activeServices,
     },
     analytics,
+    recentBookings,
   };
 };
