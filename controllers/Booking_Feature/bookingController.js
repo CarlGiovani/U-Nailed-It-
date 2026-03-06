@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import * as booking from "../../models/Booking_Feature/bookingModel.js";
+import { logAction } from "../../services/Audit_Service/auditService.js";
 import sendEmail from "../../services/Email_Feature/emailService.js";
 import { bookingApprovedTemplate } from "../../templates/emails/bookingApproved.js";
 import { bookingCompletedTemplate } from "../../templates/emails/bookingCompletedTemplate.js";
@@ -115,11 +116,6 @@ export const getAllBookings = async (req, res) => {
   }
 };
 
-
-
-
-
-
 /* ==========================================
    ADMIN: update booking status (generic)
 ========================================== */
@@ -157,13 +153,20 @@ export const approveBooking = async (req, res) => {
       }),
     });
 
+    // AUDIT LOG
+    await logAction({
+      admin_id: req.user?.id || null,
+      action: "approve_booking",
+      entity: "bookings",
+      entity_id: result.id,
+      description: `Approved booking #${result.id}`,
+    });
+
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
-
-
 
 /* ==========================================
    ADMIN: reject booking
@@ -179,6 +182,15 @@ export const rejectBooking = async (req, res) => {
         name: result.customers.full_name,
         service: result.services.name,
       }),
+    });
+
+    // AUDIT LOG
+    await logAction({
+      admin_id: req.user?.id || null,
+      action: "reject_booking",
+      entity: "bookings",
+      entity_id: result.id,
+      description: `Rejected booking #${result.id}`,
     });
 
     res.json(result);
@@ -223,6 +235,15 @@ export const completeBooking = async (req, res) => {
         time: result.booking_time,
         reviewLink,
       }),
+    });
+
+    // AUDIT LOG
+    await logAction({
+      admin_id: req.user?.id || null,
+      action: "complete_booking",
+      entity: "bookings",
+      entity_id: result.id,
+      description: `Completed booking #${result.id}`,
     });
 
     return res.json(result);
