@@ -1,66 +1,287 @@
 /* ======================================================
-   SIDEBAR BASE (DESKTOP DEFAULT)
+   SIDEBAR BASE (DESKTOP)
 ====================================================== */
 
 .sidebar {
   position: relative;
   width: 250px;
   min-width: 250px;
-  background: linear-gradient(180deg, #d4af37, #b8962e);
+  height: 100vh;
+
+  background: linear-gradient(
+    180deg,
+    #f8c8dc 0%,
+    #e6c45a 40%,
+    #d4af37 70%,
+    #b8962e 100%
+  );
+
   color: white;
   padding: 20px;
+
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
+
+  overflow: hidden;
+
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08);
-  z-index: 500;
+
+  transition:
+    width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Collapsed Desktop */
+/* Collapsed Sidebar */
+
 .sidebar.collapsed {
   width: 80px;
   min-width: 80px;
 }
 
-/* Desktop collapse icon only */
-.desktop-only {
-  display: block;
+/* ======================================================
+   SIDEBAR HEADER / BRAND
+====================================================== */
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Logo Circle */
+
+.brand-icon {
+  width: 50px;
+  height: 50px;
+
+  border-radius: 50%;
+  background: white;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.15),
+    0 0 0 4px rgba(255, 255, 255, 0.15);
+}
+
+.brand-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Brand Name */
+
+.brand-text {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+/* Collapse Button */
+
+.collapse-btn {
+  cursor: pointer;
+  font-size: 18px;
+  transition: transform 0.2s ease;
+}
+
+.collapse-btn:hover {
+  transform: scale(1.1);
 }
 
 /* ======================================================
-   MOBILE RESPONSIVE
+   NAVIGATION
+====================================================== */
+
+nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Navigation Link */
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 12px 14px;
+
+  border-radius: 12px;
+
+  color: white;
+  text-decoration: none;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  transition: all 0.2s ease;
+}
+
+/* Icons */
+
+.nav-link svg {
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+/* Hover */
+
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateX(3px);
+}
+
+.nav-link:hover svg {
+  transform: scale(1.15);
+}
+
+/* Active Link */
+
+.active-link {
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  position: relative;
+}
+
+/* Active Indicator Bar */
+
+.active-link::before {
+  content: "";
+  position: absolute;
+  left: -18px;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  background: white;
+  border-radius: 4px;
+}
+
+/* ======================================================
+   COLLAPSE ANIMATION
+====================================================== */
+
+.nav-link span {
+  white-space: nowrap;
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.sidebar.collapsed .nav-link span,
+.sidebar.collapsed .brand-text {
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events: none;
+}
+
+/* Center icons when collapsed */
+
+.sidebar.collapsed .nav-link {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* ======================================================
+   LOGOUT BUTTON
+====================================================== */
+
+.logout-btn {
+  margin-top: auto;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 12px 14px;
+
+  border-radius: 12px;
+
+  cursor: pointer;
+  font-weight: 500;
+
+  transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateX(3px);
+}
+
+/* ======================================================
+   MOBILE SIDEBAR
 ====================================================== */
 
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
-    left: -260px;
     top: 0;
+    left: 0;
+
     width: 260px;
     min-width: 260px;
     height: 100%;
+
     z-index: 600;
+
+    transform: translateX(-100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .sidebar.open {
-    left: 0;
+    transform: translateX(0);
   }
 
-  /* Disable collapse on mobile */
   .sidebar.collapsed {
     width: 260px;
     min-width: 260px;
   }
 
-  .desktop-only {
-    display: none;
-  }
-
   .sidebar-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(2px);
+
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(3px);
+
     z-index: 500;
+
+    animation: fadeOverlay 0.25s ease;
+  }
+}
+
+/* ======================================================
+   OVERLAY ANIMATION
+====================================================== */
+
+@keyframes fadeOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }

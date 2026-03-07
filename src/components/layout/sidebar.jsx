@@ -13,6 +13,7 @@ import {
 } from "react-icons/fa";
 import { NavLink, useNavigate } from "react-router-dom";
 import "../../styles/sidebar.css";
+import logo from "../../../../UNailedIt_Website/src/assets/images/logo.png";
 
 const Sidebar = ({ mobileOpen, setMobileOpen }) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -70,9 +71,14 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
         }`}
       >
         <div className="sidebar-header">
-          <h2 className="logo">
-            {collapsed && !isMobile ? "U" : "UNAILEDIT"}
-          </h2>
+          <div className="brand">
+            <div className="brand-icon">
+              <img src={logo} alt="UNAILEDIT Logo" />
+            </div>
+            {(!collapsed || isMobile) && (
+              <span className="brand-text">UNAILEDIT</span>
+            )}
+          </div>
 
           {!isMobile && (
             <FaBars
@@ -81,7 +87,6 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
             />
           )}
         </div>
-
         <nav>
           {navItem("/dashboard", <FaTachometerAlt />, "Dashboard")}
           {navItem("/calendar", <FaCalendarAlt />, "Calendar")}

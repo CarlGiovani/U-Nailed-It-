@@ -42,6 +42,7 @@ body {
   font-family: "Poppins", sans-serif;
   background-color: var(--light-bg);
   color: var(--text-dark);
+  background: linear-gradient(135deg, #fff6f9, #fffdf6);
 
   font-size: var(--font-md);
   line-height: 1.6;
