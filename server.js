@@ -19,6 +19,7 @@ import servicesRouter from "./routes/Services_Feature/serviceRoutes.js";
 import testEmailRoutes from "./routes/testEmail.js";
 import dashboardRoutes from "./routes/Dashboard_Feature/dashboardRoutes.js"; 
 import auditRoutes from "./routes/Audit_Feature/auditRoutes.js"; 
+import notificationRoutes from "./routes/Admin_Notification_Feature/notificationRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -49,6 +50,7 @@ app.use("/api/policies", policiesRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/audit", auditRoutes); 
+app.use("/api/notifications", notificationRoutes);  
 
 // db or supabaseclienr
 const supabase = createClient(
