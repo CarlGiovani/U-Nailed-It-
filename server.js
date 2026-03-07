@@ -6,27 +6,26 @@ import { scheduleBookingExpiry } from "./utils/bookingExpiryCron.js";
 import { scheduleSlotCleanup } from "./utils/slotCron.js";
 
 //ENDPOINTS IMPORT
+import notificationRoutes from "./routes/Admin_Notification_Feature/notificationRoutes.js";
 import announcementRoutes from "./routes/Announcement_Feature/announcementRoutes.js";
+import auditRoutes from "./routes/Audit_Feature/auditRoutes.js";
 import authRoutes from "./routes/Authentication_Feature/authRoutes.js";
 import bookingRouter from "./routes/Booking_Feature/bookingRoutes.js";
 import calendarRoutes from "./routes/Calendar_Feature/calendarRoutes.js";
 import customerRouter from "./routes/Customer_Feature/customerRoutes.js";
+import dashboardRoutes from "./routes/Dashboard_Feature/dashboardRoutes.js";
 import paymentRouter from "./routes/Payment_Feature/paymentRoutes.js";
 import policiesRoutes from "./routes/Policies_Feature/policiesRoutes.js";
 import portfolioRoutes from "./routes/portfolio_Feature/portfolioRoutes.js";
 import reviewsRoutes from "./routes/Review_Feature/reviewsRoutes.js";
 import servicesRouter from "./routes/Services_Feature/serviceRoutes.js";
 import testEmailRoutes from "./routes/testEmail.js";
-import dashboardRoutes from "./routes/Dashboard_Feature/dashboardRoutes.js"; 
-import auditRoutes from "./routes/Audit_Feature/auditRoutes.js"; 
-import notificationRoutes from "./routes/Admin_Notification_Feature/notificationRoutes.js";
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // MIDDLEWALRE
-app.use(cors());
 app.use(
   cors({
     origin: ["http://localhost:5173", "http://localhost:5174"],
@@ -49,8 +48,8 @@ app.use("/api/reviews", reviewsRoutes);
 app.use("/api/policies", policiesRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/audit", auditRoutes); 
-app.use("/api/notifications", notificationRoutes);  
+app.use("/api/audit", auditRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // db or supabaseclienr
 const supabase = createClient(
@@ -76,4 +75,12 @@ app.get("/test-supabase", async (req, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("Unhandled Rejection:", err);
 });
