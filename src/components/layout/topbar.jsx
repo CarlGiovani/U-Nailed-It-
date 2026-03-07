@@ -1,22 +1,103 @@
 import { useEffect, useRef, useState } from "react";
-import { FaBars, FaBell, FaMoon, FaSun, FaUserCircle } from "react-icons/fa";
+import {
+  FaBars,
+  FaBell,
+  FaBullhorn,
+  FaCalendarAlt,
+  FaMoon,
+  FaStar,
+  FaSun,
+  FaUserCircle,
+} from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+
+import {
+  getNotifications,
+  getUnreadNotificationCount,
+  markNotificationAsRead,
+} from "../../services/BACKEND/adminNotificationApi";
+
 import "../../styles/topbar.css";
 
 const Topbar = ({ setMobileOpen }) => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+
   const [darkMode, setDarkMode] = useState(
     localStorage.getItem("admin_dark") === "true",
   );
 
+  const [notifications, setNotifications] = useState([]);
+  const [notifCount, setNotifCount] = useState(0);
+
+  const [page, setPage] = useState(1);
+  const NOTIF_PER_PAGE = 6;
+
   const navigate = useNavigate();
+
   const notifRef = useRef(null);
   const profileRef = useRef(null);
 
+  const [scrolled, setScrolled] = useState(false);
+
   const user = JSON.parse(localStorage.getItem("admin_user"));
 
+  /* ================= LOAD NOTIFICATIONS ================= */
+
+  const loadNotifications = async () => {
+    try {
+      const notifRes = await getNotifications();
+      const notifData = notifRes?.data || [];
+
+      // Remove notifications older than 7 days (client-side cleanup)
+      const filtered = notifData.filter((n) => {
+        const created = new Date(n.created_at);
+        const diffDays = (new Date() - created) / (1000 * 60 * 60 * 24);
+
+        return diffDays <= 7;
+      });
+
+      setNotifications(filtered);
+
+      const countRes = await getUnreadNotificationCount();
+      setNotifCount(countRes?.count || 0);
+    } catch (err) {
+      console.error("Notification fetch error:", err);
+    }
+  };
+
+  /* ================= AUTO REFRESH ================= */
+
+  useEffect(() => {
+    const fetchData = async () => {
+      await loadNotifications();
+    };
+
+    fetchData();
+
+    const interval = setInterval(() => {
+      fetchData();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 10) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   /* ================= DARK MODE ================= */
+
   useEffect(() => {
     if (darkMode) {
       document.body.classList.add("dark");
@@ -28,21 +109,78 @@ const Topbar = ({ setMobileOpen }) => {
   }, [darkMode]);
 
   /* ================= CLOSE DROPDOWN ================= */
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notifRef.current && !notifRef.current.contains(event.target)) {
         setNotifOpen(false);
       }
+
       if (profileRef.current && !profileRef.current.contains(event.target)) {
         setProfileOpen(false);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
+
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  /* ================= PAGINATION ================= */
+
+  const startIndex = (page - 1) * NOTIF_PER_PAGE;
+
+  const paginatedNotifications = notifications.slice(
+    startIndex,
+    startIndex + NOTIF_PER_PAGE,
+  );
+
+  const totalPages = Math.ceil(notifications.length / NOTIF_PER_PAGE) || 1;
+
+  /* ================= ICON PER TYPE ================= */
+
+  const getNotifIcon = (entity) => {
+    switch (entity) {
+      case "bookings":
+        return <FaCalendarAlt className="notif-icon booking" />;
+
+      case "reviews":
+        return <FaStar className="notif-icon review" />;
+
+      case "announcements":
+        return <FaBullhorn className="notif-icon announce" />;
+
+      default:
+        return <FaBell className="notif-icon default" />;
+    }
+  };
+
+  /* ================= CLICK NOTIFICATION ================= */
+
+  const handleNotificationClick = async (notif) => {
+    try {
+      await markNotificationAsRead(notif.id);
+
+      setNotifCount((prev) => Math.max(prev - 1, 0));
+
+      if (notif.related_entity === "bookings") {
+        navigate("/bookings");
+      } else if (notif.related_entity === "reviews") {
+        navigate("/reviews");
+      } else if (notif.related_entity === "announcements") {
+        navigate("/announcements");
+      } else {
+        navigate("/dashboard");
+      }
+
+      setNotifOpen(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   /* ================= LOGOUT ================= */
+
   const handleLogout = () => {
     localStorage.removeItem("admin_session");
     localStorage.removeItem("admin_user");
@@ -50,7 +188,7 @@ const Topbar = ({ setMobileOpen }) => {
   };
 
   return (
-    <div className="topbar">
+    <div className={`topbar ${scrolled ? "scrolled" : ""}`}>
       <div className="topbar-left">
         <button className="mobile-menu-btn" onClick={() => setMobileOpen(true)}>
           <FaBars />
@@ -60,6 +198,7 @@ const Topbar = ({ setMobileOpen }) => {
       </div>
 
       <div className="topbar-right">
+        {/* DARK MODE */}
         <div className="icon-wrapper">
           {darkMode ? (
             <FaSun onClick={() => setDarkMode(false)} />
@@ -68,23 +207,84 @@ const Topbar = ({ setMobileOpen }) => {
           )}
         </div>
 
+        {/* NOTIFICATIONS */}
         <div className="icon-wrapper" ref={notifRef}>
-          <FaBell onClick={() => setNotifOpen(!notifOpen)} />
+          <FaBell
+            onClick={() => {
+              setNotifOpen(!notifOpen);
+              loadNotifications();
+            }}
+          />
+
+          {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
 
           {notifOpen && (
-            <div className="dropdown">
-              <p style={{ margin: 0 }}>No new notifications</p>
+            <div className="notifications-dropdown">
+              <div className="notif-header">Notifications</div>
+
+              {paginatedNotifications.length === 0 ? (
+                <p className="no-notif">No notifications</p>
+              ) : (
+                paginatedNotifications.map((notif) => (
+                  <div
+                    key={notif.id}
+                    className={`notif-item ${!notif.is_read ? "unread" : ""}`}
+                    onClick={() => handleNotificationClick(notif)}
+                  >
+                    <div className="notif-left">
+                      {getNotifIcon(notif.related_entity)}
+                    </div>
+
+                    <div className="notif-content">
+                      <div className="notif-title">{notif.title}</div>
+
+                      <div className="notif-message">{notif.message}</div>
+
+                      <div className="notif-time">
+                        {new Date(notif.created_at).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+
+              {/* PAGINATION */}
+
+              {notifications.length > NOTIF_PER_PAGE && (
+                <div className="notif-pagination">
+                  <button
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => p - 1)}
+                  >
+                    Prev
+                  </button>
+
+                  <span>
+                    {page} / {totalPages}
+                  </span>
+
+                  <button
+                    disabled={page === totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
+        {/* PROFILE */}
         <div className="icon-wrapper" ref={profileRef}>
           <FaUserCircle onClick={() => setProfileOpen(!profileOpen)} />
 
           {profileOpen && (
             <div className="dropdown">
               <p className="profile-email">{user?.email}</p>
+
               <hr />
+
               <p className="logout-text" onClick={handleLogout}>
                 Logout
               </p>
