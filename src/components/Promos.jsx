@@ -24,85 +24,120 @@ const Promos = () => {
     fetchAnnouncements();
   }, []);
 
+  /* =========================
+     OPEN PREVIEW
+  ========================= */
+
   const openPreview = (images, index) => {
     setPreviewImages(images);
     setCurrentIndex(index);
   };
+
+  /* =========================
+     CLOSE PREVIEW
+  ========================= */
 
   const closePreview = () => {
     setPreviewImages([]);
     setCurrentIndex(0);
   };
 
+  /* =========================
+     LOCK SCROLL WHEN OPEN
+  ========================= */
+
+  useEffect(() => {
+    document.body.style.overflow = previewImages.length > 0 ? "hidden" : "auto";
+  }, [previewImages]);
+
+  /* =========================
+     NAVIGATION
+  ========================= */
+
   const nextImage = () => {
     setCurrentIndex((prev) =>
-      prev === previewImages.length - 1 ? 0 : prev + 1
+      prev === previewImages.length - 1 ? 0 : prev + 1,
     );
   };
 
   const prevImage = () => {
     setCurrentIndex((prev) =>
-      prev === 0 ? previewImages.length - 1 : prev - 1
+      prev === 0 ? previewImages.length - 1 : prev - 1,
     );
   };
 
   return (
-    <section className="bulletin" id="promos">
-      <div className="container">
-        <div className="section-title">
-          <h2>Promos & Announcements</h2>
-          <p>Latest updates and special offers</p>
-        </div>
+    <>
+      {/* =========================
+         PROMOS SECTION
+      ========================= */}
 
-        {loading && <p className="loading-text">Loading announcements...</p>}
+      <section className="bulletin" id="promos">
+        <div className="container">
+          <div className="section-title">
+            <h2>Promos & Announcements</h2>
+            <p>Latest updates and special offers</p>
+          </div>
 
-        <div className="bulletin-board">
-          {announcements.map((item) => (
-            <div key={item.id} className="note-card">
-              <div className="pin"></div>
+          {loading && <p className="loading-text">Loading announcements...</p>}
 
-              {item.images?.length > 0 && (
-                <div className="note-image-grid">
-                  {item.images.map((img, index) => (
-                    <img
-                      key={index}
-                      src={img}
-                      alt={item.title}
-                      onClick={() => openPreview(item.images, index)}
-                    />
-                  ))}
-                </div>
-              )}
+          <div className="bulletin-board">
+            {announcements.map((item) => (
+              <div key={item.id} className="note-card">
+                <div className="pin"></div>
 
-              <h3>{item.title}</h3>
-              <p>{item.content}</p>
-
-              <div className="note-footer">
-                {item.end_date ? (
-                  <span>Until {item.end_date}</span>
-                ) : (
-                  <span>Ongoing</span>
+                {item.images?.length > 0 && (
+                  <div className="note-image-grid">
+                    {item.images.map((img, index) => (
+                      <img
+                        key={index}
+                        src={img}
+                        alt={item.title}
+                        loading="lazy"
+                        onClick={() => openPreview(item.images, index)}
+                      />
+                    ))}
+                  </div>
                 )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* PREVIEW OVERLAY */}
+                <h3>{item.title}</h3>
+                <p>{item.content}</p>
+
+                <div className="note-footer">
+                  {item.end_date ? (
+                    <span>Until {item.end_date}</span>
+                  ) : (
+                    <span>Ongoing</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* =========================
+         IMAGE PREVIEW MODAL
+      ========================= */}
+
       {previewImages.length > 0 && (
         <div className="image-preview-overlay" onClick={closePreview}>
           <div
             className="image-preview-box"
             onClick={(e) => e.stopPropagation()}
           >
-            <img src={previewImages[currentIndex]} alt="Preview" />
+            <img
+              src={previewImages[currentIndex]}
+              alt="Preview"
+              loading="lazy"
+            />
 
             {previewImages.length > 1 && (
               <>
                 <button className="nav-btn left" onClick={prevImage}>
                   ‹
                 </button>
+
                 <button className="nav-btn right" onClick={nextImage}>
                   ›
                 </button>
@@ -115,7 +150,7 @@ const Promos = () => {
           </div>
         </div>
       )}
-    </section>
+    </>
   );
 };
 

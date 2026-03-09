@@ -177,6 +177,10 @@
   z-index: 2;
   overflow-y: auto;
   animation: fadeScale 0.25s ease;
+  .slider-content {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+  }
 }
 
 .slider-close,
