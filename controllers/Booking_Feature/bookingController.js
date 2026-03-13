@@ -6,7 +6,6 @@ import { bookingApprovedTemplate } from "../../templates/emails/bookingApproved.
 import { bookingCompletedTemplate } from "../../templates/emails/bookingCompletedTemplate.js";
 import { bookingRejectedTemplate } from "../../templates/emails/bookingRejected.js";
 import { bookingSubmittedTemplate } from "../../templates/emails/bookingSubmitted.js";
-import crypto from "crypto";
 
 dotenv.config();
 
@@ -215,7 +214,8 @@ export const rejectBooking = async (req, res) => {
 ========================================== */
 export const cancelBooking = async (req, res) => {
   try {
-    const result = await booking.cancelBooking(req.params.id);
+    const {token} = req.query;
+    const result = await booking.cancelBookingByToken(token);
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
