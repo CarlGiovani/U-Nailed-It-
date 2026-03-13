@@ -6,6 +6,7 @@ import { bookingApprovedTemplate } from "../../templates/emails/bookingApproved.
 import { bookingCompletedTemplate } from "../../templates/emails/bookingCompletedTemplate.js";
 import { bookingRejectedTemplate } from "../../templates/emails/bookingRejected.js";
 import { bookingSubmittedTemplate } from "../../templates/emails/bookingSubmitted.js";
+import crypto from "crypto";
 
 dotenv.config();
 
@@ -141,7 +142,8 @@ export const approveBooking = async (req, res) => {
   try {
     const result = await booking.approveBooking(req.params.id);
 
-    const cancelLink = `http://localhost:5000/api/bookings/${result.id}/cancel`;
+    // Lagay ko sa env aferd ko ma-deploy
+    const cancelLink = process.env.CANCLE_LINK || `http://localhost:5000/api/bookings/${result.id}/cancel`;
 
     await sendEmail({
       to: result.customers.email,
@@ -149,6 +151,8 @@ export const approveBooking = async (req, res) => {
       html: bookingApprovedTemplate({
         name: result.customers.full_name,
         service: result.services.name,
+        date: result.booking_date,
+        time: result.booking_time,
         cancelLink,
       }),
     });
@@ -181,6 +185,8 @@ export const rejectBooking = async (req, res) => {
       html: bookingRejectedTemplate({
         name: result.customers.full_name,
         service: result.services.name,
+        date: result.booking_date,
+        time: result.booking_time,
       }),
     });
 
@@ -201,6 +207,11 @@ export const rejectBooking = async (req, res) => {
 
 /* ==========================================
    PUBLIC: cancel booking
+   TODO: Dapat may token-based cancellation din, para hindi basta-basta ma-cancel ng ibang tao yung booking kahit na alam lang nila yung ID.
+   TODO: Sa cancellation email, pwede lagyan ng feedback form para malaman kung bakit nag-cancel yung customer (optional)
+   TODO: Sa model, i-check na pwede lang ma-cancel yung booking if status is pending_approval or approved. Dapat hindi na pwedeng i-cancel yung booking if completed or already cancelled.
+   TODO: Sa cancellation, i-update yung calendar slot para ma-unblock ulit if necessary.
+   TODO: Sa cancellation dapat mag notif sa admin (pwede email or dashboard notification) para malaman nila na may nag cancel ng booking.
 ========================================== */
 export const cancelBooking = async (req, res) => {
   try {
