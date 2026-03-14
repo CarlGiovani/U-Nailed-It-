@@ -380,7 +380,7 @@ export const updateBookingStatus = async (id, status) => {
    - return filtered selected variant only
 ========================================== */
 export const approveBooking = async (id) => {
-  const cancelToken = crypto.randomUIID();
+  const cancelToken = crypto.randomUUID();
   const { data: updated, error } = await supabase
     .from("bookings")
     .update({

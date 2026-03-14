@@ -78,7 +78,7 @@ export const confirmBooking = async (req, res) => {
       });
     }
 
-    res.status(201).json({
+    res.status(200).json({
       message: "Booking confirmed (pending approval)",
       booking: updatedBooking,
     });
@@ -142,7 +142,7 @@ export const approveBooking = async (req, res) => {
     const result = await booking.approveBooking(req.params.id);
 
     // Lagay ko sa env aferd ko ma-deploy
-    const cancelLink = process.env.CANCLE_LINK || `http://localhost:5000/api/bookings/${result.id}/cancel`;
+    const cancelLink = process.env.FRONTEND_CANCEL_URL || `http://localhost:5173/cancel?token=${result.cancel_token}`;
 
     await sendEmail({
       to: result.customers.email,
@@ -214,8 +214,9 @@ export const rejectBooking = async (req, res) => {
 ========================================== */
 export const cancelBooking = async (req, res) => {
   try {
-    const {token} = req.query;
+    const { token } = req.query;
     const result = await booking.cancelBookingByToken(token);
+    if(!token) return res.status(400).json({ error: "Cancellation token is required" });  
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });

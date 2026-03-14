@@ -18,7 +18,7 @@ router.get("/:id", BookingController.getBookingById);
 router.post("/:id/confirm", BookingController.confirmBooking);
 
 // Cancel booking
-router.put("/:id/cancel", BookingController.cancelBooking);
+router.put("/cancel", BookingController.cancelBooking);
 
 /* =========================
    ADMIN
