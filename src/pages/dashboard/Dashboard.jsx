@@ -31,6 +31,7 @@ const Dashboard = () => {
     totalRevenue: 0,
     pendingReviews: 0,
     activeServices: 0,
+    pendingApprovalBookings: 0,
   });
 
   const [analytics, setAnalytics] = useState({
@@ -40,7 +41,6 @@ const Dashboard = () => {
 
   const [bookings, setBookings] = useState([]);
   const [activities, setActivities] = useState([]);
-
   const [currentPage, setCurrentPage] = useState(1);
 
   const reportRef = useRef(null);
@@ -48,20 +48,28 @@ const Dashboard = () => {
   /* ===============================
      FETCH DATA
   =============================== */
-
   useEffect(() => {
     const loadDashboard = async () => {
       try {
         const data = await getDashboardData();
-        setStats(data.stats);
-        setAnalytics(data.analytics);
 
-        if (data.recentBookings) {
-          setBookings(data.recentBookings);
-        }
+        setStats({
+          totalBookings: data?.stats?.totalBookings || 0,
+          totalRevenue: data?.stats?.totalRevenue || 0,
+          pendingReviews: data?.stats?.pendingReviews || 0,
+          activeServices: data?.stats?.activeServices || 0,
+          pendingApprovalBookings: data?.stats?.pendingApprovalBookings || 0,
+        });
+
+        setAnalytics({
+          bookingsPerMonth: data?.analytics?.bookingsPerMonth || {},
+          revenuePerMonth: data?.analytics?.revenuePerMonth || {},
+        });
+
+        setBookings(data?.recentBookings || []);
 
         const logs = await getAuditLogs();
-        setActivities(logs);
+        setActivities(logs || []);
       } catch (err) {
         console.error("Dashboard error:", err);
       }
@@ -73,7 +81,6 @@ const Dashboard = () => {
   /* ===============================
      PAGINATION
   =============================== */
-
   const totalPages = Math.ceil(bookings.length / ITEMS_PER_PAGE);
 
   const paginatedBookings = bookings.slice(
@@ -84,43 +91,40 @@ const Dashboard = () => {
   /* ===============================
      CHART DATA
   =============================== */
-
   const bookingChart = Object.keys(analytics.bookingsPerMonth || {}).map(
-    (m) => ({
-      month: m,
-      bookings: analytics.bookingsPerMonth[m],
+    (month) => ({
+      month,
+      bookings: analytics.bookingsPerMonth[month],
     }),
   );
 
   const revenueChart = Object.keys(analytics.revenuePerMonth || {}).map(
-    (m) => ({
-      month: m,
-      revenue: analytics.revenuePerMonth[m],
+    (month) => ({
+      month,
+      revenue: analytics.revenuePerMonth[month],
     }),
   );
 
   /* ===============================
      TOP SERVICES
   =============================== */
-
   const serviceCount = {};
 
-  bookings.forEach((b) => {
-    const name = b.services?.name || "Unknown";
+  bookings.forEach((booking) => {
+    const name = booking.services?.name || "Unknown";
     serviceCount[name] = (serviceCount[name] || 0) + 1;
   });
 
-  const topServices = Object.keys(serviceCount).map((s) => ({
-    name: s,
-    value: serviceCount[s],
+  const topServices = Object.keys(serviceCount).map((service) => ({
+    name: service,
+    value: serviceCount[service],
   }));
 
-  const COLORS = ["#d4af37", "#ff69b4", "#8884d8", "#82ca9d"];
+  const COLORS = ["#d4af37", "#ff69b4", "#8884d8", "#82ca9d", "#60a5fa"];
 
   /* ===============================
      EXPORT EXCEL
   =============================== */
-
   const exportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Bookings");
@@ -129,17 +133,17 @@ const Dashboard = () => {
       { header: "Booking ID", key: "id", width: 10 },
       { header: "Customer Name", key: "customer", width: 25 },
       { header: "Service", key: "service", width: 25 },
-      { header: "Status", key: "status", width: 15 },
+      { header: "Status", key: "status", width: 20 },
       { header: "Date", key: "date", width: 20 },
     ];
 
-    bookings.forEach((b) => {
+    bookings.forEach((booking) => {
       sheet.addRow({
-        id: b.id,
-        customer: b.customers?.full_name || "N/A",
-        service: b.services?.name || "N/A",
-        status: b.status,
-        date: b.booking_date,
+        id: booking.id,
+        customer: booking.customers?.full_name || "N/A",
+        service: booking.services?.name || "N/A",
+        status: booking.status,
+        date: booking.booking_date,
       });
     });
 
@@ -155,21 +159,24 @@ const Dashboard = () => {
   /* ===============================
      PRINT
   =============================== */
-
   const handlePrint = useReactToPrint({
     contentRef: reportRef,
   });
 
   /* ===============================
-     STATUS STYLE
+     HELPERS
   =============================== */
-
   const getStatusClass = (status) => {
     if (status === "approved") return "status approved";
     if (status === "completed") return "status completed";
     if (status === "pending_approval") return "status pending";
     if (status === "cancelled") return "status cancelled";
+    if (status === "rejected") return "status rejected";
     return "status";
+  };
+
+  const formatCurrency = (value) => {
+    return `₱${Number(value || 0).toLocaleString()}`;
   };
 
   return (
@@ -178,7 +185,7 @@ const Dashboard = () => {
         <h1 className="dashboard-title">Dashboard Overview</h1>
 
         <div style={{ display: "none" }}>
-          <div ref={reportRef} className="print-report">
+          <div className="print-report">
             <h1>UNAILEDIT Business Report</h1>
 
             <p>Date Generated: {new Date().toLocaleDateString()}</p>
@@ -191,17 +198,18 @@ const Dashboard = () => {
                   <td>Total Bookings</td>
                   <td>{stats.totalBookings}</td>
                 </tr>
-
                 <tr>
                   <td>Total Revenue</td>
-                  <td>₱{stats.totalRevenue}</td>
+                  <td>{formatCurrency(stats.totalRevenue)}</td>
                 </tr>
-
+                <tr>
+                  <td>Pending Approval</td>
+                  <td>{stats.pendingApprovalBookings}</td>
+                </tr>
                 <tr>
                   <td>Pending Reviews</td>
                   <td>{stats.pendingReviews}</td>
                 </tr>
-
                 <tr>
                   <td>Active Services</td>
                   <td>{stats.activeServices}</td>
@@ -223,21 +231,19 @@ const Dashboard = () => {
               </thead>
 
               <tbody>
-                {bookings.slice(0, 10).map((b) => (
-                  <tr key={b.id}>
-                    <td>{b.id}</td>
-                    <td>{b.customers?.full_name}</td>
-                    <td>{b.services?.name}</td>
-                    <td>{b.status}</td>
-                    <td>{b.booking_date}</td>
+                {bookings.slice(0, 10).map((booking) => (
+                  <tr key={booking.id}>
+                    <td>{booking.id}</td>
+                    <td>{booking.customers?.full_name || "N/A"}</td>
+                    <td>{booking.services?.name || "N/A"}</td>
+                    <td>{booking.status}</td>
+                    <td>{booking.booking_date}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
-
-        {/* ================= STATS ================= */}
 
         <div className="stats-grid">
           <div className="stat-card">
@@ -247,7 +253,12 @@ const Dashboard = () => {
 
           <div className="stat-card">
             <h3>Total Revenue</h3>
-            <p>₱{stats.totalRevenue}</p>
+            <p>{formatCurrency(stats.totalRevenue)}</p>
+          </div>
+
+          <div className="stat-card stat-card-pending">
+            <h3>Pending Approval</h3>
+            <p>{stats.pendingApprovalBookings}</p>
           </div>
 
           <div className="stat-card">
@@ -260,8 +271,6 @@ const Dashboard = () => {
             <p>{stats.activeServices}</p>
           </div>
         </div>
-
-        {/* ================= CHARTS ================= */}
 
         <div className="charts-grid">
           <div className="chart-card">
@@ -286,7 +295,7 @@ const Dashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
-                <Tooltip />
+                <Tooltip formatter={(value) => formatCurrency(value)} />
                 <Bar dataKey="revenue" fill="#ff69b4" />
               </BarChart>
             </ResponsiveContainer>
@@ -313,35 +322,36 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* ================= ACTIVITY ================= */}
         <div className="activity-card">
-          <div className="activity-header">
+          <div className="section-header">
             <h3>Audit Logs</h3>
             <span>{activities.length} activities</span>
           </div>
 
           <div className="activity-feed">
-            {activities.slice(0, 6).map((log) => (
-              <div className="activity-item" key={log.id}>
-                <div className={`activity-icon ${log.action}`}>●</div>
+            {activities.length > 0 ? (
+              activities.slice(0, 5).map((log) => (
+                <div className="activity-item" key={log.id}>
+                  <div className={`activity-icon ${log.action}`}>●</div>
 
-                <div className="activity-content">
-                  <div className="activity-title">
-                    {log.action.replaceAll("_", " ")}
-                  </div>
+                  <div className="activity-content">
+                    <div className="activity-title">
+                      {log.action.replaceAll("_", " ")}
+                    </div>
 
-                  <div className="activity-desc">{log.description}</div>
+                    <div className="activity-desc">{log.description}</div>
 
-                  <div className="activity-time">
-                    {new Date(log.created_at).toLocaleString()}
+                    <div className="activity-time">
+                      {new Date(log.created_at).toLocaleString()}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div className="empty-panel">No audit logs found.</div>
+            )}
           </div>
         </div>
-
-        {/* ================= ACTIONS ================= */}
 
         <div className="dashboard-actions">
           <button onClick={exportExcel} className="admin-btn">
@@ -353,58 +363,67 @@ const Dashboard = () => {
           </button>
         </div>
 
-        {/* ================= RECENT BOOKINGS ================= */}
-
         <div className="recent-bookings">
-          <h2>Recent Bookings</h2>
-
-          <div className="table-wrapper">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Service</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {paginatedBookings.map((b) => (
-                  <tr key={b.id}>
-                    <td>{b.id}</td>
-                    <td>{b.customers?.full_name || "N/A"}</td>
-                    <td>{b.services?.name || "N/A"}</td>
-                    <td>
-                      <span className={getStatusClass(b.status)}>
-                        {b.status}
-                      </span>
-                    </td>
-                    <td>{b.booking_date}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="section-header">
+            <h2>Recent Bookings</h2>
+            <span>{bookings.length} bookings</span>
           </div>
 
-          {/* ================= PAGINATION ================= */}
+          <div className="table-card">
+            <div className="table-wrapper recent-bookings-scroll">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Service</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {paginatedBookings.length > 0 ? (
+                    paginatedBookings.map((booking) => (
+                      <tr key={booking.id}>
+                        <td>{booking.id}</td>
+                        <td>{booking.customers?.full_name || "N/A"}</td>
+                        <td>{booking.services?.name || "N/A"}</td>
+                        <td>
+                          <span className={getStatusClass(booking.status)}>
+                            {booking.status}
+                          </span>
+                        </td>
+                        <td>{booking.booking_date}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="5" className="empty-state">
+                        No recent bookings found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
           <div className="pagination">
             <button
               disabled={currentPage === 1}
-              onClick={() => setCurrentPage(currentPage - 1)}
+              onClick={() => setCurrentPage((prev) => prev - 1)}
             >
               Prev
             </button>
 
             <span>
-              Page {currentPage} / {totalPages || 1}
+              Page {totalPages === 0 ? 0 : currentPage} / {totalPages || 1}
             </span>
 
             <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage === totalPages || totalPages === 0}
+              onClick={() => setCurrentPage((prev) => prev + 1)}
             >
               Next
             </button>
