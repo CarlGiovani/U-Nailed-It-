@@ -22,23 +22,19 @@ import "../../styles/topbar.css";
 const Topbar = ({ setMobileOpen }) => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-
   const [darkMode, setDarkMode] = useState(
     localStorage.getItem("admin_dark") === "true",
   );
-
   const [notifications, setNotifications] = useState([]);
   const [notifCount, setNotifCount] = useState(0);
-
   const [page, setPage] = useState(1);
+  const [scrolled, setScrolled] = useState(false);
+
   const NOTIF_PER_PAGE = 6;
 
   const navigate = useNavigate();
-
   const notifRef = useRef(null);
   const profileRef = useRef(null);
-
-  const [scrolled, setScrolled] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("admin_user"));
 
@@ -49,11 +45,9 @@ const Topbar = ({ setMobileOpen }) => {
       const notifRes = await getNotifications();
       const notifData = notifRes?.data || [];
 
-      // Remove notifications older than 7 days (client-side cleanup)
       const filtered = notifData.filter((n) => {
         const created = new Date(n.created_at);
         const diffDays = (new Date() - created) / (1000 * 60 * 60 * 24);
-
         return diffDays <= 7;
       });
 
@@ -82,13 +76,11 @@ const Topbar = ({ setMobileOpen }) => {
     return () => clearInterval(interval);
   }, []);
 
+  /* ================= SCROLL EFFECT ================= */
+
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 10) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
-      }
+      setScrolled(window.scrollY > 10);
     };
 
     window.addEventListener("scroll", handleScroll);
@@ -128,42 +120,61 @@ const Topbar = ({ setMobileOpen }) => {
 
   /* ================= PAGINATION ================= */
 
-  const startIndex = (page - 1) * NOTIF_PER_PAGE;
+  const totalPages = Math.ceil(notifications.length / NOTIF_PER_PAGE) || 1;
+  const currentPage = page > totalPages ? 1 : page;
+
+  const startIndex = (currentPage - 1) * NOTIF_PER_PAGE;
 
   const paginatedNotifications = notifications.slice(
     startIndex,
     startIndex + NOTIF_PER_PAGE,
   );
 
-  const totalPages = Math.ceil(notifications.length / NOTIF_PER_PAGE) || 1;
+  /* ================= ICON PER TYPE / ENTITY ================= */
 
-  /* ================= ICON PER TYPE ================= */
-
-  const getNotifIcon = (entity) => {
-    switch (entity) {
-      case "bookings":
-        return <FaCalendarAlt className="notif-icon booking" />;
-
-      case "reviews":
-        return <FaStar className="notif-icon review" />;
-
-      case "announcements":
-        return <FaBullhorn className="notif-icon announce" />;
-
-      default:
-        return <FaBell className="notif-icon default" />;
+  const getNotifIcon = (notif) => {
+    if (notif.related_entity === "reviews" || notif.type === "review") {
+      return <FaStar className="notif-icon review" />;
     }
+
+    if (
+      notif.related_entity === "announcements" ||
+      notif.type === "announcement"
+    ) {
+      return <FaBullhorn className="notif-icon announce" />;
+    }
+
+    if (notif.related_entity === "bookings" || notif.type === "booking") {
+      return <FaCalendarAlt className="notif-icon booking" />;
+    }
+
+    return <FaBell className="notif-icon default" />;
   };
 
   /* ================= CLICK NOTIFICATION ================= */
 
   const handleNotificationClick = async (notif) => {
     try {
-      await markNotificationAsRead(notif.id);
+      if (!notif.is_read) {
+        await markNotificationAsRead(notif.id);
+        setNotifCount((prev) => Math.max(prev - 1, 0));
+      }
 
-      setNotifCount((prev) => Math.max(prev - 1, 0));
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.id === notif.id ? { ...item, is_read: true } : item,
+        ),
+      );
 
-      if (notif.related_entity === "bookings") {
+      if (notif.link === "/admin/bookings") {
+        navigate("/bookings");
+      } else if (notif.link === "/admin/reviews") {
+        navigate("/reviews");
+      } else if (notif.link === "/admin/announcements") {
+        navigate("/announcements");
+      } else if (notif.link) {
+        navigate(notif.link);
+      } else if (notif.related_entity === "bookings") {
         navigate("/bookings");
       } else if (notif.related_entity === "reviews") {
         navigate("/reviews");
@@ -175,7 +186,7 @@ const Topbar = ({ setMobileOpen }) => {
 
       setNotifOpen(false);
     } catch (err) {
-      console.error(err);
+      console.error("Notification click error:", err);
     }
   };
 
@@ -211,7 +222,8 @@ const Topbar = ({ setMobileOpen }) => {
         <div className="icon-wrapper" ref={notifRef}>
           <FaBell
             onClick={() => {
-              setNotifOpen(!notifOpen);
+              setNotifOpen((prev) => !prev);
+              setPage(1);
               loadNotifications();
             }}
           />
@@ -231,15 +243,11 @@ const Topbar = ({ setMobileOpen }) => {
                     className={`notif-item ${!notif.is_read ? "unread" : ""}`}
                     onClick={() => handleNotificationClick(notif)}
                   >
-                    <div className="notif-left">
-                      {getNotifIcon(notif.related_entity)}
-                    </div>
+                    <div className="notif-left">{getNotifIcon(notif)}</div>
 
                     <div className="notif-content">
                       <div className="notif-title">{notif.title}</div>
-
                       <div className="notif-message">{notif.message}</div>
-
                       <div className="notif-time">
                         {new Date(notif.created_at).toLocaleString()}
                       </div>
@@ -248,23 +256,21 @@ const Topbar = ({ setMobileOpen }) => {
                 ))
               )}
 
-              {/* PAGINATION */}
-
               {notifications.length > NOTIF_PER_PAGE && (
                 <div className="notif-pagination">
                   <button
-                    disabled={page === 1}
+                    disabled={currentPage === 1}
                     onClick={() => setPage((p) => p - 1)}
                   >
                     Prev
                   </button>
 
                   <span>
-                    {page} / {totalPages}
+                    {currentPage} / {totalPages}
                   </span>
 
                   <button
-                    disabled={page === totalPages}
+                    disabled={currentPage === totalPages}
                     onClick={() => setPage((p) => p + 1)}
                   >
                     Next
@@ -277,7 +283,7 @@ const Topbar = ({ setMobileOpen }) => {
 
         {/* PROFILE */}
         <div className="icon-wrapper" ref={profileRef}>
-          <FaUserCircle onClick={() => setProfileOpen(!profileOpen)} />
+          <FaUserCircle onClick={() => setProfileOpen((prev) => !prev)} />
 
           {profileOpen && (
             <div className="dropdown">
