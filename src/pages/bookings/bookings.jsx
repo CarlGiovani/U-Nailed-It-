@@ -436,17 +436,56 @@ const Bookings = () => {
 
       {/* CONFIRM MODAL */}
       {confirmAction && (
-        <div className="modal-overlay">
-          <div className="confirm-modal">
-            <h3>
-              Confirm {confirmAction.type} booking ID {confirmAction.booking.id}
-              ?
+        <div
+          className="modal-overlay"
+          onClick={() => !actionLoading && setConfirmAction(null)}
+        >
+          <div
+            className="confirm-modal premium-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`confirm-icon ${confirmAction.type}`}>
+              {confirmAction.type === "approve" && "✓"}
+              {confirmAction.type === "reject" && "!"}
+              {confirmAction.type === "complete" && "★"}
+            </div>
+
+            <h3 className="confirm-title">
+              {confirmAction.type === "approve" && "Approve this booking?"}
+              {confirmAction.type === "reject" && "Reject this booking?"}
+              {confirmAction.type === "complete" && "Complete this booking?"}
             </h3>
-            <div className="modal-actions">
-              <button onClick={executeAction}>
-                {actionLoading ? "Processing..." : "Yes"}
+
+            <p className="confirm-subtitle">
+              You are about to <strong>{confirmAction.type}</strong> booking ID{" "}
+              <strong>#{confirmAction.booking.id}</strong>.
+            </p>
+
+            <p className="confirm-note">
+              {confirmAction.type === "approve" &&
+                "This will mark the booking as approved and send the approval flow."}
+              {confirmAction.type === "reject" &&
+                "This will reject the booking and release the reserved slot if applicable."}
+              {confirmAction.type === "complete" &&
+                "This will mark the booking as completed and trigger the review flow."}
+            </p>
+
+            <div className="confirm-actions">
+              <button
+                className="confirm-btn cancel"
+                onClick={() => setConfirmAction(null)}
+                disabled={actionLoading}
+              >
+                Cancel
               </button>
-              <button onClick={() => setConfirmAction(null)}>Cancel</button>
+
+              <button
+                className={`confirm-btn ${confirmAction.type}`}
+                onClick={executeAction}
+                disabled={actionLoading}
+              >
+                {actionLoading ? "Processing..." : `Yes, ${confirmAction.type}`}
+              </button>
             </div>
           </div>
         </div>
