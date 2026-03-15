@@ -6,7 +6,8 @@ export const getDashboardData = async () => {
   const pendingReviews = await dashboard.getPendingReviews();
   const activeServices = await dashboard.getActiveServices();
   const analytics = await dashboard.getBookingAnalytics();
-  const recentBookings = await dashboard.getRecentBookings(); 
+  const recentBookings = await dashboard.getRecentBookings();
+  const bookingStatusCounts = await dashboard.getBookingStatusCounts();
 
   return {
     stats: {
@@ -14,6 +15,7 @@ export const getDashboardData = async () => {
       totalRevenue,
       pendingReviews,
       activeServices,
+      pendingApprovalBookings: bookingStatusCounts.pending_approval || 0,
     },
     analytics,
     recentBookings,
