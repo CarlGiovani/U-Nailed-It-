@@ -60,6 +60,46 @@
   text-align: center;
 }
 
+.cancel-form-group {
+  margin-top: 18px;
+}
+
+.cancel-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #333333;
+}
+
+.cancel-select,
+.cancel-textarea {
+  width: 100%;
+  border: 1px solid #e2d6da;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  color: #222222;
+  background: #fff;
+  box-sizing: border-box;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.cancel-select:focus,
+.cancel-textarea:focus {
+  border-color: #e8a1b2;
+  box-shadow: 0 0 0 3px rgba(232, 161, 178, 0.15);
+}
+
+.cancel-textarea {
+  resize: vertical;
+  min-height: 100px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
 .cancel-actions {
   display: flex;
   gap: 12px;

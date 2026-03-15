@@ -13,17 +13,43 @@ const CancelBookingPage = () => {
   const [booking, setBooking] = useState(null);
   const [cancelled, setCancelled] = useState(false);
 
+  const [reasonCode, setReasonCode] = useState("");
+  const [reasonNote, setReasonNote] = useState("");
+
+  const reasonMap = {
+    schedule_conflict: "Schedule conflict",
+    changed_mind: "Changed my mind",
+    found_other_salon: "Found another salon",
+    price_concern: "Price concern",
+    other: "Other",
+  };
+
   const handleCancelBooking = async () => {
     if (!token) {
       setError("Invalid cancellation link.");
       return;
     }
 
+    if (!reasonCode) {
+      setError("Please select a cancellation reason.");
+      return;
+    }
+
+    let finalReason = reasonMap[reasonCode] || reasonCode;
+
+    if (reasonCode === "other") {
+      if (!reasonNote.trim()) {
+        setError("Please enter your cancellation reason.");
+        return;
+      }
+      finalReason = reasonNote.trim();
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      const data = await cancelBookingPerToken(token);
+      const data = await cancelBookingPerToken(token, finalReason);
       setBooking(data);
       setCancelled(true);
     } catch (err) {
@@ -64,6 +90,54 @@ const CancelBookingPage = () => {
             <p className="cancel-note">
               This will release your reserved appointment slot.
             </p>
+
+            <div className="cancel-form-group">
+              <label htmlFor="reasonCode" className="cancel-label">
+                Reason for cancellation
+              </label>
+
+              <select
+                id="reasonCode"
+                className="cancel-select"
+                value={reasonCode}
+                onChange={(e) => {
+                  setReasonCode(e.target.value);
+                  setError(null);
+                  if (e.target.value !== "other") {
+                    setReasonNote("");
+                  }
+                }}
+                disabled={loading}
+              >
+                <option value="">Select a reason</option>
+                <option value="schedule_conflict">Schedule conflict</option>
+                <option value="changed_mind">Changed my mind</option>
+                <option value="found_other_salon">Found another salon</option>
+                <option value="price_concern">Price concern</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            {reasonCode === "other" && (
+              <div className="cancel-form-group">
+                <label htmlFor="reasonNote" className="cancel-label">
+                  Tell us more
+                </label>
+
+                <textarea
+                  id="reasonNote"
+                  className="cancel-textarea"
+                  rows="4"
+                  placeholder="Enter your reason here..."
+                  value={reasonNote}
+                  onChange={(e) => {
+                    setReasonNote(e.target.value);
+                    setError(null);
+                  }}
+                  disabled={loading}
+                />
+              </div>
+            )}
 
             {error && <p className="cancel-error-text">{error}</p>}
 
@@ -120,6 +194,13 @@ const CancelBookingPage = () => {
                   <strong>{booking.customers.full_name}</strong>
                 </div>
               )}
+
+              {booking.cancellation_reason && (
+                <div className="info-row">
+                  <span>📝 Reason</span>
+                  <strong>{booking.cancellation_reason}</strong>
+                </div>
+              )}
             </div>
 
             <div className="cancel-actions">
@@ -132,7 +213,8 @@ const CancelBookingPage = () => {
 
               <button
                 className="cancel-btn secondary"
-                onClick={() => navigate("/booking")}
+                onClick={() => navigate("/")}
+                disabled={loading}
               >
                 Book Again
               </button>
