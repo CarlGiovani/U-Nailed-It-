@@ -153,6 +153,20 @@ const Topbar = ({ setMobileOpen }) => {
 
   /* ================= CLICK NOTIFICATION ================= */
 
+  const normalizeNotificationLink = (link, relatedEntity) => {
+    if (link === "/admin/bookings") return "/bookings";
+    if (link === "/admin/reviews") return "/reviews";
+    if (link === "/admin/announcements") return "/announcements";
+
+    if (link) return link;
+
+    if (relatedEntity === "bookings") return "/bookings";
+    if (relatedEntity === "reviews") return "/reviews";
+    if (relatedEntity === "announcements") return "/announcements";
+
+    return "/dashboard";
+  };
+
   const handleNotificationClick = async (notif) => {
     try {
       if (!notif.is_read) {
@@ -166,24 +180,12 @@ const Topbar = ({ setMobileOpen }) => {
         ),
       );
 
-      if (notif.link === "/admin/bookings") {
-        navigate("/bookings");
-      } else if (notif.link === "/admin/reviews") {
-        navigate("/reviews");
-      } else if (notif.link === "/admin/announcements") {
-        navigate("/announcements");
-      } else if (notif.link) {
-        navigate(notif.link);
-      } else if (notif.related_entity === "bookings") {
-        navigate("/bookings");
-      } else if (notif.related_entity === "reviews") {
-        navigate("/reviews");
-      } else if (notif.related_entity === "announcements") {
-        navigate("/announcements");
-      } else {
-        navigate("/dashboard");
-      }
+      const targetPath = normalizeNotificationLink(
+        notif.link,
+        notif.related_entity,
+      );
 
+      navigate(targetPath);
       setNotifOpen(false);
     } catch (err) {
       console.error("Notification click error:", err);
@@ -209,7 +211,6 @@ const Topbar = ({ setMobileOpen }) => {
       </div>
 
       <div className="topbar-right">
-        {/* DARK MODE */}
         <div className="icon-wrapper">
           {darkMode ? (
             <FaSun onClick={() => setDarkMode(false)} />
@@ -218,7 +219,6 @@ const Topbar = ({ setMobileOpen }) => {
           )}
         </div>
 
-        {/* NOTIFICATIONS */}
         <div className="icon-wrapper" ref={notifRef}>
           <FaBell
             onClick={() => {
@@ -281,7 +281,6 @@ const Topbar = ({ setMobileOpen }) => {
           )}
         </div>
 
-        {/* PROFILE */}
         <div className="icon-wrapper" ref={profileRef}>
           <FaUserCircle onClick={() => setProfileOpen((prev) => !prev)} />
 

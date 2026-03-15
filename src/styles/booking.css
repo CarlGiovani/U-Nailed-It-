@@ -431,6 +431,13 @@ body {
   }
 }
 
+.highlighted-cancelled-booking {
+  background: #fff1f2;
+  outline: 2px solid #f43f5e;
+  outline-offset: -2px;
+  transition: all 0.3s ease;
+}
+
 /* =========================================
    ANIMATIONS
 ========================================= */

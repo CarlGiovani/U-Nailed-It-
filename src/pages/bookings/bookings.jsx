@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import AdminLayout from "../../components/layout/adminLayout";
 import {
   approveBooking,
@@ -10,6 +11,17 @@ import { getPaymentProofUrl } from "../../services/BACKEND/adminPaymentApi";
 import "../../styles/booking.css";
 
 const Bookings = () => {
+  const location = useLocation();
+
+  const queryParams = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search],
+  );
+
+  const bookingIdFromQuery = queryParams.get("bookingId");
+  const statusFromQuery = queryParams.get("status");
+  const highlightFromQuery = queryParams.get("highlight");
+
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -20,16 +32,28 @@ const Bookings = () => {
   const [actionLoading, setActionLoading] = useState(false);
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(statusFromQuery || "all");
+
+  const highlightedRowRef = useRef(null);
+
+  /* ================= SYNC STATUS FILTER FROM QUERY ================= */
+  useEffect(() => {
+    if (statusFromQuery) {
+      setStatusFilter(statusFromQuery);
+    }
+  }, [statusFromQuery]);
 
   /* ================= FETCH BOOKINGS ================= */
   const fetchBookings = useCallback(async () => {
     try {
+      setLoading(true);
+
       const result = await getAllBookings({
         search,
         status: statusFilter,
       });
-      setBookings(result.data);
+
+      setBookings(result.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -42,16 +66,44 @@ const Bookings = () => {
   }, [fetchBookings]);
 
   /* ================= FILTER ================= */
-  const filteredBookings = bookings.filter((b) => {
-    const matchSearch =
-      b.customers?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      b.customers?.email?.toLowerCase().includes(search.toLowerCase());
+  const filteredBookings = useMemo(() => {
+    return bookings.filter((b) => {
+      const fullName = b.customers?.full_name?.toLowerCase() || "";
+      const email = b.customers?.email?.toLowerCase() || "";
+      const searchValue = search.toLowerCase();
 
-    const matchStatus =
-      statusFilter === "all" ? true : b.status === statusFilter;
+      const matchSearch =
+        fullName.includes(searchValue) || email.includes(searchValue);
 
-    return matchSearch && matchStatus;
-  });
+      const matchStatus =
+        statusFilter === "all" ? true : b.status === statusFilter;
+
+      return matchSearch && matchStatus;
+    });
+  }, [bookings, search, statusFilter]);
+
+  /* ================= AUTO OPEN TARGET BOOKING FROM QUERY ================= */
+  useEffect(() => {
+    if (!bookingIdFromQuery || filteredBookings.length === 0) return;
+
+    const matchedBooking = filteredBookings.find(
+      (b) => String(b.id) === String(bookingIdFromQuery),
+    );
+
+    if (matchedBooking) {
+      setSelectedBooking(matchedBooking);
+    }
+  }, [bookingIdFromQuery, filteredBookings]);
+
+  /* ================= AUTO SCROLL TO HIGHLIGHTED ROW ================= */
+  useEffect(() => {
+    if (highlightedRowRef.current) {
+      highlightedRowRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [filteredBookings, bookingIdFromQuery]);
 
   /* ================= ACTION ================= */
   const executeAction = async () => {
@@ -91,6 +143,13 @@ const Bookings = () => {
       <span className={`status-badge ${status}`}>
         {status.replace("_", " ")}
       </span>
+    );
+  };
+
+  const isHighlightedBooking = (booking) => {
+    return (
+      String(booking.id) === String(bookingIdFromQuery) &&
+      highlightFromQuery === "cancelled"
     );
   };
 
@@ -141,13 +200,18 @@ const Bookings = () => {
             <tbody>
               {filteredBookings.length > 0 ? (
                 filteredBookings.map((b) => (
-                  <tr key={b.id}>
+                  <tr
+                    key={b.id}
+                    ref={isHighlightedBooking(b) ? highlightedRowRef : null}
+                    className={
+                      isHighlightedBooking(b)
+                        ? "highlighted-cancelled-booking"
+                        : ""
+                    }
+                  >
                     <td>{b.id}</td>
 
-                    <td
-                      className="clickable"
-                      onClick={() => setSelectedBooking(b)}
-                    >
+                    <td className="clickable" onClick={() => setSelectedBooking(b)}>
                       {b.customers?.full_name}
                     </td>
 
@@ -166,11 +230,10 @@ const Bookings = () => {
         </div>
       )}
 
-      {/* ================= ORGANIZED PREMIUM MODAL ================= */}
+      {/* BOOKING DETAILS MODAL */}
       {selectedBooking && (
         <div className="modal-overlay" onClick={() => setSelectedBooking(null)}>
           <div className="organized-modal" onClick={(e) => e.stopPropagation()}>
-            {/* HEADER */}
             <div className="modal-header">
               <div>
                 <h2>{selectedBooking.customers?.full_name}</h2>
@@ -185,9 +248,7 @@ const Bookings = () => {
               </button>
             </div>
 
-            {/* GRID BODY */}
             <div className="modal-body-grid">
-              {/* LEFT COLUMN */}
               <div className="modal-column">
                 <div className="info-card">
                   <h3>Customer Information</h3>
@@ -228,10 +289,13 @@ const Bookings = () => {
                       ? new Date(selectedBooking.cancelled_at).toLocaleString()
                       : "-"}
                   </p>
+                  <p>
+                    <strong>Cancellation Reason:</strong>{" "}
+                    {selectedBooking.cancellation_reason || "-"}
+                  </p>
                 </div>
               </div>
 
-              {/* RIGHT COLUMN */}
               <div className="modal-column">
                 <div className="info-card">
                   <h3>Service Information</h3>
@@ -240,8 +304,8 @@ const Bookings = () => {
                   </p>
                   <p>
                     <strong>Category:</strong>{" "}
-                    {selectedBooking.service_variants?.service_categories
-                      ?.name || "-"}
+                    {selectedBooking.service_variants?.service_categories?.name ||
+                      "-"}
                   </p>
                   <p>
                     <strong>Body Part:</strong>{" "}
@@ -280,7 +344,6 @@ const Bookings = () => {
               </div>
             </div>
 
-            {/* ACTION BUTTONS */}
             <div className="modal-actions">
               {selectedBooking.status === "pending_approval" && (
                 <>
@@ -354,8 +417,7 @@ const Bookings = () => {
         <div className="modal-overlay">
           <div className="confirm-modal">
             <h3>
-              Confirm {confirmAction.type} booking ID {confirmAction.booking.id}
-              ?
+              Confirm {confirmAction.type} booking ID {confirmAction.booking.id}?
             </h3>
             <div className="modal-actions">
               <button onClick={executeAction}>
