@@ -240,7 +240,7 @@ const Topbar = ({ setMobileOpen }) => {
                 paginatedNotifications.map((notif) => (
                   <div
                     key={notif.id}
-                    className={`notif-item ${!notif.is_read ? "unread" : ""}`}
+                    className={`notif-item ${notif.is_read ? "read" : "unread"}`}
                     onClick={() => handleNotificationClick(notif)}
                   >
                     <div className="notif-left">{getNotifIcon(notif)}</div>

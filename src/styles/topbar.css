@@ -2,7 +2,6 @@
    TOPBAR HAMBURGER
 ====================================================== */
 
-/* Hide by default (desktop) */
 .mobile-menu-btn {
   display: none;
   background: none;
@@ -18,15 +17,11 @@
   gap: 15px;
 }
 
-/* Show only on mobile */
 @media (max-width: 768px) {
   .mobile-menu-btn {
     display: block;
   }
 }
-
-
-
 
 /* ======================================================
    SIDEBAR HEADER
@@ -99,11 +94,10 @@
 }
 
 /* ======================================================
-   MOBILE RESPONSIVE
+   MOBILE RESPONSIVE SIDEBAR
 ====================================================== */
 
 @media (max-width: 768px) {
-  /* Sidebar becomes off-canvas */
   .sidebar {
     position: fixed;
     top: 0;
@@ -115,12 +109,10 @@
     z-index: 2000;
   }
 
-  /* When open */
   .sidebar.open {
     transform: translateX(0);
   }
 
-  /* Overlay */
   .sidebar-overlay {
     position: fixed;
     inset: 0;
@@ -128,12 +120,10 @@
     z-index: 1500;
   }
 
-  /* Hide desktop collapse icon */
   .desktop-only {
     display: none;
   }
 
-  /* Disable collapsed mode on mobile */
   .sidebar.collapsed {
     width: 260px;
     min-width: 260px;
@@ -144,44 +134,36 @@
    NOTIFICATION SYSTEM
 ====================================================== */
 
-/* Icon container */
-
 .icon-wrapper {
   position: relative;
   cursor: pointer;
 }
-
-/* Notification badge */
 
 .notif-badge {
   position: absolute;
   top: -4px;
   right: -4px;
   background: #e63946;
-  color: white;
+  color: #ffffff;
   font-size: 11px;
   padding: 3px 6px;
-  border-radius: 50%;
+  border-radius: 999px;
   font-weight: 600;
+  line-height: 1;
+  min-width: 18px;
+  text-align: center;
 }
-
-/* Notification dropdown */
 
 .notifications-dropdown {
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-
   width: 340px;
   max-height: 420px;
-
   overflow-y: auto;
-
-  background: white;
+  background: #ffffff;
   border-radius: 12px;
-
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-
   padding: 5px;
   z-index: 999;
 }
@@ -191,30 +173,67 @@
   position: absolute;
   top: -8px;
   right: 18px;
-
   width: 16px;
   height: 16px;
-
-  background: white;
-
+  background: #ffffff;
   transform: rotate(45deg);
-
   box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.05);
 }
 
-/* Notification item */
+.notif-header {
+  padding: 12px 16px;
+  font-weight: 600;
+  border-bottom: 1px solid #eeeeee;
+  background: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.no-notif {
+  padding: 20px;
+  text-align: center;
+  color: #777777;
+  font-size: 13px;
+}
+
+/* ======================================================
+   NOTIFICATION ITEM
+====================================================== */
 
 .notif-item {
-  padding: 12px 14px;
-  border-radius: 8px;
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: 0.2s;
+  border-bottom: 1px solid #eeeeee;
+  transition:
+    background 0.2s ease,
+    border-left 0.2s ease;
+}
 
-  border-bottom: 1px solid #eee;
-  transition: 0.2s;
+.notif-item:last-child {
+  border-bottom: none;
+}
+
+.notif-item.read {
+  background: transparent;
+  border-left: 4px solid transparent;
+}
+
+.notif-item.unread {
+  background: #fff8e1;
+  border-left: 4px solid #d4af37;
+}
+
+.notif-item.read:hover {
+  background: #f9f9f9;
+}
+
+.notif-item.unread:hover {
+  background: #fff3cd;
 }
 
 .notif-left {
@@ -225,70 +244,28 @@
   flex: 1;
 }
 
-.notif-item:last-child {
-  border-bottom: none;
-}
-
-.notif-item:hover {
-  background: #f9f9f9;
-}
-
-/* Unread notification */
-
-.notif-item.unread {
-  background: #fff8e1;
-  border-left: 4px solid #d4af37;
-}
-
-/* Notification title */
-
 .notif-title {
   font-weight: 600;
   font-size: 14px;
   margin-bottom: 4px;
+  color: #222222;
 }
-
-/* Notification message */
 
 .notif-message {
   font-size: 13px;
-  color: #555;
+  color: #555555;
+  line-height: 1.4;
 }
-
-/* Notification time */
 
 .notif-time {
   font-size: 11px;
-  color: #999;
+  color: #999999;
   margin-top: 5px;
 }
 
-/* No notification message */
-
-.no-notif {
-  padding: 20px;
-  text-align: center;
-  color: #777;
-  font-size: 13px;
-}
-
-/* Notification header */
-
-.notif-header {
-  padding: 12px 16px;
-  font-weight: 600;
-  border-bottom: 1px solid #eee;
-}
-
-/* Notification layout */
-
-.notif-item {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-/* icon */
+/* ======================================================
+   NOTIFICATION ICONS
+====================================================== */
 
 .notif-icon {
   font-size: 18px;
@@ -307,19 +284,23 @@
   color: #e76f51;
 }
 
-/* content */
-
-.notif-content {
-  flex: 1;
+.notif-icon.default {
+  color: #6c757d;
 }
+
+/* ======================================================
+   NOTIFICATION PAGINATION
+====================================================== */
 
 .notif-pagination {
   display: flex;
   justify-content: space-between;
   align-items: center;
-
   padding: 10px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid #eeeeee;
+  background: #ffffff;
+  position: sticky;
+  bottom: 0;
 }
 
 .notif-pagination button {
@@ -327,8 +308,13 @@
   border: none;
   padding: 5px 10px;
   border-radius: 6px;
-  color: white;
+  color: #ffffff;
   cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.notif-pagination button:hover:not(:disabled) {
+  opacity: 0.9;
 }
 
 .notif-pagination button:disabled {
@@ -336,9 +322,9 @@
   cursor: not-allowed;
 }
 
-/* ================================
+/* ======================================================
    MOBILE NOTIFICATION FIX
-================================ */
+====================================================== */
 
 @media (max-width: 768px) {
   .notifications-dropdown {
@@ -346,12 +332,9 @@
     top: 55px;
     left: 10px;
     right: 10px;
-
     width: auto;
     max-height: 60vh;
-
     border-radius: 14px;
-
     padding: 0;
   }
 }
