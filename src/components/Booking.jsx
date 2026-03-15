@@ -12,7 +12,6 @@ import {
 import { getAllServices } from "../../backend/servicesApi.js";
 import "../styles/booking-system.css";
 
-
 // DATE FORMATTER (YYYY-MM-DD)
 const formatLocalDate = (date) => {
   const year = date.getFullYear();
@@ -21,14 +20,12 @@ const formatLocalDate = (date) => {
   return `${year}-${month}-${day}`;
 };
 
-
 // SAFE DATE PARSING - FIXES TIMEZONE ISSUES
 const parseLocalDate = (dateStr) => {
   if (!dateStr) return null;
   // Always parse with local timezone (append T00:00:00)
   return new Date(dateStr + "T00:00:00");
 };
-
 
 //HELPER
 const sameId = (a, b) => Number(a) === Number(b);
@@ -199,7 +196,6 @@ const Booking = () => {
     });
   }, []);
 
-
   // ===============================
   // STEP GUARD
   // ===============================
@@ -227,7 +223,6 @@ const Booking = () => {
       return;
     }
   }, [step, bookingId, bookingPreview, resuming]);
-
 
   // ===============================
   // MAIN MODAL COMPONENT
@@ -768,10 +763,16 @@ const Booking = () => {
         total_price: booking.total_price ?? prev.total_price,
         downpayment: booking.downpayment ?? prev.downpayment,
         notes: booking.notes ?? prev.notes,
-        full_name: booking.customers?.full_name ?? prev.full_name,
-        email: booking.customers?.email ?? prev.email,
-        phone: booking.customers?.phone ?? prev.phone,
-        facebook_link: booking.customers?.facebook_link ?? prev.facebook_link,
+        full_name:
+          booking.customer_name ??
+          booking.customers?.full_name ??
+          prev.full_name,
+        email: booking.customer_email ?? booking.customers?.email ?? prev.email,
+        phone: booking.customer_phone ?? booking.customers?.phone ?? prev.phone,
+        facebook_link:
+          booking.customer_facebook_link ??
+          booking.customers?.facebook_link ??
+          prev.facebook_link,
       }));
 
       if (booking.booking_date) {
@@ -1329,7 +1330,10 @@ const Booking = () => {
     formDataObj.append("booking_id", bookingId);
     formDataObj.append(
       "email",
-      bookingPreview.customers?.email || bookingPreview.email || formData.email,
+      bookingPreview.customer_email ||
+        bookingPreview.customers?.email ||
+        bookingPreview.email ||
+        formData.email,
     );
     formDataObj.append("service_id", bookingPreview.service_id);
     formDataObj.append("service_variant_id", bookingPreview.service_variant_id);
@@ -1653,9 +1657,6 @@ const Booking = () => {
 
   const getAvailableDatesCount = () =>
     Object.values(monthlyAvailability).filter((v) => v === true).length;
-
-
-
 
   /* ==========================================
      PREMIUM PROGRESS BAR
@@ -3272,7 +3273,10 @@ const Booking = () => {
             className="btn btn-outline premium"
             onClick={() =>
               (window.location.href = `/booking-history?email=${encodeURIComponent(
-                formData.email || "",
+                bookingPreview?.customer_email ||
+                  bookingPreview?.customers?.email ||
+                  formData.email ||
+                  "",
               )}`)
             }
           >
