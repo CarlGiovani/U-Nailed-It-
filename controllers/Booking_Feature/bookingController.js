@@ -209,18 +209,15 @@ export const rejectBooking = async (req, res) => {
 
 /* ==========================================
    PUBLIC: cancel booking
-   TODO: Dapat may token-based cancellation din, para hindi basta-basta ma-cancel ng ibang tao yung booking kahit na alam lang nila yung ID.
-   TODO: Sa cancellation email, pwede lagyan ng feedback form para malaman kung bakit nag-cancel yung customer (optional)
-   TODO: Sa model, i-check na pwede lang ma-cancel yung booking if status is pending_approval or approved. Dapat hindi na pwedeng i-cancel yung booking if completed or already cancelled.
-   TODO: Sa cancellation, i-update yung calendar slot para ma-unblock ulit if necessary.
    TODO: Sa cancellation dapat mag notif sa admin (pwede email or dashboard notification) para malaman nila na may nag cancel ng booking.
 ========================================== */
 export const cancelBooking = async (req, res) => {
   try {
     const { token } = req.query;
+     const {reason} = req.body;
     if (!token)
-      return res.status(400).json({ error: "Cancellation token is required" });
-    const result = await booking.cancelBookingByToken(token);
+      return res.status(400).json({ error: "Cancellation token is required" }); 
+    const result = await booking.cancelBookingByToken(token , reason);
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });

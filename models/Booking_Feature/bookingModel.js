@@ -490,7 +490,7 @@ export const rejectBooking = async (id) => {
    PUBLIC: cancel booking (24h rule)
    - then safe unblock if no other active bookings
 ========================================== */
-export const cancelBookingByToken = async (token) => {
+export const cancelBookingByToken = async (token , reason) => {
   const { data: booking, error } = await supabase
     .from("bookings")
     .select("*")
@@ -532,6 +532,7 @@ export const cancelBookingByToken = async (token) => {
       status: "cancelled",
       cancelled_at: now.toISOString(),
       cancel_token: null,
+      cancellation_reason: reason || null
     })
     .eq("id", booking.id)
     .eq("status", "approved")
