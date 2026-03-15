@@ -7,10 +7,10 @@ import Hero from "./components/hero";
 import Policies from "./components/Policies";
 import Portfolio from "./components/Portfolio";
 import Promos from "./components/Promos";
+import ReviewPage from "./components/ReviewPage";
 import Reviews from "./components/Reviews";
 
-import ReviewPage from "./components/ReviewPage";
-
+import CancelBookingPage from "./components/cancelBooking";
 import useServices from "./hooks/useServices";
 
 // Import CSS files
@@ -53,8 +53,11 @@ function App() {
           }
         />
 
-        {/* REVIEW PAGE (EMAIL LINK) */}
+        {/* REVIEW PAGE */}
         <Route path="/review" element={<ReviewPage />} />
+
+        {/* CANCEL PAGE */}
+        <Route path="/cancel" element={<CancelBookingPage />} />
       </Routes>
     </BrowserRouter>
   );

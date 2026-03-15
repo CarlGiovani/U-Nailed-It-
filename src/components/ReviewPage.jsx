@@ -18,14 +18,14 @@ const ReviewPage = () => {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
 
-  // 🖼️ image states
+  // image states
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploading, setUploading] = useState(false);
 
   const [submitted, setSubmitted] = useState(false);
 
-  // ✅ VERIFY TOKEN
+  // VERIFY TOKEN
   useEffect(() => {
     let isMounted = true;
 
@@ -58,7 +58,7 @@ const ReviewPage = () => {
     };
   }, [token]);
 
-  // ✅ SUBMIT REVIEW
+  // SUBMIT REVIEW
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -85,7 +85,7 @@ const ReviewPage = () => {
     }
   };
 
-  // 🌀 UI STATES
+  // UI STATES
   if (loading) {
     return <div style={{ textAlign: "center", marginTop: 60 }}>Loading...</div>;
   }
@@ -107,7 +107,7 @@ const ReviewPage = () => {
     );
   }
 
-  // 📝 REVIEW FORM
+  // REVIEW FORM
   return (
     <div
       style={{

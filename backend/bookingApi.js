@@ -30,12 +30,8 @@ export const confirmBooking = async (bookingId, paymentIntentId) => {
 
 // CANCEL BOOKING public - PER TOKEN
 export const cancelBookingPerToken = async (token) => {
-const res = await api.put(`/bookings/cancel?token=${token}`);
-return res.data;
-}
-
-
-
-
-
-
+  const res = await api.put(
+    `/bookings/cancel?token=${encodeURIComponent(token)}`,
+  );
+  return res.data;
+};

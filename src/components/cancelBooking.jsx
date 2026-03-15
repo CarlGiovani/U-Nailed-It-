@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { cancelBookingByToken } from "../../backend/bookingApi";
+import { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { cancelBookingPerToken } from "../../backend/bookingApi";
 import "../styles/cancelBooking.css";
 
 const CancelBookingPage = () => {
@@ -8,66 +8,43 @@ const CancelBookingPage = () => {
   const navigate = useNavigate();
   const token = searchParams.get("token");
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [booking, setBooking] = useState(null);
+  const [cancelled, setCancelled] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
+  const handleCancelBooking = async () => {
+    if (!token) {
+      setError("Invalid cancellation link.");
+      return;
+    }
 
-    const cancel = async () => {
-      if (!token) {
-        if (isMounted) {
-          setError("Invalid cancellation link.");
-          setLoading(false);
-        }
-        return;
-      }
+    try {
+      setLoading(true);
+      setError(null);
 
-      try {
-        const data = await cancelBookingByToken(token);
-
-        if (isMounted) {
-          setBooking(data);
-          setLoading(false);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(
-            err.response?.data?.error ||
-              err.message ||
-              "Cancellation failed or link expired."
-          );
-          setLoading(false);
-        }
-      }
-    };
-
-    cancel();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [token]);
+      const data = await cancelBookingPerToken(token);
+      setBooking(data);
+      setCancelled(true);
+    } catch (err) {
+      setError(
+        err.response?.data?.error ||
+          err.message ||
+          "Cancellation failed or link expired.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="cancel-page">
       <div className="cancel-card">
-
-        {/* LOADING */}
-        {loading && (
-          <div className="cancel-loading">
-            <h2>Cancelling your booking...</h2>
-            <p>Please wait a moment.</p>
-          </div>
-        )}
-
-        {/* ERROR */}
-        {!loading && error && (
+        {!token && (
           <div className="cancel-error">
-            <h2>Cancellation Failed ❌</h2>
+            <h2>Invalid Link ❌</h2>
             <div className="cancel-divider"></div>
-            <p>{error}</p>
+            <p>This cancellation link is invalid or missing a token.</p>
 
             <button
               className="cancel-btn primary"
@@ -78,44 +55,73 @@ const CancelBookingPage = () => {
           </div>
         )}
 
-        {/* SUCCESS */}
-        {!loading && booking && (
+        {token && !cancelled && (
+          <div className="cancel-confirm">
+            <h2>Cancel Booking?</h2>
+            <div className="cancel-divider"></div>
+
+            <p>Are you sure you want to cancel your booking?</p>
+            <p className="cancel-note">
+              This will release your reserved appointment slot.
+            </p>
+
+            {error && <p className="cancel-error-text">{error}</p>}
+
+            <div className="cancel-actions">
+              <button
+                className="cancel-btn secondary"
+                onClick={() => navigate("/")}
+                disabled={loading}
+              >
+                Keep My Booking
+              </button>
+
+              <button
+                className="cancel-btn primary"
+                onClick={handleCancelBooking}
+                disabled={loading}
+              >
+                {loading ? "Cancelling..." : "Yes, Cancel Booking"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {cancelled && booking && (
           <div className="cancel-success">
             <h2>Booking Cancelled 💔</h2>
             <div className="cancel-divider"></div>
 
             <p>Your appointment has been successfully cancelled.</p>
 
-            {/* BOOKING DETAILS */}
             <div className="booking-info">
               <h3>Cancelled Appointment</h3>
 
               <div className="info-row">
-                <span>📅 Date:</span>
+                <span>📅 Date</span>
                 <strong>{booking.booking_date}</strong>
               </div>
 
               <div className="info-row">
-                <span>🕒 Time:</span>
+                <span>🕒 Time</span>
                 <strong>{booking.booking_time}</strong>
               </div>
 
               {booking.services?.name && (
                 <div className="info-row">
-                  <span>💆 Service:</span>
+                  <span>💆 Service</span>
                   <strong>{booking.services.name}</strong>
                 </div>
               )}
 
               {booking.customers?.full_name && (
                 <div className="info-row">
-                  <span>👤 Name:</span>
+                  <span>👤 Name</span>
                   <strong>{booking.customers.full_name}</strong>
                 </div>
               )}
             </div>
 
-            {/* ACTION BUTTONS */}
             <div className="cancel-actions">
               <button
                 className="cancel-btn primary"
@@ -133,7 +139,6 @@ const CancelBookingPage = () => {
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
