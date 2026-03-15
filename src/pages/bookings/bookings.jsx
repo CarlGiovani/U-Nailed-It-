@@ -68,8 +68,16 @@ const Bookings = () => {
   /* ================= FILTER ================= */
   const filteredBookings = useMemo(() => {
     return bookings.filter((b) => {
-      const fullName = b.customers?.full_name?.toLowerCase() || "";
-      const email = b.customers?.email?.toLowerCase() || "";
+      const fullName =
+        b.customer_name?.toLowerCase() ||
+        b.customers?.full_name?.toLowerCase() ||
+        "";
+
+      const email =
+        b.customer_email?.toLowerCase() ||
+        b.customers?.email?.toLowerCase() ||
+        "";
+
       const searchValue = search.toLowerCase();
 
       const matchSearch =
@@ -211,8 +219,11 @@ const Bookings = () => {
                   >
                     <td>{b.id}</td>
 
-                    <td className="clickable" onClick={() => setSelectedBooking(b)}>
-                      {b.customers?.full_name}
+                    <td
+                      className="clickable"
+                      onClick={() => setSelectedBooking(b)}
+                    >
+                      {b.customer_name || b.customers?.full_name || "-"}
                     </td>
 
                     <td>{b.services?.name}</td>
@@ -236,7 +247,11 @@ const Bookings = () => {
           <div className="organized-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
-                <h2>{selectedBooking.customers?.full_name}</h2>
+                <h2>
+                  {selectedBooking.customer_name ||
+                    selectedBooking.customers?.full_name ||
+                    "-"}
+                </h2>
                 {statusBadge(selectedBooking.status)}
               </div>
 
@@ -253,15 +268,22 @@ const Bookings = () => {
                 <div className="info-card">
                   <h3>Customer Information</h3>
                   <p>
-                    <strong>Email:</strong> {selectedBooking.customers?.email}
+                    <strong>Email:</strong>{" "}
+                    {selectedBooking.customer_email ||
+                      selectedBooking.customers?.email ||
+                      "-"}
                   </p>
                   <p>
                     <strong>Phone:</strong>{" "}
-                    {selectedBooking.customers?.phone || "-"}
+                    {selectedBooking.customer_phone ||
+                      selectedBooking.customers?.phone ||
+                      "-"}
                   </p>
                   <p>
                     <strong>Facebook:</strong>{" "}
-                    {selectedBooking.customers?.facebook_link || "-"}
+                    {selectedBooking.customer_facebook_link ||
+                      selectedBooking.customers?.facebook_link ||
+                      "-"}
                   </p>
                 </div>
 
@@ -304,8 +326,8 @@ const Bookings = () => {
                   </p>
                   <p>
                     <strong>Category:</strong>{" "}
-                    {selectedBooking.service_variants?.service_categories?.name ||
-                      "-"}
+                    {selectedBooking.service_variants?.service_categories
+                      ?.name || "-"}
                   </p>
                   <p>
                     <strong>Body Part:</strong>{" "}
@@ -417,7 +439,8 @@ const Bookings = () => {
         <div className="modal-overlay">
           <div className="confirm-modal">
             <h3>
-              Confirm {confirmAction.type} booking ID {confirmAction.booking.id}?
+              Confirm {confirmAction.type} booking ID {confirmAction.booking.id}
+              ?
             </h3>
             <div className="modal-actions">
               <button onClick={executeAction}>
