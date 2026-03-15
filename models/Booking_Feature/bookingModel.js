@@ -103,21 +103,58 @@ export const createBookingWithCustomer = async (bookingData) => {
     .eq("booking_date", booking_date)
     .eq("booking_time", booking_time)
     .eq("status", "pending_payment")
-    .gt("expires_at", nowIso) // still valid
+    .gt("expires_at", nowIso)
     .maybeSingle();
 
   if (existingErr) throw new Error(existingErr.message);
 
-  // If exists, reuse it (no new row)
+  // If exists, reuse it but refresh snapshot fields
   if (existing) {
-    // optional: update small fields if you want latest notes/variant
-    // (safe, pero optional)
-    // await supabase.from("bookings").update({ notes, service_variant_id }).eq("id", existing.id);
+    const { data: refreshedBooking, error: refreshError } = await supabase
+      .from("bookings")
+      .update({
+        customer_name: full_name,
+        customer_email: email,
+        customer_phone: phone,
+        customer_facebook_link: facebook_link,
+        service_variant_id: service_variant_id || null,
+        total_price,
+        downpayment,
+        notes,
+      })
+      .eq("id", existing.id)
+      .select(
+        `
+        *,
+        customers(*),
+        services(
+          *,
+          service_categories(
+            id,
+            name,
+            service_variants(
+              id,
+              body_part,
+              size,
+              price,
+              downpayment,
+              is_active
+            )
+          )
+        )
+      `,
+      )
+      .single();
 
-    // keep only selected variant in response
-    if (service_category_id && service_variant_id && existing.services) {
-      existing.services.service_categories =
-        existing.services.service_categories
+    if (refreshError) throw new Error(refreshError.message);
+
+    if (
+      service_category_id &&
+      service_variant_id &&
+      refreshedBooking.services
+    ) {
+      refreshedBooking.services.service_categories =
+        refreshedBooking.services.service_categories
           .filter((cat) => cat.id === service_category_id)
           .map((cat) => {
             cat.service_variants = cat.service_variants.filter(
@@ -126,10 +163,10 @@ export const createBookingWithCustomer = async (bookingData) => {
             return cat;
           });
     } else {
-      filterSelectedVariant(existing);
+      filterSelectedVariant(refreshedBooking);
     }
 
-    return existing;
+    return refreshedBooking;
   }
 
   // 2) Create new booking if none found
@@ -140,6 +177,10 @@ export const createBookingWithCustomer = async (bookingData) => {
     .insert([
       {
         customer_id: customer.id,
+        customer_name: full_name,
+        customer_email: email,
+        customer_phone: phone,
+        customer_facebook_link: facebook_link,
         service_id,
         service_variant_id: service_variant_id || null,
         booking_date,
@@ -191,7 +232,6 @@ export const createBookingWithCustomer = async (bookingData) => {
 
   return booking;
 };
-
 /* ==========================================
    STEP 3: Confirm booking using payment_intent
    - Atomic lock (first come first serve)
@@ -346,7 +386,7 @@ export const getAllBookings = async ({
 
   if (search) {
     query = query.or(
-      `customers.full_name.ilike.%${search}%,customers.email.ilike.%${search}%`,
+      `customer_name.ilike.%${search}%,customer_email.ilike.%${search}%,customers.full_name.ilike.%${search}%,customers.email.ilike.%${search}%`,
     );
   }
 
@@ -490,7 +530,7 @@ export const rejectBooking = async (id) => {
    PUBLIC: cancel booking (24h rule)
    - then safe unblock if no other active bookings
 ========================================== */
-export const cancelBookingByToken = async (token , reason) => {
+export const cancelBookingByToken = async (token, reason) => {
   const { data: booking, error } = await supabase
     .from("bookings")
     .select("*")
@@ -532,7 +572,7 @@ export const cancelBookingByToken = async (token , reason) => {
       status: "cancelled",
       cancelled_at: now.toISOString(),
       cancel_token: null,
-      cancellation_reason: reason || null
+      cancellation_reason: reason || null,
     })
     .eq("id", booking.id)
     .eq("status", "approved")
