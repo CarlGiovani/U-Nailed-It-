@@ -35,6 +35,8 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
+const ACTIVE_BOOKING_STATUSES = ["pending_approval", "approved"];
+
 const AdminCalendar = () => {
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
@@ -60,10 +62,18 @@ const AdminCalendar = () => {
   /* ================= LOAD SERVICES ================= */
   useEffect(() => {
     const fetchServices = async () => {
-      const data = await getAllServicesAdmin();
-      setServices(data);
-      if (data.length) setSelectedService(data[0].id);
+      try {
+        const data = await getAllServicesAdmin();
+        setServices(data || []);
+        if (data?.length) {
+          setSelectedService(data[0].id);
+        }
+      } catch (err) {
+        console.error("Error loading services:", err);
+        setServices([]);
+      }
     };
+
     fetchServices();
   }, []);
 
@@ -71,11 +81,11 @@ const AdminCalendar = () => {
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const result = await getAllBookings();
+        const result = await getAllBookings({
+          page: 1,
+          limit: 1000,
+        });
 
-        console.log("RAW BOOKINGS RESULT:", result);
-
-        // 🔥 FORCE correct structure
         if (result?.data) {
           setBookings(result.data);
         } else {
@@ -95,37 +105,43 @@ const AdminCalendar = () => {
     if (!selectedService) return;
 
     const fetchMonth = async () => {
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth() + 1;
+      try {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth() + 1;
 
-      const availability = await getMonthlyAvailability(
-        selectedService,
-        year,
-        month,
-      );
-      console.log("Bookings:", bookings); // 👈 DITO MO ILAGAY
-      console.log("Availability:", availability); // 👈 dagdag mo na rin to
-      const mapped = availability.map((d) => {
-        const count = bookings.filter((b) => {
-          const bookingDate = b.booking_date?.split("T")[0]; // ✅ FIXED
+        const availability = await getMonthlyAvailability(
+          selectedService,
+          year,
+          month,
+        );
 
-          return (
-            bookingDate === d.date &&
-            Number(b.service_id) === Number(selectedService) &&
-            b.status !== "rejected"
-          );
-        }).length;
+        const mapped = (availability || []).map((day) => {
+          const count = bookings.filter((booking) => {
+            const bookingDate =
+              booking.booking_date?.split("T")[0] || booking.booking_date;
 
-        return {
-          title: d.available
-            ? `Available (${count} booked)`
-            : `Blocked (${count} booked)`,
-          start: new Date(d.date),
-          end: new Date(d.date),
-          allDay: true,
-        };
-      });
-      setEvents(mapped);
+            return (
+              bookingDate === day.date &&
+              Number(booking.service_id) === Number(selectedService) &&
+              ACTIVE_BOOKING_STATUSES.includes(booking.status)
+            );
+          }).length;
+
+          return {
+            title: day.available
+              ? `Available (${count} booked)`
+              : `Blocked (${count} booked)`,
+            start: new Date(day.date),
+            end: new Date(day.date),
+            allDay: true,
+          };
+        });
+
+        setEvents(mapped);
+      } catch (err) {
+        console.error("Error loading month availability:", err);
+        setEvents([]);
+      }
     };
 
     fetchMonth();
@@ -135,19 +151,27 @@ const AdminCalendar = () => {
   const loadSlots = async (dateStr) => {
     if (!selectedService) return;
 
-    const data = await getAvailableSlots(selectedService, dateStr);
-    const slotData = data || [];
+    try {
+      const data = await getAvailableSlots(selectedService, dateStr);
+      const slotData = data || [];
 
-    setSlots([...slotData].sort((a, b) => a.time.localeCompare(b.time)));
+      setSlots([...slotData].sort((a, b) => a.time.localeCompare(b.time)));
 
-    if (slotData.length === 0) {
+      if (slotData.length === 0) {
+        setIsBlocked(false);
+        return;
+      }
+
+      const hasAvailable = slotData.some((slot) => slot.is_available);
+      setIsBlocked(!hasAvailable);
+    } catch (err) {
+      console.error("Error loading slots:", err);
+      setSlots([]);
       setIsBlocked(false);
-      return;
     }
-
-    const hasAvailable = slotData.some((s) => s.is_available);
-    setIsBlocked(!hasAvailable);
   };
+
+  /* ================= DAY STYLE ================= */
   const dayPropGetter = (date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -162,7 +186,6 @@ const AdminCalendar = () => {
       };
     }
 
-    // 🔥 highlight selected range
     if (
       selectedRange &&
       date >= selectedRange.start &&
@@ -178,6 +201,7 @@ const AdminCalendar = () => {
 
     return {};
   };
+
   /* ================= SELECT DAY ================= */
   const handleSelectSlot = ({ start, end, action }) => {
     const today = new Date();
@@ -209,17 +233,22 @@ const AdminCalendar = () => {
       setShowGenerator(true);
     }
   };
+
   /* ================= VALIDATIONS ================= */
   const isSlotBooked = (slot) => {
     if (!Array.isArray(bookings)) return false;
 
-    return bookings.some(
-      (b) =>
-        b.date === selectedDate &&
-        b.time === slot.time &&
-        b.service_id === selectedService &&
-        b.status !== "rejected",
-    );
+    return bookings.some((booking) => {
+      const bookingDate =
+        booking.booking_date?.split("T")[0] || booking.booking_date;
+
+      return (
+        bookingDate === selectedDate &&
+        booking.booking_time === slot.time &&
+        Number(booking.service_id) === Number(selectedService) &&
+        ACTIVE_BOOKING_STATUSES.includes(booking.status)
+      );
+    });
   };
 
   const isPastTime = (slot) => {
@@ -232,46 +261,67 @@ const AdminCalendar = () => {
   };
 
   const isDuplicateTime = (time) => {
-    return slots.some((s) => s.time === time && s.id !== selectedSlot?.id);
+    return slots.some((slot) => {
+      return slot.time === time && slot.id !== selectedSlot?.id;
+    });
   };
 
   /* ================= TOGGLE SLOT ================= */
   const toggleSlot = async (slot) => {
-    if (isSlotBooked(slot))
+    if (isSlotBooked(slot)) {
       return toast.error("Cannot modify. Slot has booking.");
+    }
 
-    if (isPastTime(slot)) return toast.error("Cannot modify past time.");
+    if (isPastTime(slot)) {
+      return toast.error("Cannot modify past time.");
+    }
 
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    await updateSlot(slot.id, {
-      is_available: !slot.is_available,
-    });
+      await updateSlot(slot.id, {
+        is_available: !slot.is_available,
+      });
 
-    await loadSlots(selectedDate);
-    setShowSlotModal(false);
-    setLoading(false);
+      await loadSlots(selectedDate);
+      setShowSlotModal(false);
+      toast.success("Slot updated.");
+    } catch (err) {
+      console.error("Error toggling slot:", err);
+      toast.error("Failed to update slot.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* ================= DELETE SLOT ================= */
   const handleDeleteSlot = async () => {
     if (!selectedSlot) return;
 
-    if (isSlotBooked(selectedSlot))
+    if (isSlotBooked(selectedSlot)) {
       return toast.error("Cannot delete. Slot has booking.");
+    }
 
-    if (isPastTime(selectedSlot))
+    if (isPastTime(selectedSlot)) {
       return toast.error("Cannot delete past slot.");
+    }
 
     if (!window.confirm("Delete this slot?")) return;
 
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    await deleteSlot(selectedSlot.id);
-    await loadSlots(selectedDate);
+      await deleteSlot(selectedSlot.id);
+      await loadSlots(selectedDate);
 
-    setShowSlotModal(false);
-    setLoading(false);
+      setShowSlotModal(false);
+      toast.success("Slot deleted.");
+    } catch (err) {
+      console.error("Error deleting slot:", err);
+      toast.error("Failed to delete slot.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* ================= BLOCK DAY ================= */
@@ -279,75 +329,97 @@ const AdminCalendar = () => {
     if (!selectedDate) return;
     if (!window.confirm("Block this entire day?")) return;
 
-    setLoading(true);
-    await blockDayGlobally(selectedDate);
-    await loadSlots(selectedDate);
-    toast.success("Day blocked.");
-    setLoading(false);
+    try {
+      setLoading(true);
+      await blockDayGlobally(selectedDate);
+      await loadSlots(selectedDate);
+      toast.success("Day blocked.");
+    } catch (err) {
+      console.error("Error blocking day:", err);
+      toast.error("Failed to block day.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleUnblockDay = async () => {
     if (!selectedDate) return;
     if (!window.confirm("Unblock this day?")) return;
 
-    setLoading(true);
-    await unblockDayGlobally(selectedDate);
-    await loadSlots(selectedDate);
-    toast.success("Day unblocked.");
-    setLoading(false);
+    try {
+      setLoading(true);
+      await unblockDayGlobally(selectedDate);
+      await loadSlots(selectedDate);
+      toast.success("Day unblocked.");
+    } catch (err) {
+      console.error("Error unblocking day:", err);
+      toast.error("Failed to unblock day.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* ================= AUTO GENERATE ================= */
   const autoGenerateTimes = () => {
     const generated = [];
-    for (let h = 9; h < 18; h++) {
-      generated.push(`${String(h).padStart(2, "0")}:00`);
-      generated.push(`${String(h).padStart(2, "0")}:30`);
+
+    for (let hour = 9; hour < 18; hour++) {
+      generated.push(`${String(hour).padStart(2, "0")}:00`);
+      generated.push(`${String(hour).padStart(2, "0")}:30`);
     }
+
     setTimesInput(generated.join(", "));
   };
 
   /* ================= BULK GENERATE ================= */
   const handleGenerate = async () => {
-    if (isBlocked) return toast.error("Cannot generate. Day is blocked.");
+    if (isBlocked) {
+      return toast.error("Cannot generate. Day is blocked.");
+    }
 
     const times = timesInput
       .split(",")
-      .map((t) => t.trim())
+      .map((time) => time.trim())
       .filter(Boolean);
 
-    if (!times.length) return toast.error("Enter times.");
-
-    setLoading(true);
-
-    let finalEnd;
-
-    if (weeklyRecurring) {
-      finalEnd = format(addWeeks(new Date(rangeStart), 4), "yyyy-MM-dd");
-    } else {
-      // If user dragged multiple days → use rangeEnd
-      // If single click → rangeEnd === rangeStart
-      finalEnd = rangeEnd || rangeStart;
+    if (!times.length) {
+      return toast.error("Enter times.");
     }
-    // Check if slots already exist for selected date
-    if (!weeklyRecurring && slots.length > 0) {
-      if (!window.confirm("Slots already exist for this date. Continue?")) {
-        setLoading(false);
-        return;
+
+    try {
+      setLoading(true);
+
+      let finalEnd;
+
+      if (weeklyRecurring) {
+        finalEnd = format(addWeeks(new Date(rangeStart), 4), "yyyy-MM-dd");
+      } else {
+        finalEnd = rangeEnd || rangeStart;
       }
+
+      if (!weeklyRecurring && slots.length > 0) {
+        if (!window.confirm("Slots already exist for this date. Continue?")) {
+          setLoading(false);
+          return;
+        }
+      }
+
+      await createSlotsBulk({
+        service_id: selectedService,
+        startDate: rangeStart,
+        endDate: finalEnd,
+        times,
+      });
+
+      await loadSlots(rangeStart);
+      setShowGenerator(false);
+      toast.success("Slots generated!");
+    } catch (err) {
+      console.error("Error generating slots:", err);
+      toast.error("Failed to generate slots.");
+    } finally {
+      setLoading(false);
     }
-
-    await createSlotsBulk({
-      service_id: selectedService,
-      startDate: rangeStart,
-      endDate: finalEnd,
-      times,
-    });
-
-    await loadSlots(rangeStart);
-    setShowGenerator(false);
-    toast.success("Slots generated!");
-    setLoading(false);
   };
 
   return (
@@ -355,7 +427,6 @@ const AdminCalendar = () => {
       <Toaster position="top-right" />
 
       <div className="calendar-container">
-        {/* HEADER */}
         <div className="calendar-header card">
           <div>
             <h1>Calendar Management</h1>
@@ -379,7 +450,6 @@ const AdminCalendar = () => {
           </div>
         </div>
 
-        {/* CALENDAR */}
         <div className="card calendar-card">
           <Calendar
             localizer={localizer}
@@ -393,7 +463,6 @@ const AdminCalendar = () => {
           />
         </div>
 
-        {/* SLOT PANEL */}
         {selectedDate && (
           <div className="card slot-panel">
             <div className="slot-header">
@@ -430,13 +499,14 @@ const AdminCalendar = () => {
                 return (
                   <div
                     key={slot.id}
-                    className={`slot-card
-                    ${slot.is_available ? "slot-available" : "slot-blocked"}
-                    ${booked ? "slot-booked" : ""}
-                    ${past ? "slot-past" : ""}
-                  `}
+                    className={`slot-card ${
+                      slot.is_available ? "slot-available" : "slot-blocked"
+                    } ${booked ? "slot-booked" : ""} ${
+                      past ? "slot-past" : ""
+                    }`}
                     onClick={() => {
                       if (booked || past) return;
+
                       setEditMode(false);
                       setEditedTime("");
                       setEditError("");
@@ -457,7 +527,6 @@ const AdminCalendar = () => {
           </div>
         )}
 
-        {/* SLOT MODAL */}
         {showSlotModal && selectedSlot && (
           <div className="modal-overlay">
             <div className="slot-modal">
@@ -473,7 +542,6 @@ const AdminCalendar = () => {
                 </div>
               )}
 
-              {/* EDIT INPUT */}
               {editMode && (
                 <>
                   <input
@@ -497,7 +565,6 @@ const AdminCalendar = () => {
                 </>
               )}
 
-              {/* EDIT BUTTON */}
               {!editMode && (
                 <button
                   className="btn-outline"
@@ -513,31 +580,33 @@ const AdminCalendar = () => {
                 </button>
               )}
 
-              {/* SAVE BUTTON */}
               {editMode && (
                 <button
                   className="btn-primary"
-                  disabled={!editedTime || editError}
+                  disabled={!editedTime || !!editError}
                   onClick={async () => {
-                    if (!editedTime) return toast.error("Enter valid time.");
+                    if (!editedTime) {
+                      return toast.error("Enter valid time.");
+                    }
 
-                    if (isDuplicateTime(editedTime))
+                    if (isDuplicateTime(editedTime)) {
                       return toast.error("Time already exists.");
+                    }
 
-                    if (isPastTime({ time: editedTime }))
+                    if (isPastTime({ time: editedTime })) {
                       return toast.error("Cannot move to past time.");
+                    }
 
                     try {
                       await updateSlot(selectedSlot.id, { time: editedTime });
+                      await loadSlots(selectedDate);
+                      setEditMode(false);
+                      setShowSlotModal(false);
                       toast.success("Slot updated!");
-                    } catch {
+                    } catch (err) {
+                      console.error("Error updating slot:", err);
                       toast.error("Something went wrong.");
                     }
-
-                    await loadSlots(selectedDate);
-                    setEditMode(false);
-                    setShowSlotModal(false);
-                    toast.success("Slot updated!");
                   }}
                 >
                   Save Changes
@@ -579,7 +648,6 @@ const AdminCalendar = () => {
           </div>
         )}
 
-        {/* GENERATOR MODAL */}
         {showGenerator && (
           <div className="modal-overlay">
             <div className="generator-modal">
