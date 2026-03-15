@@ -1,54 +1,95 @@
-/* ===== VARIABLES ===== */
+/* ======================================================
+   VARIABLES
+====================================================== */
+
 :root {
   --gold-primary: #d4af37;
   --gold-dark: #b38f2c;
   --gold-light: #f5e7b2;
+
   --pink-primary: #ffb6c1;
   --pink-soft: #fff0f3;
   --pink-dark: #ff8da1;
+
   --white: #ffffff;
+  --cream: #fffaf3;
+
+  --gray-50: #fcfcfd;
   --gray-100: #f8f9fa;
   --gray-200: #e9ecef;
   --gray-300: #dee2e6;
+  --gray-500: #adb5bd;
   --gray-600: #6c757d;
   --gray-800: #343a40;
+
   --danger: #e74c3c;
+  --danger-soft: #fff1ef;
+
   --success: #2ecc71;
+  --success-soft: #eefbf3;
+
+  --info: #3b82f6;
+  --info-soft: #eff6ff;
+
   --radius-sm: 12px;
   --radius-md: 18px;
   --radius-lg: 24px;
+  --radius-xl: 28px;
+
   --shadow-sm: 0 4px 12px rgba(212, 175, 55, 0.08);
-  --shadow-md: 0 8px 24px rgba(212, 175, 55, 0.15);
-  --shadow-lg: 0 20px 40px rgba(212, 175, 55, 0.2);
-  --transition: all 0.2s ease;
+  --shadow-md: 0 10px 28px rgba(212, 175, 55, 0.14);
+  --shadow-lg: 0 20px 40px rgba(212, 175, 55, 0.18);
+
+  --transition: all 0.22s ease;
 }
 
-/* ===== GLOBAL LAYOUT ===== */
+/* ======================================================
+   GLOBAL LAYOUT
+====================================================== */
+
 .calendar-container {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding: 16px;
-  background: linear-gradient(135deg, var(--pink-soft) 0%, var(--white) 100%);
+  padding: 18px;
   min-height: 100vh;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(255, 182, 193, 0.2),
+      transparent 30%
+    ),
+    linear-gradient(
+      135deg,
+      var(--pink-soft) 0%,
+      var(--cream) 45%,
+      var(--white) 100%
+    );
 }
 
-/* ===== CARDS ===== */
+/* ======================================================
+   GENERIC CARD
+====================================================== */
+
 .card {
-  background: var(--white);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: var(--radius-lg);
   padding: 24px;
-  border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(8px);
   transition: var(--transition);
-  border: 1px solid var(--gold-light);
 }
 
 .card:hover {
   box-shadow: var(--shadow-md);
-  border-color: var(--gold-primary);
+  border-color: rgba(212, 175, 55, 0.35);
 }
 
-/* ===== HEADER ===== */
+/* ======================================================
+   HEADER
+====================================================== */
+
 .calendar-header {
   display: flex;
   flex-wrap: wrap;
@@ -58,10 +99,10 @@
 }
 
 .calendar-header h1 {
-  color: var(--gold-dark);
-  font-weight: 700;
-  font-size: clamp(1.5rem, 5vw, 2rem);
   margin: 0;
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
   background: linear-gradient(135deg, var(--gold-dark), var(--pink-dark));
   background-clip: text;
   -webkit-background-clip: text;
@@ -69,119 +110,241 @@
 }
 
 .subtitle {
-  font-size: 0.9rem;
+  margin-top: 6px;
   color: var(--gray-600);
-  margin-top: 4px;
+  font-size: 0.95rem;
 }
 
-/* Service Select */
+/* ======================================================
+   SERVICE SELECT
+====================================================== */
+
 .service-select {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-width: 200px;
+  gap: 8px;
+  min-width: 220px;
 }
 
 .service-select label {
-  font-weight: 600;
   color: var(--gold-dark);
   font-size: 0.9rem;
-  letter-spacing: 0.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .service-select select {
-  padding: 12px 16px;
-  border-radius: var(--radius-sm);
-  border: 2px solid var(--gray-200);
-  background: var(--white);
-  font-size: 1rem;
-  cursor: pointer;
-  transition: var(--transition);
-  outline: none;
+  appearance: none;
+  padding: 13px 16px;
+  border-radius: 14px;
+  border: 1.5px solid var(--gray-300);
+  background: linear-gradient(180deg, #ffffff, #fffaf6);
   color: var(--gray-800);
+  font-size: 0.98rem;
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .service-select select:hover,
 .service-select select:focus {
   border-color: var(--gold-primary);
-  box-shadow: 0 0 0 3px var(--gold-light);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
 }
 
-/* ===== CALENDAR ===== */
+/* ======================================================
+   CALENDAR CARD
+====================================================== */
+
 .calendar-card {
-  padding: 16px;
+  padding: 18px;
   overflow: hidden;
 }
 
-/* react-big-calendar overrides */
+/* ======================================================
+   REACT BIG CALENDAR - OVERALL
+====================================================== */
+
+.rbc-calendar {
+  color: var(--gray-800);
+  background: transparent;
+}
+
+.rbc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px !important;
+  padding: 8px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fffaf6, #fff3f6);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+.rbc-toolbar .rbc-toolbar-label {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--gold-dark);
+  letter-spacing: -0.01em;
+}
+
+.rbc-btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+.rbc-toolbar button {
+  border: none !important;
+  background: white !important;
+  color: var(--gray-800) !important;
+  border-radius: 999px !important;
+  padding: 10px 16px !important;
+  font-size: 0.9rem !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: var(--transition) !important;
+}
+
+.rbc-toolbar button:hover {
+  background: linear-gradient(135deg, var(--gold-light), #fff4cf) !important;
+  color: var(--gold-dark) !important;
+  transform: translateY(-1px);
+}
+
+.rbc-toolbar button.rbc-active {
+  background: linear-gradient(
+    135deg,
+    var(--gold-primary),
+    var(--gold-dark)
+  ) !important;
+  color: white !important;
+  box-shadow: 0 8px 18px rgba(212, 175, 55, 0.35);
+}
+
+/* ======================================================
+   CALENDAR GRID
+====================================================== */
+
 .rbc-month-view,
 .rbc-time-view {
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--gray-200);
-}
-
-.rbc-day-bg {
-  transition: var(--transition);
-}
-
-.rbc-day-bg:hover {
-  background: var(--pink-soft);
-}
-
-.rbc-today {
-  background: var(--gold-light) !important;
-}
-
-.rbc-off-range-bg {
-  background: var(--gray-100);
-}
-
-.rbc-event {
-  background: linear-gradient(135deg, var(--gold-primary), var(--gold-dark));
-  border: none;
+  overflow: hidden;
   border-radius: 20px;
-  padding: 2px 8px;
-  font-weight: 500;
-  box-shadow: 0 2px 6px rgba(212, 175, 55, 0.3);
-}
-
-.rbc-event.rbc-selected {
-  background: linear-gradient(135deg, var(--pink-primary), var(--pink-dark));
-}
-
-.rbc-show-more {
-  color: var(--gold-dark);
-  font-weight: 600;
-  background: var(--pink-soft);
-  border-radius: 12px;
-  padding: 2px 6px;
-}
-
-.rbc-slot-selection {
-  background: rgba(59, 130, 246, 0.4) !important;
-  border: 2px solid #3b82f6 !important;
-}
-
-.rbc-selected-cell {
-  background-color: rgba(59, 130, 246, 0.2) !important;
+  border: 1px solid var(--gray-200);
+  background: white;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
 .rbc-header {
-  padding: 10px 0;
-  background: var(--pink-soft);
+  padding: 14px 8px;
+  background: linear-gradient(180deg, #fff5f7, #fff0f3);
   color: var(--gold-dark);
-  font-weight: 600;
-  border-bottom: 2px solid var(--gold-primary);
+  font-size: 0.9rem;
+  font-weight: 800;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
 }
 
-.rbc-button-link {
+.rbc-month-row {
+  border-top: 1px solid var(--gray-200);
+}
+
+.rbc-date-cell {
+  padding: 8px 10px 0 0;
+  text-align: right;
+  font-weight: 700;
   color: var(--gray-800);
 }
 
-/* ===== SLOT PANEL ===== */
+.rbc-button-link {
+  color: inherit;
+  font-weight: inherit;
+}
+
+.rbc-day-bg {
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.rbc-day-bg:hover {
+  background: #fff8fb;
+}
+
+.rbc-off-range-bg {
+  background: linear-gradient(180deg, #fafafa, #f5f5f5);
+}
+
+.rbc-off-range .rbc-button-link {
+  color: var(--gray-500);
+}
+
+.rbc-today {
+  background: linear-gradient(180deg, #fff6d9, #fffaf0) !important;
+  box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.22);
+}
+
+/* ======================================================
+   EVENTS
+====================================================== */
+
+.rbc-event {
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 4px 10px !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  background: linear-gradient(
+    135deg,
+    var(--gold-primary),
+    var(--gold-dark)
+  ) !important;
+  box-shadow: 0 4px 10px rgba(212, 175, 55, 0.28);
+}
+
+.rbc-event.rbc-selected {
+  background: linear-gradient(
+    135deg,
+    var(--pink-primary),
+    var(--pink-dark)
+  ) !important;
+}
+
+.rbc-show-more {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--pink-soft);
+  color: var(--gold-dark);
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+/* ======================================================
+   DRAG / SELECT HIGHLIGHT
+====================================================== */
+
+.rbc-slot-selection {
+  background: rgba(255, 182, 193, 0.22) !important;
+  border: 2px dashed var(--pink-dark) !important;
+  border-radius: 14px !important;
+}
+
+.rbc-selected-cell {
+  background: rgba(255, 182, 193, 0.12) !important;
+}
+
+/* ======================================================
+   SLOT PANEL
+====================================================== */
+
 .slot-panel {
-  margin-top: 8px;
-  background: linear-gradient(145deg, var(--white), var(--pink-soft));
+  margin-top: 4px;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.96),
+    rgba(255, 240, 243, 0.7)
+  );
 }
 
 .slot-header {
@@ -195,64 +358,32 @@
 
 .slot-header h3 {
   margin: 0;
-  color: var(--gold-dark);
-  font-size: 1.3rem;
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  color: var(--gold-dark);
+  font-size: 1.25rem;
+  font-weight: 800;
 }
 
 .blocked-badge {
-  background: var(--danger);
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
   color: white;
-  padding: 4px 12px;
-  border-radius: 30px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  box-shadow: 0 6px 14px rgba(231, 76, 60, 0.24);
 }
 
-/* Slot Grid */
-.slot-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 12px;
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 4px 2px;
-}
+/* ======================================================
+   CALENDAR ACTIONS / BUTTONS
+====================================================== */
 
-.slot-card {
-  padding: 14px 8px;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
-  text-align: center;
-  cursor: pointer;
-  transition: var(--transition);
-  border: 2px solid transparent;
-  box-shadow: var(--shadow-sm);
-  font-size: 0.9rem;
-}
-
-.slot-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-}
-
-.slot-available {
-  background: linear-gradient(145deg, #eafaf1, #d5f0e0);
-  color: var(--success);
-  border-color: var(--success);
-}
-
-.slot-blocked {
-  background: linear-gradient(145deg, #fdecea, #fbd5d2);
-  color: var(--danger);
-  border-color: var(--danger);
-}
-
-/* ===== BUTTONS ===== */
 .calendar-actions {
   display: flex;
   flex-wrap: wrap;
@@ -263,19 +394,19 @@
 .btn-danger,
 .btn-success,
 .btn-outline {
-  padding: 12px 20px;
-  border-radius: 40px;
-  border: none;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: var(--transition);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-  letter-spacing: 0.3px;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 20px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.07);
 }
 
 .btn-primary {
@@ -284,9 +415,8 @@
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, var(--gold-dark), #9e7b2b);
-  transform: scale(1.02);
-  box-shadow: 0 8px 18px rgba(212, 175, 55, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(212, 175, 55, 0.3);
 }
 
 .btn-danger {
@@ -295,8 +425,8 @@
 }
 
 .btn-danger:hover {
-  background: linear-gradient(135deg, #c0392b, #a8231a);
-  transform: scale(1.02);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(231, 76, 60, 0.24);
 }
 
 .btn-success {
@@ -305,31 +435,121 @@
 }
 
 .btn-success:hover {
-  background: linear-gradient(135deg, #27ae60, #1e8f4a);
-  transform: scale(1.02);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(46, 204, 113, 0.24);
 }
 
 .btn-outline {
-  background: transparent;
-  border: 2px solid var(--gold-primary);
+  background: rgba(255, 255, 255, 0.9);
   color: var(--gold-dark);
+  border: 1.5px solid rgba(212, 175, 55, 0.35);
 }
 
 .btn-outline:hover {
   background: var(--gold-light);
-  border-color: var(--gold-dark);
-  color: var(--gold-dark);
+  border-color: var(--gold-primary);
 }
 
-/* ===== LOADING SPINNER ===== */
+.btn-primary:disabled,
+.btn-danger:disabled,
+.btn-success:disabled,
+.btn-outline:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ======================================================
+   SLOT GRID
+====================================================== */
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 14px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+
+.slot-card {
+  position: relative;
+  padding: 16px 10px;
+  border-radius: 16px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+  overflow: hidden;
+}
+
+.slot-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.slot-available {
+  background: linear-gradient(145deg, #effcf4, #dcf7e7);
+  color: #1e8f4a;
+  border-color: rgba(46, 204, 113, 0.4);
+}
+
+.slot-blocked {
+  background: linear-gradient(145deg, #fff0ee, #ffe1dc);
+  color: #c0392b;
+  border-color: rgba(231, 76, 60, 0.35);
+}
+
+.slot-booked {
+  background: linear-gradient(145deg, #ffe7e7, #ffd6d6) !important;
+  color: #b42318;
+  border-color: rgba(231, 76, 60, 0.4) !important;
+  cursor: not-allowed;
+  opacity: 0.95;
+}
+
+.slot-past {
+  background: linear-gradient(145deg, #f3f4f6, #ebedf0) !important;
+  color: #6b7280;
+  border-color: rgba(156, 163, 175, 0.3) !important;
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.slot-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  background: var(--danger);
+  color: white;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.past-badge {
+  background: #7f8c8d;
+}
+
+/* ======================================================
+   LOADING SPINNER
+====================================================== */
+
 .loading-spinner {
-  width: 48px;
-  height: 48px;
+  width: 46px;
+  height: 46px;
+  margin: 20px auto;
   border: 5px solid var(--pink-soft);
   border-top: 5px solid var(--gold-primary);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 20px auto;
+  animation: spin 0.85s linear infinite;
 }
 
 @keyframes spin {
@@ -338,81 +558,119 @@
   }
 }
 
-/* ===== MODAL ===== */
+/* ======================================================
+   MODAL OVERLAY
+====================================================== */
+
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(6px);
+  z-index: 1000;
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
   padding: 16px;
+  background: rgba(17, 24, 39, 0.4);
+  backdrop-filter: blur(8px);
+}
+
+/* ======================================================
+   MODALS
+====================================================== */
+
+.generator-modal,
+.slot-modal {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: var(--shadow-lg);
+  animation: modalFadeIn 0.22s ease;
 }
 
 .generator-modal {
-  width: 100%;
-  max-width: 480px;
-  background: var(--white);
+  max-width: 500px;
   padding: 32px;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-xl);
   display: flex;
   flex-direction: column;
   gap: 20px;
-  border: 2px solid var(--gold-light);
-  animation: modalFadeIn 0.3s;
+}
+
+.slot-modal {
+  max-width: 340px;
+  padding: 24px;
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 @keyframes modalFadeIn {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: translateY(8px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0) scale(1);
   }
 }
 
-.generator-modal h3 {
-  color: var(--gold-dark);
+.generator-modal h3,
+.slot-modal h3 {
   margin: 0;
-  font-size: 1.8rem;
-  font-weight: 700;
+  color: var(--gold-dark);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.generator-modal h3 {
   text-align: center;
+  font-size: 1.6rem;
 }
 
-.generator-modal input {
-  padding: 14px 16px;
-  border-radius: 40px;
-  border: 2px solid var(--gray-200);
-  font-size: 1rem;
-  transition: var(--transition);
+.slot-modal h3 {
+  font-size: 1.2rem;
+}
+
+/* ======================================================
+   MODAL INPUTS
+====================================================== */
+
+.generator-modal input,
+.slot-modal input[type="time"] {
+  width: 100%;
+  padding: 13px 15px;
+  border-radius: 14px;
+  border: 1.5px solid var(--gray-300);
   outline: none;
+  font-size: 0.95rem;
+  transition: var(--transition);
+  background: white;
+  color: var(--gray-800);
 }
 
-.generator-modal input:focus {
+.generator-modal input:focus,
+.slot-modal input[type="time"]:focus {
   border-color: var(--gold-primary);
-  box-shadow: 0 0 0 4px var(--gold-light);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
 }
 
 .checkbox-row {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fff6f8, #fff0f3);
   color: var(--gray-800);
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  background: var(--pink-soft);
-  padding: 10px 16px;
-  border-radius: 40px;
 }
 
 .checkbox-row input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   accent-color: var(--gold-primary);
 }
 
@@ -420,13 +678,81 @@
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
-/* ===== MOBILE RESPONSIVENESS ===== */
+/* ======================================================
+   MODAL HELPERS
+====================================================== */
+
+.warning-text {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--danger-soft);
+  color: #b42318;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.range-preview {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8fafc, #fff6f8);
+  border: 1px solid var(--gray-200);
+  font-size: 0.92rem;
+  color: var(--gray-800);
+}
+
+.range-preview p {
+  margin: 4px 0;
+}
+
+/* ======================================================
+   OPTIONAL UTILITY
+====================================================== */
+
+.text-gold {
+  color: var(--gold-primary);
+}
+
+.text-pink {
+  color: var(--pink-primary);
+}
+
+.bg-pink-soft {
+  background: var(--pink-soft);
+}
+
+/* ======================================================
+   SCROLLBAR POLISH
+====================================================== */
+
+.slot-grid::-webkit-scrollbar,
+.rbc-time-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.slot-grid::-webkit-scrollbar-thumb,
+.rbc-time-content::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.4);
+  border-radius: 999px;
+}
+
+.slot-grid::-webkit-scrollbar-track,
+.rbc-time-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 999px;
+}
+
+/* ======================================================
+   MOBILE
+====================================================== */
+
 @media (max-width: 768px) {
   .calendar-container {
-    padding: 8px;
+    padding: 10px;
+    gap: 18px;
   }
 
   .card {
@@ -442,19 +768,30 @@
     width: 100%;
   }
 
-  /* Smaller calendar height on mobile */
   .rbc-calendar {
-    height: 500px !important;
+    height: 520px !important;
+  }
+
+  .rbc-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rbc-btn-group {
+    flex-wrap: wrap;
+  }
+
+  .rbc-toolbar button {
+    flex: 1;
   }
 
   .slot-grid {
     grid-template-columns: repeat(2, 1fr);
-    max-height: 300px;
+    max-height: 320px;
   }
 
   .calendar-actions {
     width: 100%;
-    justify-content: stretch;
   }
 
   .calendar-actions button {
@@ -476,7 +813,11 @@
 
 @media (max-width: 480px) {
   .calendar-header h1 {
-    font-size: 1.6rem;
+    font-size: 1.55rem;
+  }
+
+  .subtitle {
+    font-size: 0.88rem;
   }
 
   .slot-header {
@@ -485,7 +826,7 @@
   }
 
   .slot-header h3 {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
   }
 
   .slot-grid {
@@ -493,165 +834,23 @@
   }
 
   .rbc-calendar {
-    height: 400px !important;
+    height: 430px !important;
   }
 
   .btn-primary,
   .btn-danger,
   .btn-success,
   .btn-outline {
-    padding: 10px 16px;
-    font-size: 0.85rem;
+    padding: 10px 14px;
+    font-size: 0.84rem;
   }
 
-  .generator-modal {
+  .generator-modal,
+  .slot-modal {
     padding: 20px;
   }
 
   .generator-modal h3 {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
   }
-}
-
-/* ===== UTILITY CLASSES (optional) ===== */
-.text-gold {
-  color: var(--gold-primary);
-}
-
-.text-pink {
-  color: var(--pink-primary);
-}
-
-.bg-pink-soft {
-  background: var(--pink-soft);
-}
-
-.slot-modal {
-  background: white;
-  padding: 25px;
-  border-radius: 18px;
-  width: 350px;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.25);
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.edit-section {
-  display: flex;
-  gap: 10px;
-}
-
-.edit-section input {
-  flex: 1;
-  padding: 8px;
-  border-radius: 10px;
-  border: 1px solid #eee;
-}
-
-/* ================= SLOT BADGES ================= */
-
-.slot-card {
-  position: relative;
-  transition: all 0.2s ease;
-}
-
-.slot-card:hover {
-  transform: translateY(-2px);
-}
-
-.slot-booked {
-  background: #ffe5e5 !important;
-  border: 1px solid #ffb3b3;
-  cursor: not-allowed;
-  opacity: 0.85;
-}
-
-.slot-past {
-  background: #f1f1f1 !important;
-  border: 1px solid #dcdcdc;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.slot-badge {
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  background: #e74c3c;
-  color: white;
-  font-size: 10px;
-  padding: 3px 6px;
-  border-radius: 6px;
-  font-weight: 600;
-}
-
-.past-badge {
-  background: #7f8c8d;
-}
-
-/* ================= SLOT MODAL ================= */
-
-.slot-modal {
-  background: white;
-  padding: 25px;
-  border-radius: 16px;
-  width: 300px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.warning-text {
-  background: #ffe5e5;
-  color: #c0392b;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 0.85rem;
-}
-
-.slot-modal input[type="time"] {
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-}
-
-.range-preview {
-  background: #f4f6f9;
-  padding: 10px;
-  border-radius: 8px;
-  margin-bottom: 15px;
-  font-size: 14px;
-}
-
-.range-preview p {
-  margin: 4px 0;
-}
-
-.slot-booked {
-  background-color: #ffe0e0;
-  border: 1px solid #ff4d4d;
-}
-
-.slot-past {
-  opacity: 0.6;
-}
-
-.slot-badge {
-  font-size: 10px;
-  margin-top: 4px;
-  font-weight: bold;
-}
-
-.past-badge {
-  color: #777;
-}
-
-.rbc-slot-selection {
-  background: rgba(59, 130, 246, 0.3) !important;
-  border: 2px solid #3b82f6 !important;
-}
-
-.rbc-selected-cell {
-  background: rgba(59, 130, 246, 0.2) !important;
 }
