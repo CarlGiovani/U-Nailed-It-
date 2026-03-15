@@ -497,16 +497,20 @@ export const cancelBookingByToken = async (token) => {
     .eq("cancel_token", token)
     .single();
 
-  if (error || !booking)
+  if (error || !booking) {
     throw new Error("Invalid or expired cancellation link");
+  }
 
   if (booking.status !== "approved") {
     throw new Error("Only approved bookings can be cancelled");
   }
 
+  if (!booking.approved_at) {
+    throw new Error("Booking approval time is missing");
+  }
+
   const now = new Date();
 
-  // Optional: prevent cancelling past appointments
   const appointmentDateTime = new Date(
     `${booking.booking_date}T${booking.booking_time}`,
   );
@@ -515,7 +519,6 @@ export const cancelBookingByToken = async (token) => {
     throw new Error("Cannot cancel past appointments");
   }
 
-  // 24-hour rule based on approval time
   const approvedTime = new Date(booking.approved_at);
   const diffHours = (now - approvedTime) / (1000 * 60 * 60);
 
@@ -523,8 +526,7 @@ export const cancelBookingByToken = async (token) => {
     throw new Error("Cancellation period expired (24 hours)");
   }
 
-  // UPDATE BOOKING STATUS
-  const { data, error: cancelError } = await supabase
+  const { data: cancelled, error: cancelError } = await supabase
     .from("bookings")
     .update({
       status: "cancelled",
@@ -532,26 +534,49 @@ export const cancelBookingByToken = async (token) => {
       cancel_token: null,
     })
     .eq("id", booking.id)
-    .select()
+    .eq("status", "approved")
+    .eq("cancel_token", token)
+    .select("id")
     .single();
 
   if (cancelError) throw new Error(cancelError.message);
 
-  // RELEASE SERVICE SLOT
-  await supabase
+  const { error: slotError } = await supabase
     .from("calendar_slots")
     .update({ is_available: true })
     .eq("service_id", booking.service_id)
     .eq("date", booking.booking_date)
     .eq("time", booking.booking_time);
 
-  // SAFE GLOBAL UNBLOCK
+  if (slotError) throw new Error(slotError.message);
+
   await safeUnblockGlobalIfNoActiveBooking(
     booking.booking_date,
     booking.booking_time,
   );
 
-  return data;
+  const { data: fullBooking, error: fetchError } = await supabase
+    .from("bookings")
+    .select(
+      `
+      *,
+      services (
+        id,
+        name
+      ),
+      customers (
+        id,
+        full_name,
+        email
+      )
+    `,
+    )
+    .eq("id", cancelled.id)
+    .single();
+
+  if (fetchError) throw new Error(fetchError.message);
+
+  return fullBooking;
 };
 
 /* ==========================================

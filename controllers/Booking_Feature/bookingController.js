@@ -141,8 +141,11 @@ export const approveBooking = async (req, res) => {
   try {
     const result = await booking.approveBooking(req.params.id);
 
-    // Lagay ko sa env aferd ko ma-deploy
-    const cancelLink = process.env.FRONTEND_CANCEL_URL || `http://localhost:5173/cancel?token=${result.cancel_token}`;
+    // Lagay ko sa env aferd ko ma-deploy tas tago sa env
+    const FRONTEND_CANCEL_URL =
+      process.env.FRONTEND_CANCEL_URL || "http://localhost:5173/cancel";
+
+    const cancelLink = `${FRONTEND_CANCEL_URL}?token=${result.cancel_token}`;
 
     await sendEmail({
       to: result.customers.email,
@@ -215,8 +218,9 @@ export const rejectBooking = async (req, res) => {
 export const cancelBooking = async (req, res) => {
   try {
     const { token } = req.query;
+    if (!token)
+      return res.status(400).json({ error: "Cancellation token is required" });
     const result = await booking.cancelBookingByToken(token);
-    if(!token) return res.status(400).json({ error: "Cancellation token is required" });  
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
