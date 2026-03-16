@@ -145,7 +145,7 @@ export const bookingApprovedTemplate = ({
 
               <p style="margin:22px 0 0 0; font-size:12px; color:#666;">
                 <br />
-                <span style="word-break:break-all;">${cancelLink}</span>
+                <span style="word-break:break-all;">${cancelLink} remove during deployment"</span>
               </p>
 
             </td>
