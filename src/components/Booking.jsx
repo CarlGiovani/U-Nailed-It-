@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   confirmBooking,
   createBooking,
@@ -9,7 +10,6 @@ import {
   getAvailableSlots,
   getMonthlyAvailability,
 } from "../../backend/calendarApi.js";
-import { getAllServices } from "../../backend/servicesApi.js";
 import "../styles/booking-system.css";
 
 // DATE FORMATTER (YYYY-MM-DD)
@@ -23,11 +23,10 @@ const formatLocalDate = (date) => {
 // SAFE DATE PARSING - FIXES TIMEZONE ISSUES
 const parseLocalDate = (dateStr) => {
   if (!dateStr) return null;
-  // Always parse with local timezone (append T00:00:00)
   return new Date(dateStr + "T00:00:00");
 };
 
-//HELPER
+// HELPER
 const sameId = (a, b) => Number(a) === Number(b);
 
 // ===============================
@@ -35,7 +34,7 @@ const sameId = (a, b) => Number(a) === Number(b);
 // ===============================
 const LS_KEYS = {
   bookingId: "active_booking_id",
-  bookingExpiresAt: "active_booking_expires_at", // Will store as epoch ms
+  bookingExpiresAt: "active_booking_expires_at",
   paymentIntentId: "active_payment_intent_id",
   paymentSignedUrl: "active_payment_signed_url",
 };
@@ -43,7 +42,6 @@ const LS_KEYS = {
 const saveActiveBooking = ({ bookingId, expiresAt }) => {
   if (bookingId) localStorage.setItem(LS_KEYS.bookingId, String(bookingId));
   if (expiresAt) {
-    // Store as epoch milliseconds for consistent parsing
     const expiryMs =
       typeof expiresAt === "string" ? Date.parse(expiresAt) : expiresAt;
     localStorage.setItem(LS_KEYS.bookingExpiresAt, String(expiryMs));
@@ -66,15 +64,11 @@ const clearActiveFlow = () => {
 const toMs = (isoOrNull) => {
   if (!isoOrNull) return null;
 
-  if (typeof isoOrNull === "number") {
-    return isoOrNull;
-  }
+  if (typeof isoOrNull === "number") return isoOrNull;
 
   if (typeof isoOrNull === "string") {
     const num = Number(isoOrNull);
-    if (!isNaN(num) && String(num) === isoOrNull.trim()) {
-      return num;
-    }
+    if (!isNaN(num) && String(num) === isoOrNull.trim()) return num;
 
     const date = new Date(isoOrNull);
     const ms = date.getTime();
@@ -92,12 +86,43 @@ const formatCountdown = (ms) => {
   return `${mm}:${ss}`;
 };
 
-const Booking = () => {
+const Booking = ({ services: servicesProp = [] }) => {
+  const navigate = useNavigate();
+
   // Step management
   const [step, setStep] = useState(1);
 
+  // transformed services from parent prop
+  const services = useMemo(() => {
+    return (servicesProp || []).map((service) => ({
+      id: service.id,
+      name: service.name,
+      description: service.description || "No description available",
+      duration: service.duration || 0,
+      image:
+        service.image_url ||
+        service.image ||
+        `https://via.placeholder.com/300x200?text=${encodeURIComponent(
+          service.name,
+        )}`,
+      service_categories:
+        service.service_categories?.map((category) => ({
+          id: category.id,
+          name: category.name,
+          service_variants:
+            category.service_variants?.map((variant) => ({
+              id: variant.id,
+              body_part: variant.body_part,
+              size: variant.size,
+              price: variant.price,
+              downpayment: variant.downpayment,
+              is_active: variant.is_active,
+            })) || [],
+        })) || [],
+    }));
+  }, [servicesProp]);
+
   // Data states
-  const [services, setServices] = useState([]);
   const [availableSlots, setAvailableSlots] = useState([]);
   const [selectedDate, setSelectedDate] = useState("");
 
@@ -106,7 +131,7 @@ const Booking = () => {
   const [paymentIntentId, setPaymentIntentId] = useState(null);
   const [paymentSignedUrl, setPaymentSignedUrl] = useState(null);
 
-  // Review/Confirmed booking data (from backend) - SINGLE SOURCE OF TRUTH
+  // Review/Confirmed booking data
   const [bookingPreview, setBookingPreview] = useState(null);
 
   // UI states
@@ -133,16 +158,26 @@ const Booking = () => {
   const [resumeBookingData, setResumeBookingData] = useState(null);
   const [resuming, setResuming] = useState(false);
 
-  //payment image preview
+  // payment image preview
   const [proofPreviewUrl, setProofPreviewUrl] = useState(null);
   const [selectedProofFile, setSelectedProofFile] = useState(null);
 
-  //para sa preview ng payment image
+  // cleanup preview url
   useEffect(() => {
     return () => {
       if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
     };
   }, [proofPreviewUrl]);
+
+  // service availability state from parent
+  useEffect(() => {
+    if (servicesProp?.length > 0) {
+      setFetchingServices(false);
+      setServicesError(null);
+    } else {
+      setFetchingServices(true);
+    }
+  }, [servicesProp]);
 
   // modal state
   const [modal, setModal] = useState({
@@ -152,7 +187,7 @@ const Booking = () => {
     actions: [],
   });
 
-  // countdown - SINGLE EXPIRY SOURCE
+  // countdown
   const [timeLeftMs, setTimeLeftMs] = useState(null);
   const [isExpiredLocal, setIsExpiredLocal] = useState(false);
   const expiryHandledRef = useRef(false);
@@ -174,7 +209,7 @@ const Booking = () => {
   });
 
   // ===============================
-  // MODAL UTILITIES (REPLACE ALERT())
+  // MODAL UTILITIES
   // ===============================
   const showAlert = useCallback((title, message, onConfirm = null) => {
     setModal({
@@ -202,21 +237,18 @@ const Booking = () => {
   useEffect(() => {
     if (resuming) return;
 
-    // Step 4 = Review (need bookingId)
     if (step === 4 && !bookingId) {
       console.warn("Invalid step 4: No bookingId, redirecting to step 1");
       setStep(1);
       return;
     }
 
-    // Step 5 = Payment + Confirm (need bookingId only)
     if (step === 5 && !bookingId) {
       console.warn("Invalid step 5: No bookingId, redirecting to step 4");
       setStep(4);
       return;
     }
 
-    // Step 6 = Done/Confirmation (need bookingPreview)
     if (step === 6 && !bookingPreview) {
       console.warn("Invalid step 6: No bookingPreview, redirecting to step 1");
       setStep(1);
@@ -301,7 +333,7 @@ const Booking = () => {
   };
 
   // ===============================
-  // RESUME BOOKING MODAL (BACKEND-DRIVEN)
+  // RESUME BOOKING MODAL
   // ===============================
   const ResumeModal = () => {
     if (!showResumePrompt || !resumeBookingData) return null;
@@ -452,60 +484,9 @@ const Booking = () => {
     );
   };
 
-  /* ==========================================
-     FETCH SERVICES
-  ========================================== */
-  const fetchServices = useCallback(async () => {
-    try {
-      setFetchingServices(true);
-      setServicesError(null);
-
-      const servicesData = await getAllServices();
-
-      const transformedServices = servicesData.map((service) => ({
-        id: service.id,
-        name: service.name,
-        description: service.description || "No description available",
-        duration: service.duration || 0,
-        image:
-          service.image_url ||
-          service.image ||
-          `https://via.placeholder.com/300x200?text=${encodeURIComponent(
-            service.name,
-          )}`,
-        service_categories:
-          service.service_categories?.map((category) => ({
-            id: category.id,
-            name: category.name,
-            service_variants:
-              category.service_variants?.map((variant) => ({
-                id: variant.id,
-                body_part: variant.body_part,
-                size: variant.size,
-                price: variant.price,
-                downpayment: variant.downpayment,
-                is_active: variant.is_active,
-              })) || [],
-          })) || [],
-      }));
-
-      setServices(transformedServices);
-    } catch (error) {
-      console.error("Error fetching services:", error);
-      setServicesError("Failed to load services. Please try again later.");
-      setServices([]);
-    } finally {
-      setFetchingServices(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchServices();
-  }, [fetchServices]);
-
-  /* ==========================================
-     RESET FUNCTIONS
-  ========================================== */
+  // ===============================
+  // RESET FUNCTIONS
+  // ===============================
   const resetBookingFlow = useCallback(() => {
     setBookingId(null);
     setPaymentIntentId(null);
@@ -548,9 +529,9 @@ const Booking = () => {
     });
   }, [resetBookingFlow]);
 
-  /* ==========================================
-     RESUME ON PAGE LOAD (BACKEND-DRIVEN)
-  ========================================== */
+  // ===============================
+  // RESUME ON PAGE LOAD
+  // ===============================
   const checkAndResumeBooking = useCallback(async () => {
     const savedBookingId = localStorage.getItem(LS_KEYS.bookingId);
     if (!savedBookingId) return;
@@ -629,7 +610,6 @@ const Booking = () => {
 
       const hasProofFromStorage = !!savedSigned;
 
-      //UPDATED
       if (backendPaymentIntentId) {
         setPaymentIntentId(backendPaymentIntentId);
 
@@ -700,9 +680,9 @@ const Booking = () => {
     }
   }, [services, checkAndResumeBooking]);
 
-  /* ==========================================
-     RESUME BOOKING FUNCTION (BACKEND-DRIVEN STEP DECISION)
-  ========================================== */
+  // ===============================
+  // RESUME BOOKING FUNCTION
+  // ===============================
   const handleResumeBooking = useCallback(() => {
     if (!bookingPreview) return;
 
@@ -717,7 +697,7 @@ const Booking = () => {
 
     if (status === "pending_payment") {
       setPaymentProofUploaded(!!hasProof);
-      setStep(4); // ALWAYS Review first
+      setStep(4);
       return;
     }
 
@@ -726,13 +706,12 @@ const Booking = () => {
       return;
     }
 
-    // fallback: unknown state
     setStep(1);
   }, [bookingPreview, paymentSignedUrl]);
 
-  /* ==========================================
-     AUTO-MAP CATEGORY FROM VARIANT
-  ========================================== */
+  // ===============================
+  // AUTO-MAP CATEGORY FROM VARIANT
+  // ===============================
   useEffect(() => {
     if (!services.length) return;
     if (!formData.service_id) return;
@@ -776,9 +755,9 @@ const Booking = () => {
     formData.service_variant_id,
   ]);
 
-  /* ==========================================
-     MONTHLY AVAILABILITY
-  ========================================== */
+  // ===============================
+  // MONTHLY AVAILABILITY
+  // ===============================
   const fetchMonthlyAvailability = useCallback(async () => {
     if (!formData.service_id) return;
 
@@ -816,9 +795,9 @@ const Booking = () => {
     }
   }, [formData.service_id, currentMonth, fetchMonthlyAvailability]);
 
-  /* ==========================================
-     GENERATE CALENDAR (FIXED TIMEZONE ISSUES)
-  ========================================== */
+  // ===============================
+  // GENERATE CALENDAR
+  // ===============================
   const generateCalendar = useCallback(() => {
     if (!formData.service_id) return;
 
@@ -834,7 +813,6 @@ const Booking = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // prev month filler
     const prevMonthLastDay = new Date(year, month, 0).getDate();
     for (let i = startDay - 1; i >= 0; i--) {
       const date = new Date(year, month - 1, prevMonthLastDay - i);
@@ -850,7 +828,6 @@ const Booking = () => {
       });
     }
 
-    // current month days
     for (let i = 1; i <= daysInMonth; i++) {
       const date = new Date(year, month, i);
       const dateStr = formatLocalDate(date);
@@ -869,7 +846,6 @@ const Booking = () => {
       });
     }
 
-    // next month filler
     const totalCells = 42;
     const remainingCells = Math.max(0, totalCells - dates.length);
     for (let i = 1; i <= remainingCells; i++) {
@@ -893,9 +869,9 @@ const Booking = () => {
     if (formData.service_id) generateCalendar();
   }, [formData.service_id, generateCalendar]);
 
-  /* ==========================================
-     FETCH AVAILABLE SLOTS BY DATE
-  ========================================== */
+  // ===============================
+  // FETCH AVAILABLE SLOTS BY DATE
+  // ===============================
   const fetchAvailableSlots = useCallback(async () => {
     if (!formData.service_id || !selectedDate) return;
 
@@ -919,13 +895,12 @@ const Booking = () => {
     }
   }, [formData.service_id, selectedDate, fetchAvailableSlots]);
 
-  /* ==========================================
-     COUNTDOWN - FIXED DOUBLE RESET ISSUE
-  ========================================== */
+  // ===============================
+  // COUNTDOWN
+  // ===============================
   useEffect(() => {
     if (showResumePrompt) return;
 
-    // SINGLE EXPIRY SOURCE: bookingPreview.expires_at
     const expMs = toMs(bookingPreview?.expires_at);
 
     if (!expMs) {
@@ -941,7 +916,6 @@ const Booking = () => {
       const expired = left <= 0;
       setIsExpiredLocal(expired);
 
-      // ✅ MODAL ONLY - NO AUTO RESET
       if (expired && !expiryHandledRef.current && (step === 4 || step === 5)) {
         expiryHandledRef.current = true;
 
@@ -961,8 +935,6 @@ const Booking = () => {
             },
           ],
         });
-
-        // ✅ NO resetBookingFlow() or setStep(1) HERE
       }
     };
 
@@ -971,9 +943,9 @@ const Booking = () => {
     return () => clearInterval(id);
   }, [bookingPreview?.expires_at, step, hardRestart, showResumePrompt]);
 
-  /* ==========================================
-     NAVIGATION HELPERS
-  ========================================== */
+  // ===============================
+  // NAVIGATION HELPERS
+  // ===============================
   const prevMonth = () => {
     setCurrentMonth(
       (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
@@ -1000,9 +972,9 @@ const Booking = () => {
     setFormData((prev) => ({ ...prev, booking_time: "" }));
   };
 
-  /* ==========================================
-     HANDLE SERVICE / CATEGORY / VARIANT
-  ========================================== */
+  // ===============================
+  // HANDLE SERVICE / CATEGORY / VARIANT
+  // ===============================
   const handleServiceSelect = (service) => {
     resetBookingFlow();
 
@@ -1048,9 +1020,9 @@ const Booking = () => {
     setStep(2);
   };
 
-  /* ==========================================
-     DATE & TIME (FIXED TIMEZONE)
-  ========================================== */
+  // ===============================
+  // DATE & TIME
+  // ===============================
   const handleDateSelect = (date) => {
     if (!date) return;
     const dateStr = formatLocalDate(date);
@@ -1077,9 +1049,9 @@ const Booking = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  /* ==========================================
-     TIME SLOT DISPLAY
-  ========================================== */
+  // ===============================
+  // TIME SLOT DISPLAY
+  // ===============================
   const generateTimeSlots = () => {
     if (!availableSlots.length) return [];
 
@@ -1108,9 +1080,9 @@ const Booking = () => {
       });
   };
 
-  /* ==========================================
-     VALIDATION
-  ========================================== */
+  // ===============================
+  // VALIDATION
+  // ===============================
   const validateForm = () => {
     const errors = [];
 
@@ -1141,9 +1113,9 @@ const Booking = () => {
     return true;
   };
 
-  /* ==========================================
-     STEP 3: CREATE BOOKING
-  ========================================== */
+  // ===============================
+  // STEP 3: CREATE BOOKING
+  // ===============================
   const handleCreateBooking = async () => {
     if (!validateForm()) return;
 
@@ -1167,14 +1139,11 @@ const Booking = () => {
       const result = await createBooking(payload);
 
       setBookingId(result.id);
-      // ✅ SINGLE EXPIRY SOURCE
       saveActiveBooking({ bookingId: result.id, expiresAt: result.expires_at });
 
       setBookingPreview(result);
-
       setStep(4);
 
-      // ✅ REPLACE ALERT WITH MODAL
       showAlert(
         "Booking Created",
         "Please review your details before payment.",
@@ -1187,9 +1156,9 @@ const Booking = () => {
     }
   };
 
-  /* ==========================================
-     STEP 4: UPLOAD PAYMENT PROOF (USES BACKEND TRUTH)
-  ========================================== */
+  // ===============================
+  // STEP 4: UPLOAD PAYMENT PROOF
+  // ===============================
   const handlePaymentUpload = async (file, { silent = false } = {}) => {
     if (!file || !bookingId) return null;
     if (uploading) return null;
@@ -1256,7 +1225,6 @@ const Booking = () => {
         result.signedUrl ||
         null;
 
-      // if backend didn't return an intent, treat as failure
       if (!intent) {
         showAlert(
           "Upload Error",
@@ -1275,14 +1243,12 @@ const Booking = () => {
 
       setPaymentProofUploaded(true);
 
-      // clear selected file + reset input
       setSelectedProofFile(null);
       setProofPreviewUrl(null);
 
       const input = document.getElementById("payment-proof");
       if (input) input.value = "";
 
-      // refresh booking preview (best-effort)
       try {
         const preview = await getBookingById(bookingId);
         setBookingPreview(preview);
@@ -1298,7 +1264,6 @@ const Booking = () => {
         );
       }
 
-      //IMPORTANT: return the intent string (fixes first-click confirm)
       return intent;
     } catch (error) {
       console.error("Upload error:", error);
@@ -1364,28 +1329,25 @@ const Booking = () => {
     }
 
     try {
-      // if no proof yet, upload NOW and use returned intent immediately
       if (!alreadyHasProof) {
         const intent = await handlePaymentUpload(selectedProofFile, {
           silent: true,
         });
         if (!intent) return;
 
-        // pass intent override (fixes first-click confirm)
         await handleFinalConfirmation(intent);
         return;
       }
 
-      // proof exists already, confirm using current state intent
       await handleFinalConfirmation();
     } catch (e) {
       console.error(e);
     }
   };
 
-  /* ==========================================
-     STEP 5: CONFIRM BOOKING (WITH SLOT TAKEN HANDLING)
-  ========================================== */
+  // ===============================
+  // STEP 5: CONFIRM BOOKING
+  // ===============================
   const handleFinalConfirmation = async (intentOverride = null) => {
     if (!bookingId) {
       showAlert("Error", "Missing booking ID. Please restart booking.");
@@ -1423,10 +1385,8 @@ const Booking = () => {
     setLoading(true);
 
     try {
-      // ✅ Use the intent we computed (override OR state)
       await confirmBooking(bookingId, intentToUse);
 
-      // Refresh booking preview
       try {
         const latest = await getBookingById(bookingId);
         setBookingPreview(latest);
@@ -1533,9 +1493,9 @@ const Booking = () => {
     handleFinalConfirmation();
   };
 
-  /* ==========================================
-     SELECTED OBJECTS (FOR UI DISPLAY)
-  ========================================== */
+  // ===============================
+  // SELECTED OBJECTS
+  // ===============================
   const selectedService = useMemo(
     () => services.find((s) => sameId(s.id, formData.service_id)),
     [services, formData.service_id],
@@ -1556,9 +1516,9 @@ const Booking = () => {
   const getAvailableDatesCount = () =>
     Object.values(monthlyAvailability).filter((v) => v === true).length;
 
-  /* ==========================================
-     PREMIUM PROGRESS BAR
-  ========================================== */
+  // ===============================
+  // PREMIUM PROGRESS BAR
+  // ===============================
   const PremiumProgressBar = () => (
     <div className="premium-progress">
       <div className="progress-steps">
@@ -1566,8 +1526,8 @@ const Booking = () => {
           { number: 1, label: "Service", icon: "🎨" },
           { number: 2, label: "Schedule", icon: "📅" },
           { number: 3, label: "Details", icon: "👤" },
-          { number: 4, label: "Review", icon: "📋" }, // swapped
-          { number: 5, label: "Payment", icon: "💳" }, // swapped
+          { number: 4, label: "Review", icon: "📋" },
+          { number: 5, label: "Payment", icon: "💳" },
           { number: 6, label: "Done", icon: "✅" },
         ].map((stepItem) => (
           <div
@@ -1594,9 +1554,9 @@ const Booking = () => {
     </div>
   );
 
-  /* ==========================================
-     STEP 1 UI - SERVICE SELECTION
-  ========================================== */
+  // ===============================
+  // STEP 1 UI - SERVICE SELECTION
+  // ===============================
   const renderServiceSelection = () => {
     if (fetchingServices) {
       return (
@@ -1624,9 +1584,6 @@ const Booking = () => {
             <div className="error-icon premium">⚠️</div>
             <h3 className="error-title">Failed to Load Services</h3>
             <p className="error-message">{servicesError}</p>
-            <button className="btn btn-primary premium" onClick={fetchServices}>
-              Try Again
-            </button>
           </div>
         </div>
       );
@@ -1647,12 +1604,6 @@ const Booking = () => {
               <p className="empty-description">
                 There are no services available at the moment.
               </p>
-              <button
-                className="btn btn-outline premium"
-                onClick={fetchServices}
-              >
-                Refresh Services
-              </button>
             </div>
           ) : (
             <div className="services-grid premium">
@@ -1713,7 +1664,7 @@ const Booking = () => {
           <div className="step-footer premium">
             <button
               className="btn btn-secondary premium"
-              onClick={() => (window.location.href = "/")}
+              onClick={() => navigate("/")}
             >
               Cancel
             </button>
@@ -1774,15 +1725,15 @@ const Booking = () => {
                       <span>
                         ₱
                         {Math.min(
-                          ...(category.service_variants?.map(
-                            (v) => v.price,
-                          ) || [0]),
+                          ...(category.service_variants?.map((v) => v.price) || [
+                            0,
+                          ]),
                         ).toLocaleString()}{" "}
                         - ₱
                         {Math.max(
-                          ...(category.service_variants?.map(
-                            (v) => v.price,
-                          ) || [0]),
+                          ...(category.service_variants?.map((v) => v.price) || [
+                            0,
+                          ]),
                         ).toLocaleString()}
                       </span>
                     </div>
@@ -1896,9 +1847,7 @@ const Booking = () => {
             <div className="step-info">
               <span className="info-text">
                 {selectedCategory?.service_variants?.length || 0} variant
-                {selectedCategory?.service_variants?.length !== 1
-                  ? "s"
-                  : ""}{" "}
+                {selectedCategory?.service_variants?.length !== 1 ? "s" : ""}{" "}
                 available
               </span>
             </div>
@@ -1910,9 +1859,9 @@ const Booking = () => {
     return null;
   };
 
-  /* ==========================================
-     STEP 2 UI - DATE TIME SELECTION (FIXED TIMEZONE)
-  ========================================== */
+  // ===============================
+  // STEP 2 UI - DATE TIME SELECTION
+  // ===============================
   const renderDateTimeSelection = () => {
     const timeSlots = generateTimeSlots();
     const monthNames = [
@@ -1983,7 +1932,6 @@ const Booking = () => {
         </div>
 
         <div className="datetime-container premium">
-          {/* Calendar Section */}
           <div className="calendar-section premium">
             <div className="calendar-header premium">
               <div className="calendar-navigation">
@@ -2094,7 +2042,6 @@ const Booking = () => {
             )}
           </div>
 
-          {/* Time Slots Section */}
           <div className="timeslots-section premium">
             <div className="timeslots-header">
               <h3>Available Time Slots</h3>
@@ -2225,9 +2172,9 @@ const Booking = () => {
     );
   };
 
-  /* ==========================================
-     STEP 3 UI - CUSTOMER INFO
-  ========================================== */
+  // ===============================
+  // STEP 3 UI - CUSTOMER INFO
+  // ===============================
   const renderCustomerInfo = () => (
     <div className="premium-step">
       <div className="step-header">
@@ -2415,9 +2362,9 @@ const Booking = () => {
     </div>
   );
 
-  /* ==========================================
-     STEP 4 UI - PAYMENT UPLOAD
-  ========================================== */
+  // ===============================
+  // STEP 5 UI - PAYMENT UPLOAD
+  // ===============================
   const renderPaymentInstructions = () => {
     const countdown = formatCountdown(timeLeftMs);
 
@@ -2500,7 +2447,6 @@ const Booking = () => {
                 </div>
               </div>
               <div className="qr-container">
-                {/* ✅ STATIC QR OR CLIENT-SIDE GENERATION */}
                 <div className="qr-placeholder premium">
                   <div className="qr-mock">
                     <div className="qr-lines">
@@ -2544,11 +2490,7 @@ const Booking = () => {
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Expires:</span>
-                  <span
-                    className={`detail-value ${isExpiredLocal ? "warning" : "warning"}`}
-                  >
-                    {expiryLabel}
-                  </span>
+                  <span className="detail-value warning">{expiryLabel}</span>
                 </div>
               </div>
 
@@ -2616,7 +2558,7 @@ const Booking = () => {
                   </div>
                 )}
               </label>
-              {/* PDF hint */}
+
               {selectedProofFile &&
                 selectedProofFile.type === "application/pdf" && (
                   <div className="form-hint premium" style={{ marginTop: 10 }}>
@@ -2624,7 +2566,7 @@ const Booking = () => {
                     it.
                   </div>
                 )}
-              {/* IMAGE PREVIEW */}
+
               {proofPreviewUrl && (
                 <div style={{ marginTop: 12 }}>
                   <p className="form-hint premium">Preview:</p>
@@ -2641,13 +2583,13 @@ const Booking = () => {
                   />
                 </div>
               )}
-              {/* ✅ show selected file */}
+
               {selectedProofFile && !paymentProofUploaded && (
                 <div className="form-hint premium" style={{ marginTop: 10 }}>
                   Selected: <strong>{selectedProofFile.name}</strong>
                 </div>
               )}
-              {/* ✅ manual upload button */}
+
               <button
                 className="btn btn-outline premium"
                 style={{ marginTop: 12, width: "100%" }}
@@ -2701,7 +2643,6 @@ const Booking = () => {
               uploading ||
               !bookingId ||
               isExpiredLocal ||
-              // require a selected file IF no proof exists yet
               (!(
                 paymentProofUploaded ||
                 paymentSignedUrl ||
@@ -2727,9 +2668,9 @@ const Booking = () => {
     );
   };
 
-  /* ==========================================
-     STEP 5 UI - REVIEW
-  ========================================== */
+  // ===============================
+  // STEP 4 UI - REVIEW
+  // ===============================
   const renderBookingPreview = () => {
     const preview = bookingPreview;
 
@@ -2815,7 +2756,7 @@ const Booking = () => {
                   </button>
                   <button
                     className="btn btn-small btn-outline premium"
-                    onClick={() => window.location.reload()}
+                    onClick={hardRestart}
                   >
                     Start New Booking
                   </button>
@@ -2994,9 +2935,9 @@ const Booking = () => {
     );
   };
 
-  /* ==========================================
-   STEP 6 UI - CONFIRMATION (STATUS-AWARE)
-========================================== */
+  // ===============================
+  // STEP 6 UI - CONFIRMATION
+  // ===============================
   const renderConfirmation = () => {
     const status = bookingPreview?.status || "pending_approval";
 
@@ -3021,13 +2962,11 @@ const Booking = () => {
         ? "APPROVED"
         : "PENDING APPROVAL";
 
-    // Payment messaging (safe, wag mag-claim verified kung pending pa)
     const paymentText =
       isApproved || isCompleted
         ? "Payment Verified ✓"
         : "Payment proof submitted (For verification)";
 
-    // Slot messaging (neutral para di conflicting sa ibang part ng flow)
     const slotText =
       isApproved || isCompleted
         ? "Slot Reserved ✓"
@@ -3055,7 +2994,6 @@ const Booking = () => {
         </div>
 
         <div className="confirmation-content premium">
-          {/* ✅ dynamic card status */}
           <div className={`confirmation-card ${statusClass} premium`}>
             <div className="card-header">
               <h4>Booking Details</h4>
@@ -3163,7 +3101,7 @@ const Booking = () => {
         <div className="step-footer premium">
           <button
             className="btn btn-primary premium"
-            onClick={() => (window.location.href = "/")}
+            onClick={() => navigate("/")}
           >
             Back to Home
           </button>
@@ -3202,10 +3140,7 @@ const Booking = () => {
         {step === 2 && renderDateTimeSelection()}
         {step === 3 && renderCustomerInfo()}
         {step === 4 && renderBookingPreview()}
-        {/* REVIEW only */}
         {step === 5 && renderPaymentInstructions()}
-        {/* PAYMENT + UPLOAD + CONFIRM */}
-
         {step === 6 && renderConfirmation()}
       </div>
     </div>
