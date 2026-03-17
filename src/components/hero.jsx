@@ -1,14 +1,13 @@
 import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import logo from "../assets/images/logo.png";
 
 const Hero = () => {
   const heroRef = useRef(null);
+  const navigate = useNavigate();
 
-  const scrollToBooking = () => {
-    const element = document.getElementById("booking");
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
+  const goToBookingPage = () => {
+    navigate("/booking");
   };
 
   useEffect(() => {
@@ -20,7 +19,6 @@ const Hero = () => {
 
   return (
     <section className="hero hero-reveal" id="home" ref={heroRef}>
-      {/* Decorative nail-art elements */}
       <div className="gold-sun float" />
       <div className="nail-accent nail-1 float-slow" />
       <div className="nail-accent nail-2 float" />
@@ -29,7 +27,6 @@ const Hero = () => {
       <div className="glitter glitter-2 sparkle" />
       <div className="glitter glitter-3 sparkle" />
 
-      {/* LOGO FLOATING */}
       <div className="hero-logo animate-logo">
         <img src={logo} alt="UNAiledIt Logo" />
       </div>
@@ -49,7 +46,7 @@ const Hero = () => {
 
           <button
             className="hero-btn fade-up delay-3"
-            onClick={scrollToBooking}
+            onClick={goToBookingPage}
           >
             Book appointment →
           </button>

@@ -349,201 +349,99 @@ const Booking = () => {
       `Variant #${booking.service_variant_id}`;
 
     return (
-      <div
-        className="modal-overlay"
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,.7)",
-          zIndex: 10000,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 16,
-        }}
-      >
-        <div
-          className="modal-card"
-          style={{
-            background: "#fff",
-            borderRadius: 16,
-            padding: 24,
-            width: "min(500px, 100%)",
-            maxWidth: "calc(100vw - 32px)",
-            boxShadow: "0 20px 60px rgba(0,0,0,.3)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              marginBottom: 16,
-            }}
-          >
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#fff",
-                fontSize: 20,
-              }}
-            >
-              ⏳
-            </div>
-            <div>
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: 18,
-                  fontWeight: 700,
-                  color: "#333",
-                }}
-              >
-                Resume Booking?
-              </h3>
-              <p style={{ margin: "4px 0 0", fontSize: 14, color: "#666" }}>
-                You have an ongoing booking
-              </p>
+      <div className="resume-modal-overlay">
+        <div className="resume-modal-card">
+          <div className="resume-modal-header">
+            <div className="resume-modal-icon">⏳</div>
+
+            <div className="resume-modal-heading">
+              <h3>Resume Booking?</h3>
+              <p>You already have a pending booking in progress.</p>
             </div>
           </div>
 
-          <div
-            style={{
-              background: "#f8f9fa",
-              borderRadius: 12,
-              padding: 16,
-              marginBottom: 20,
-            }}
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 12,
-              }}
-            >
-              <div>
-                <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
-                  Service
-                </div>
-                <div style={{ fontWeight: 600, color: "#333" }}>
-                  {serviceName}
-                </div>
+          <div className="resume-modal-summary">
+            <div className="resume-modal-grid">
+              <div className="resume-info-item">
+                <span className="resume-info-label">Service</span>
+                <span className="resume-info-value">{serviceName}</span>
               </div>
-              <div>
-                <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
-                  Category
-                </div>
-                <div style={{ fontWeight: 600, color: "#333" }}>
-                  {categoryName}
-                </div>
+
+              <div className="resume-info-item">
+                <span className="resume-info-label">Category</span>
+                <span className="resume-info-value">{categoryName}</span>
               </div>
-              <div>
-                <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
-                  Variant
-                </div>
-                <div style={{ fontWeight: 600, color: "#333" }}>
-                  {variantName}
-                </div>
+
+              <div className="resume-info-item">
+                <span className="resume-info-label">Variant</span>
+                <span className="resume-info-value">{variantName}</span>
               </div>
-              <div>
-                <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
-                  Date & Time
-                </div>
-                <div style={{ fontWeight: 600, color: "#333" }}>
-                  {formatDate(booking.booking_date)} at{" "}
+
+              <div className="resume-info-item">
+                <span className="resume-info-label">Date</span>
+                <span className="resume-info-value">
+                  {formatDate(booking.booking_date)}
+                </span>
+              </div>
+
+              <div className="resume-info-item">
+                <span className="resume-info-label">Time</span>
+                <span className="resume-info-value">
                   {formatTime(booking.booking_time)}
-                </div>
+                </span>
               </div>
-              <div>
-                <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
-                  Downpayment
-                </div>
-                <div style={{ fontWeight: 600, color: "#333" }}>
-                  ₱{(booking.downpayment || 0)?.toLocaleString() || "0"}
-                </div>
+
+              <div className="resume-info-item">
+                <span className="resume-info-label">Downpayment</span>
+                <span className="resume-info-value">
+                  ₱{Number(booking.downpayment || 0).toLocaleString()}
+                </span>
               </div>
-              <div>
-                <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
-                  Status
-                </div>
-                <div
-                  style={{
-                    fontWeight: 600,
-                    color: "#f59e0b",
-                    background: "#fffbeb",
-                    padding: "2px 8px",
-                    borderRadius: 6,
-                    fontSize: 12,
-                    display: "inline-block",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {booking.status?.replace("_", " ") || "PENDING PAYMENT"}
-                </div>
+
+              <div className="resume-info-item resume-info-item-full">
+                <span className="resume-info-label">Status</span>
+                <span className="resume-status-badge">
+                  {booking.status?.replace("_", " ") || "pending payment"}
+                </span>
               </div>
             </div>
 
-            <div
-              style={{
-                marginTop: 16,
-                paddingTop: 16,
-                borderTop: "1px solid #e5e7eb",
-                fontSize: 13,
-                color: "#666",
-              }}
-            >
-              ⏰ <strong>30-minute payment window</strong> - Upload proof to
-              secure your slot
+            <div className="resume-urgency-box">
+              <span className="resume-urgency-icon">⏰</span>
+              <div>
+                <strong>30-minute payment window</strong>
+                <p>Upload your payment proof to secure this slot.</p>
+              </div>
             </div>
           </div>
 
-          <p style={{ lineHeight: 1.6, color: "#4b5563", marginBottom: 24 }}>
-            Would you like to continue with this booking or start over?
-            <br />
-            <small style={{ fontSize: 12, color: "#9ca3af" }}>
-              Progress will be saved automatically
-            </small>
-          </p>
+          <div className="resume-modal-copy">
+            <p className="resume-modal-question">
+              Would you like to continue with this booking or start a new one?
+            </p>
+            <p className="resume-modal-subcopy">
+              Your progress has already been saved.
+            </p>
+          </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="resume-modal-actions">
             <button
-              className="btn btn-outline premium"
+              type="button"
+              className="btn btn-outline premium resume-btn-secondary"
               onClick={() => {
                 setShowResumePrompt(false);
                 hardRestart();
-              }}
-              style={{
-                border: "1px solid #d1d5db",
-                background: "#fff",
-                color: "#374151",
               }}
             >
               Start New Booking
             </button>
 
             <button
-              className="btn btn-primary premium"
+              type="button"
+              className="btn btn-primary premium resume-btn-primary"
               onClick={() => {
                 setShowResumePrompt(false);
                 handleResumeBooking();
-              }}
-              style={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                color: "#fff",
               }}
             >
               Resume Booking

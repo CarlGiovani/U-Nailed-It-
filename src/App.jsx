@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import AboutUs from "./components/AboutUs";
 import Booking from "./components/Booking";
+import CancelBookingPage from "./components/cancelBooking";
 import Footer from "./components/Footer";
 import Header from "./components/header";
 import Hero from "./components/hero";
@@ -9,8 +10,6 @@ import Portfolio from "./components/Portfolio";
 import Promos from "./components/Promos";
 import ReviewPage from "./components/ReviewPage";
 import Reviews from "./components/Reviews";
-
-import CancelBookingPage from "./components/cancelBooking";
 import useServices from "./hooks/useServices";
 
 // Import CSS files
@@ -24,6 +23,35 @@ import "./styles/hero.css";
 import "./styles/review-section.css";
 import "./styles/services-section.css";
 
+function HomePage() {
+  return (
+    <div className="App">
+      <Header />
+      <main>
+        <Hero />
+        <AboutUs />
+        <Policies />
+        <Portfolio />
+        <Promos />
+        <Reviews />
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+function BookingPage({ services }) {
+  return (
+    <div className="App">
+      <Header />
+      <main>
+        <Booking services={services} />
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
 function App() {
   const { services, loading, error } = useServices();
 
@@ -33,30 +61,9 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* HOME PAGE */}
-        <Route
-          path="/"
-          element={
-            <div className="App">
-              <Header />
-              <main>
-                <Hero />
-                <AboutUs />
-                <Policies />
-                <Portfolio />
-                <Promos />
-                <Booking services={services} />
-                <Reviews />
-              </main>
-              <Footer />
-            </div>
-          }
-        />
-
-        {/* REVIEW PAGE */}
+        <Route path="/" element={<HomePage />} />
+        <Route path="/booking" element={<BookingPage services={services} />} />
         <Route path="/review" element={<ReviewPage />} />
-
-        {/* CANCEL PAGE */}
         <Route path="/cancel" element={<CancelBookingPage />} />
       </Routes>
     </BrowserRouter>

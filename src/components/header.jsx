@@ -13,7 +13,6 @@ const Header = () => {
   const toggleMenu = () => setIsMenuOpen((prev) => !prev);
   const closeMenu = () => setIsMenuOpen(false);
 
-  // 🔥 SCROLL FUNCTION
   const scrollToSection = (sectionId) => {
     closeMenu();
 
@@ -24,7 +23,7 @@ const Header = () => {
         if (element) {
           element.scrollIntoView({ behavior: "smooth", block: "start" });
         }
-      }, 100);
+      }, 150);
     } else {
       const element = document.getElementById(sectionId);
       if (element) {
@@ -33,12 +32,19 @@ const Header = () => {
     }
   };
 
-  // 🔥 LOGO CLICK
-  const handleLogoClick = () => {
-    scrollToSection("home");
+  const goToBookingPage = () => {
+    closeMenu();
+    navigate("/booking");
   };
 
-  // AUTO CLOSE MENU ON RESIZE
+  const handleLogoClick = () => {
+    if (location.pathname === "/") {
+      scrollToSection("home");
+    } else {
+      navigate("/");
+    }
+  };
+
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth > 768) {
@@ -54,12 +60,10 @@ const Header = () => {
     <>
       <header className="site-header">
         <div className="container header-container">
-          {/* LEFT: LOGO */}
           <div className="logo" onClick={handleLogoClick}>
             <img src={logo} alt="UNAiledIt Logo" />
           </div>
 
-          {/* CENTER: NAVIGATION */}
           <nav className={`nav-menu ${isMenuOpen ? "active" : ""}`}>
             <a
               href="#home"
@@ -112,10 +116,10 @@ const Header = () => {
             </a>
 
             <a
-              href="#booking"
+              href="/booking"
               onClick={(e) => {
                 e.preventDefault();
-                scrollToSection("booking");
+                goToBookingPage();
               }}
             >
               Book Now
@@ -132,7 +136,6 @@ const Header = () => {
             </a>
           </nav>
 
-          {/* RIGHT: HAMBURGER */}
           <button
             className={`mobile-menu-btn ${isMenuOpen ? "open" : ""}`}
             onClick={toggleMenu}
@@ -143,7 +146,6 @@ const Header = () => {
         </div>
       </header>
 
-      {/* OVERLAY */}
       <div
         className={`nav-overlay ${isMenuOpen ? "show" : ""}`}
         onClick={closeMenu}
