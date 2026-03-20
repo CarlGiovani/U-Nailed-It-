@@ -130,6 +130,11 @@ body {
   background: #95a5a6;
 }
 
+.status-badge.expired {
+  background: #374151;
+  color: white;
+}
+
 /* =========================================
    MODAL OVERLAY
 ========================================= */

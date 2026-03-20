@@ -3,8 +3,25 @@ import api from "../axios";
 /* ======================================
    ADMIN: Get All Bookings
 ====================================== */
-export const getAllBookings = async () => {
-  const res = await api.get("/bookings");
+export const getAllBookings = async ({
+  page = 1,
+  limit = 10,
+  search = "",
+  status = "",
+  sortBy = "created_at",
+  order = "desc",
+} = {}) => {
+  const res = await api.get("/bookings", {
+    params: {
+      page,
+      limit,
+      search,
+      status,
+      sortBy,
+      order,
+    },
+  });
+
   return res.data;
 };
 
