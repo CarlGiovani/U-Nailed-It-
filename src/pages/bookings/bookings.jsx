@@ -10,6 +10,8 @@ import {
 import { getPaymentProofUrl } from "../../services/BACKEND/adminPaymentApi";
 import "../../styles/booking.css";
 
+const PAGE_SIZE = 10;
+
 const Bookings = () => {
   const location = useLocation();
 
@@ -38,14 +40,25 @@ const Bookings = () => {
 
   const [showFilters, setShowFilters] = useState(false);
 
+  const [page, setPage] = useState(1);
+  const [limit] = useState(PAGE_SIZE);
+  const [totalBookings, setTotalBookings] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   const highlightedRowRef = useRef(null);
 
   /* ================= SYNC STATUS FILTER FROM QUERY ================= */
   useEffect(() => {
     if (statusFromQuery) {
       setStatusFilter(statusFromQuery);
+      setShowFilters(true);
     }
   }, [statusFromQuery]);
+
+  /* ================= RESET PAGE WHEN FILTERS CHANGE ================= */
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, dateFrom, dateTo]);
 
   /* ================= FETCH BOOKINGS ================= */
   const fetchBookings = useCallback(async () => {
@@ -53,6 +66,8 @@ const Bookings = () => {
       setLoading(true);
 
       const result = await getAllBookings({
+        page,
+        limit,
         search,
         status: statusFilter,
         dateFrom,
@@ -60,66 +75,34 @@ const Bookings = () => {
       });
 
       setBookings(result.data || []);
+      setTotalBookings(result.total || 0);
+      setTotalPages(result.totalPages || 1);
     } catch (err) {
       console.error("Failed to fetch bookings:", err);
+      setBookings([]);
+      setTotalBookings(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, dateFrom, dateTo]);
+  }, [page, limit, search, statusFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
 
-  /* ================= FILTER ================= */
-  const filteredBookings = useMemo(() => {
-    return bookings.filter((b) => {
-      const fullName =
-        b.customer_name?.toLowerCase() ||
-        b.customers?.full_name?.toLowerCase() ||
-        "";
-
-      const email =
-        b.customer_email?.toLowerCase() ||
-        b.customers?.email?.toLowerCase() ||
-        "";
-
-      const searchValue = search.toLowerCase();
-
-      const matchSearch =
-        fullName.includes(searchValue) || email.includes(searchValue);
-
-      const matchStatus =
-        statusFilter === "all" ? true : b.status === statusFilter;
-
-      const bookingDate = b.booking_date ? new Date(b.booking_date) : null;
-      const from = dateFrom ? new Date(dateFrom) : null;
-      const to = dateTo ? new Date(dateTo) : null;
-
-      if (to) {
-        to.setHours(23, 59, 59, 999);
-      }
-
-      const matchDate =
-        (!from || (bookingDate && bookingDate >= from)) &&
-        (!to || (bookingDate && bookingDate <= to));
-
-      return matchSearch && matchStatus && matchDate;
-    });
-  }, [bookings, search, statusFilter, dateFrom, dateTo]);
-
   /* ================= AUTO OPEN TARGET BOOKING FROM QUERY ================= */
   useEffect(() => {
-    if (!bookingIdFromQuery || filteredBookings.length === 0) return;
+    if (!bookingIdFromQuery || bookings.length === 0) return;
 
-    const matchedBooking = filteredBookings.find(
+    const matchedBooking = bookings.find(
       (b) => String(b.id) === String(bookingIdFromQuery),
     );
 
     if (matchedBooking) {
       setSelectedBooking(matchedBooking);
     }
-  }, [bookingIdFromQuery, filteredBookings]);
+  }, [bookingIdFromQuery, bookings]);
 
   /* ================= AUTO SCROLL TO HIGHLIGHTED ROW ================= */
   useEffect(() => {
@@ -129,7 +112,7 @@ const Bookings = () => {
         block: "center",
       });
     }
-  }, [filteredBookings, bookingIdFromQuery]);
+  }, [bookings, bookingIdFromQuery]);
 
   /* ================= ACTION ================= */
   const executeAction = async () => {
@@ -169,6 +152,7 @@ const Bookings = () => {
     setStatusFilter("all");
     setDateFrom("");
     setDateTo("");
+    setPage(1);
   };
 
   const statusBadge = (status) => {
@@ -264,8 +248,7 @@ const Bookings = () => {
 
           <div className="filters-footer">
             <div className="filters-result-count">
-              {filteredBookings.length} booking
-              {filteredBookings.length !== 1 ? "s" : ""} found
+              {totalBookings} booking{totalBookings !== 1 ? "s" : ""} found
             </div>
 
             <div className="filter-actions">
@@ -285,56 +268,86 @@ const Bookings = () => {
       {loading ? (
         <div className="loading">Loading...</div>
       ) : (
-        <div className="premium-table">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Customer</th>
-                <th>Service</th>
-                <th>Date</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {filteredBookings.length > 0 ? (
-                filteredBookings.map((b) => (
-                  <tr
-                    key={b.id}
-                    ref={isHighlightedBooking(b) ? highlightedRowRef : null}
-                    className={
-                      isHighlightedBooking(b)
-                        ? "highlighted-cancelled-booking"
-                        : ""
-                    }
-                  >
-                    <td>{b.id}</td>
-
-                    <td
-                      className="clickable"
-                      onClick={() => setSelectedBooking(b)}
-                    >
-                      {b.customer_name || b.customers?.full_name || "-"}
-                    </td>
-
-                    <td>{b.services?.name || "-"}</td>
-                    <td>
-                      {b.booking_date
-                        ? new Date(b.booking_date).toLocaleDateString()
-                        : "-"}
-                    </td>
-                    <td>{statusBadge(b.status)}</td>
-                  </tr>
-                ))
-              ) : (
+        <>
+          <div className="premium-table">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan="5">No bookings found</td>
+                  <th>ID</th>
+                  <th>Customer</th>
+                  <th>Service</th>
+                  <th>Date</th>
+                  <th>Status</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+
+              <tbody>
+                {bookings.length > 0 ? (
+                  bookings.map((b) => (
+                    <tr
+                      key={b.id}
+                      ref={isHighlightedBooking(b) ? highlightedRowRef : null}
+                      className={
+                        isHighlightedBooking(b)
+                          ? "highlighted-cancelled-booking"
+                          : ""
+                      }
+                    >
+                      <td>{b.id}</td>
+
+                      <td
+                        className="clickable"
+                        onClick={() => setSelectedBooking(b)}
+                      >
+                        {b.customer_name || b.customers?.full_name || "-"}
+                      </td>
+
+                      <td>{b.services?.name || "-"}</td>
+                      <td>
+                        {b.booking_date
+                          ? new Date(b.booking_date).toLocaleDateString()
+                          : "-"}
+                      </td>
+                      <td>{statusBadge(b.status)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5">No bookings found</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="pagination-controls">
+              <button
+                type="button"
+                className="pagination-btn"
+                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                disabled={page === 1}
+              >
+                Previous
+              </button>
+
+              <div className="pagination-info">
+                Page <strong>{page}</strong> of <strong>{totalPages}</strong>
+              </div>
+
+              <button
+                type="button"
+                className="pagination-btn"
+                onClick={() =>
+                  setPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={page === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* BOOKING DETAILS MODAL */}

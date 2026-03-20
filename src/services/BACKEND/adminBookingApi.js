@@ -8,6 +8,8 @@ export const getAllBookings = async ({
   limit = 10,
   search = "",
   status = "",
+  dateFrom = "",
+  dateTo = "",
   sortBy = "created_at",
   order = "desc",
 } = {}) => {
@@ -17,6 +19,8 @@ export const getAllBookings = async ({
       limit,
       search,
       status,
+      dateFrom,
+      dateTo,
       sortBy,
       order,
     },
