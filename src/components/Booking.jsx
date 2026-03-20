@@ -187,6 +187,34 @@ const Booking = ({ services: servicesProp = [] }) => {
     actions: [],
   });
 
+  // lock body scroll when any modal is open
+  useEffect(() => {
+    const hasOpenModal = modal.open || showResumePrompt;
+
+    if (!hasOpenModal) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [modal.open, showResumePrompt]);
+
+  // close generic modal on Escape
+  // close generic modal on Escape
+  useEffect(() => {
+    if (!modal.open) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setModal((prev) => ({ ...prev, open: false }));
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [modal.open]);
   // countdown
   const [timeLeftMs, setTimeLeftMs] = useState(null);
   const [isExpiredLocal, setIsExpiredLocal] = useState(false);
@@ -265,52 +293,24 @@ const Booking = ({ services: servicesProp = [] }) => {
     return (
       <div
         className="modal-overlay"
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,.55)",
-          zIndex: 9999,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 16,
-        }}
         onClick={() => {
           if (!modal.actions?.length) setModal((m) => ({ ...m, open: false }));
         }}
       >
-        <div
-          className="modal-card"
-          style={{
-            width: "min(520px, 100%)",
-            background: "#fff",
-            borderRadius: 16,
-            padding: 18,
-            boxShadow: "0 12px 40px rgba(0,0,0,.25)",
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ fontSize: 22 }}>⚠️</div>
+        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-card-header">
+            <div className="modal-card-icon">⚠️</div>
+
             <div>
-              <div style={{ fontWeight: 800, fontSize: 16 }}>{modal.title}</div>
-              <div style={{ marginTop: 6, lineHeight: 1.4, color: "#333" }}>
-                {modal.message}
-              </div>
+              <h3 className="modal-card-title">{modal.title}</h3>
+              <div className="modal-card-message">{modal.message}</div>
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 10,
-              marginTop: 16,
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="modal-card-actions">
             {(modal.actions || []).map((a, idx) => (
               <button
+                type="button"
                 key={idx}
                 className={`btn ${a.variant || "btn-primary"} premium`}
                 onClick={a.onClick}
@@ -318,8 +318,10 @@ const Booking = ({ services: servicesProp = [] }) => {
                 {a.label}
               </button>
             ))}
+
             {!modal.actions?.length && (
               <button
+                type="button"
                 className="btn btn-primary premium"
                 onClick={() => setModal((m) => ({ ...m, open: false }))}
               >
@@ -342,6 +344,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
     const formatDate = (dateStr) => {
       if (!dateStr) return "N/A";
+
       try {
         const date = parseLocalDate(dateStr);
         return date.toLocaleDateString("en-PH", {
@@ -357,11 +360,13 @@ const Booking = ({ services: servicesProp = [] }) => {
 
     const formatTime = (timeStr) => {
       if (!timeStr) return "N/A";
+
       try {
         const [hours, minutes] = timeStr.split(":");
         const hour = parseInt(hours, 10);
         const ampm = hour >= 12 ? "PM" : "AM";
         const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+
         return `${displayHour}:${minutes.padStart(2, "0")} ${ampm}`;
       } catch {
         return timeStr;
@@ -380,14 +385,29 @@ const Booking = ({ services: servicesProp = [] }) => {
       serviceInfo?.variant?.body_part ||
       `Variant #${booking.service_variant_id}`;
 
+    const handleStartNew = () => {
+      setShowResumePrompt(false);
+      hardRestart();
+    };
+
+    const handleResume = () => {
+      setShowResumePrompt(false);
+      handleResumeBooking();
+    };
+
     return (
-      <div className="resume-modal-overlay">
-        <div className="resume-modal-card">
+      <div
+        className="resume-modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="resume-booking-title"
+      >
+        <div className="resume-modal-card" onClick={(e) => e.stopPropagation()}>
           <div className="resume-modal-header">
             <div className="resume-modal-icon">⏳</div>
 
             <div className="resume-modal-heading">
-              <h3>Resume Booking?</h3>
+              <h3 id="resume-booking-title">Resume Booking?</h3>
               <p>You already have a pending booking in progress.</p>
             </div>
           </div>
@@ -460,10 +480,7 @@ const Booking = ({ services: servicesProp = [] }) => {
             <button
               type="button"
               className="btn btn-outline premium resume-btn-secondary"
-              onClick={() => {
-                setShowResumePrompt(false);
-                hardRestart();
-              }}
+              onClick={handleStartNew}
             >
               Start New Booking
             </button>
@@ -471,10 +488,7 @@ const Booking = ({ services: servicesProp = [] }) => {
             <button
               type="button"
               className="btn btn-primary premium resume-btn-primary"
-              onClick={() => {
-                setShowResumePrompt(false);
-                handleResumeBooking();
-              }}
+              onClick={handleResume}
             >
               Resume Booking
             </button>
@@ -483,7 +497,6 @@ const Booking = ({ services: servicesProp = [] }) => {
       </div>
     );
   };
-
   // ===============================
   // RESET FUNCTIONS
   // ===============================
@@ -1725,15 +1738,15 @@ const Booking = ({ services: servicesProp = [] }) => {
                       <span>
                         ₱
                         {Math.min(
-                          ...(category.service_variants?.map((v) => v.price) || [
-                            0,
-                          ]),
+                          ...(category.service_variants?.map(
+                            (v) => v.price,
+                          ) || [0]),
                         ).toLocaleString()}{" "}
                         - ₱
                         {Math.max(
-                          ...(category.service_variants?.map((v) => v.price) || [
-                            0,
-                          ]),
+                          ...(category.service_variants?.map(
+                            (v) => v.price,
+                          ) || [0]),
                         ).toLocaleString()}
                       </span>
                     </div>
@@ -1847,7 +1860,9 @@ const Booking = ({ services: servicesProp = [] }) => {
             <div className="step-info">
               <span className="info-text">
                 {selectedCategory?.service_variants?.length || 0} variant
-                {selectedCategory?.service_variants?.length !== 1 ? "s" : ""}{" "}
+                {selectedCategory?.service_variants?.length !== 1
+                  ? "s"
+                  : ""}{" "}
                 available
               </span>
             </div>
@@ -2185,7 +2200,7 @@ const Booking = ({ services: servicesProp = [] }) => {
       <div className="booking-summary-card premium">
         <div className="summary-header">
           <h4>Booking Summary</h4>
-          <div className="total-amount">
+          <div className="price-tag">
             ₱{formData.total_price.toLocaleString()}
           </div>
         </div>
