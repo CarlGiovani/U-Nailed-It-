@@ -97,6 +97,8 @@ export const getAllBookings = async (req, res) => {
       limit = 10,
       search = "",
       status = "",
+      dateFrom = "",
+      dateTo = "" ,
       sortBy = "created_at",
       order = "desc",
     } = req.query;
@@ -106,6 +108,8 @@ export const getAllBookings = async (req, res) => {
       limit: Number(limit),
       search,
       status,
+      dateFrom,
+      dateTo,
       sortBy,
       order,
     });

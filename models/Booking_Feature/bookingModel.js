@@ -254,10 +254,20 @@ export const createBookingWithPaymentIntent = async (intentId) => {
 
   // expiry check
   if (new Date(intent.expires_at).getTime() < Date.now()) {
-    await supabase
+    const { error: intentExpireError } = await supabase
       .from("payment_intents")
       .update({ status: "expired" })
       .eq("id", intentId);
+
+    if (intentExpireError) throw new Error(intentExpireError.message);
+
+    const { error: bookingExpireError } = await supabase
+      .from("bookings")
+      .update({ status: "expired" })
+      .eq("id", intent.booking_id)
+      .eq("status", "pending_payment");
+
+    if (bookingExpireError) throw new Error(bookingExpireError.message);
 
     throw new Error("Payment proof expired");
   }
@@ -341,11 +351,29 @@ export const getAllBookings = async ({
   limit = 10,
   search = "",
   status = "",
+  dateFrom = "",
+  dateTo = "",
   sortBy = "created_at",
   order = "desc",
 }) => {
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.max(1, Number(limit) || 10);
+
+  const allowedSortFields = [
+    "created_at",
+    "booking_date",
+    "status",
+    "approved_at",
+    "completed_at",
+    "cancelled_at",
+  ];
+
+  const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : "created_at";
+
+  const safeOrder = order === "asc" ? "asc" : "desc";
+
+  const from = (safePage - 1) * safeLimit;
+  const to = from + safeLimit - 1;
 
   let query = supabase
     .from("bookings")
@@ -377,8 +405,8 @@ export const getAllBookings = async ({
       `,
       { count: "exact" },
     )
-    .range(from, to)
-    .order(sortBy, { ascending: order === "asc" });
+    .order(safeSortBy, { ascending: safeOrder === "asc" })
+    .range(from, to);
 
   if (status && status !== "all") {
     query = query.eq("status", status);
@@ -390,13 +418,24 @@ export const getAllBookings = async ({
     );
   }
 
+  if (dateFrom) {
+    query = query.gte("booking_date", dateFrom);
+  }
+
+  if (dateTo) {
+    query = query.lte("booking_date", dateTo);
+  }
+
   const { data, error, count } = await query;
 
   if (error) throw new Error(error.message);
 
   return {
-    data,
-    total: count,
+    data: data || [],
+    total: count || 0,
+    page: safePage,
+    limit: safeLimit,
+    totalPages: Math.ceil((count || 0) / safeLimit),
   };
 };
 
