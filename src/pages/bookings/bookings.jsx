@@ -33,6 +33,10 @@ const Bookings = () => {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState(statusFromQuery || "all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const [showFilters, setShowFilters] = useState(false);
 
   const highlightedRowRef = useRef(null);
 
@@ -51,15 +55,17 @@ const Bookings = () => {
       const result = await getAllBookings({
         search,
         status: statusFilter,
+        dateFrom,
+        dateTo,
       });
 
       setBookings(result.data || []);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch bookings:", err);
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter]);
+  }, [search, statusFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     fetchBookings();
@@ -86,9 +92,21 @@ const Bookings = () => {
       const matchStatus =
         statusFilter === "all" ? true : b.status === statusFilter;
 
-      return matchSearch && matchStatus;
+      const bookingDate = b.booking_date ? new Date(b.booking_date) : null;
+      const from = dateFrom ? new Date(dateFrom) : null;
+      const to = dateTo ? new Date(dateTo) : null;
+
+      if (to) {
+        to.setHours(23, 59, 59, 999);
+      }
+
+      const matchDate =
+        (!from || (bookingDate && bookingDate >= from)) &&
+        (!to || (bookingDate && bookingDate <= to));
+
+      return matchSearch && matchStatus && matchDate;
     });
-  }, [bookings, search, statusFilter]);
+  }, [bookings, search, statusFilter, dateFrom, dateTo]);
 
   /* ================= AUTO OPEN TARGET BOOKING FROM QUERY ================= */
   useEffect(() => {
@@ -129,7 +147,7 @@ const Bookings = () => {
       await fetchBookings();
       setSelectedBooking(null);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to execute booking action:", err);
     } finally {
       setActionLoading(false);
       setConfirmAction(null);
@@ -142,14 +160,23 @@ const Bookings = () => {
       const url = await getPaymentProofUrl(filePath);
       setProofUrl(url);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load payment proof:", err);
     }
   };
 
+  const handleResetFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setDateFrom("");
+    setDateTo("");
+  };
+
   const statusBadge = (status) => {
+    if (!status) return <span className="status-badge">Unknown</span>;
+
     return (
       <span className={`status-badge ${status}`}>
-        {status.replace("_", " ")}
+        {status.replaceAll("_", " ")}
       </span>
     );
   };
@@ -163,31 +190,96 @@ const Bookings = () => {
 
   return (
     <AdminLayout>
-      <h1>Bookings Management</h1>
+      <div className="bookings-page-header">
+        <div>
+          <h1>Bookings Management</h1>
+          <p className="bookings-subtitle">
+            Manage customer bookings, status updates, and payment proof review.
+          </p>
+        </div>
 
-      {/* FILTERS */}
-      <div className="booking-filters">
-        <input
-          placeholder="Search customer..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+        <button
+          className="toggle-filters-btn"
+          type="button"
+          onClick={() => setShowFilters((prev) => !prev)}
         >
-          <option value="all">All</option>
-          <option value="pending_payment">Pending Payment</option>
-          <option value="pending_approval">Pending Approval</option>
-          <option value="approved">Approved</option>
-          <option value="completed">Completed</option>
-          <option value="rejected">Rejected</option>
-          <option value="cancelled">Cancelled</option>
-          <option value="expired">Expired</option>
-          <option value="abandoned">Abandoned</option>
-        </select>
+          {showFilters ? "Hide Filters" : "Show Filters"}
+        </button>
       </div>
+
+      {/* FILTERS DROPDOWN */}
+      {showFilters && (
+        <div className="filters-dropdown-card">
+          <div className="booking-filters-grid">
+            <div className="filter-group filter-search-wide">
+              <label htmlFor="search">Search</label>
+              <input
+                id="search"
+                type="text"
+                placeholder="Search customer name or email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <div className="filter-group">
+              <label htmlFor="statusFilter">Status</label>
+              <select
+                id="statusFilter"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="all">All</option>
+                <option value="pending_payment">Pending Payment</option>
+                <option value="pending_approval">Pending Approval</option>
+                <option value="approved">Approved</option>
+                <option value="completed">Completed</option>
+                <option value="rejected">Rejected</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="expired">Expired</option>
+                <option value="abandoned">Abandoned</option>
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label htmlFor="dateFrom">From</label>
+              <input
+                id="dateFrom"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+            </div>
+
+            <div className="filter-group">
+              <label htmlFor="dateTo">To</label>
+              <input
+                id="dateTo"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="filters-footer">
+            <div className="filters-result-count">
+              {filteredBookings.length} booking
+              {filteredBookings.length !== 1 ? "s" : ""} found
+            </div>
+
+            <div className="filter-actions">
+              <button
+                className="btn-reset-filter"
+                type="button"
+                onClick={handleResetFilters}
+              >
+                Reset Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TABLE */}
       {loading ? (
@@ -226,8 +318,12 @@ const Bookings = () => {
                       {b.customer_name || b.customers?.full_name || "-"}
                     </td>
 
-                    <td>{b.services?.name}</td>
-                    <td>{new Date(b.booking_date).toLocaleDateString()}</td>
+                    <td>{b.services?.name || "-"}</td>
+                    <td>
+                      {b.booking_date
+                        ? new Date(b.booking_date).toLocaleDateString()
+                        : "-"}
+                    </td>
                     <td>{statusBadge(b.status)}</td>
                   </tr>
                 ))
@@ -291,7 +387,9 @@ const Bookings = () => {
                   <h3>Booking Timeline</h3>
                   <p>
                     <strong>Created:</strong>{" "}
-                    {new Date(selectedBooking.created_at).toLocaleString()}
+                    {selectedBooking.created_at
+                      ? new Date(selectedBooking.created_at).toLocaleString()
+                      : "-"}
                   </p>
                   <p>
                     <strong>Approved:</strong>{" "}
@@ -322,7 +420,8 @@ const Bookings = () => {
                 <div className="info-card">
                   <h3>Service Information</h3>
                   <p>
-                    <strong>Service:</strong> {selectedBooking.services?.name}
+                    <strong>Service:</strong>{" "}
+                    {selectedBooking.services?.name || "-"}
                   </p>
                   <p>
                     <strong>Category:</strong>{" "}
@@ -342,14 +441,16 @@ const Bookings = () => {
                 <div className="info-card payment-card">
                   <h3>Payment Information</h3>
                   <p>
-                    <strong>Total:</strong> ₱{selectedBooking.total_price}
+                    <strong>Total:</strong> ₱{selectedBooking.total_price ?? 0}
                   </p>
                   <p>
-                    <strong>Downpayment:</strong> ₱{selectedBooking.downpayment}
+                    <strong>Downpayment:</strong> ₱
+                    {selectedBooking.downpayment ?? 0}
                   </p>
                   <p>
                     <strong>Remaining:</strong> ₱
-                    {selectedBooking.total_price - selectedBooking.downpayment}
+                    {(selectedBooking.total_price ?? 0) -
+                      (selectedBooking.downpayment ?? 0)}
                   </p>
 
                   {selectedBooking.proof_payment_path && (
