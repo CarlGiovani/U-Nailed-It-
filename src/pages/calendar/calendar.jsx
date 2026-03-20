@@ -37,13 +37,12 @@ const localizer = dateFnsLocalizer({
 
 const ACTIVE_BOOKING_STATUSES = ["pending_approval", "approved"];
 
-// TIME NORMALIZER HELPER
+/* ================= TIME HELPERS ================= */
 const normalizeTime = (time) => {
   if (!time) return "";
 
   const raw = String(time).trim();
 
-  // Handle 12-hour format like "9:00 AM"
   const ampmMatch = raw.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
   if (ampmMatch) {
     let hour = Number(ampmMatch[1]);
@@ -56,7 +55,6 @@ const normalizeTime = (time) => {
     return `${String(hour).padStart(2, "0")}:${minute}`;
   }
 
-  // Handle "HH:mm:ss" or "H:mm:ss"
   const parts = raw.split(":");
   if (parts.length >= 2) {
     const hour = String(parts[0]).padStart(2, "0");
@@ -70,7 +68,10 @@ const normalizeTime = (time) => {
 const formatTime12h = (time) => {
   if (!time) return "";
 
-  const [hourStr, minute] = normalizeTime(time).split(":");
+  const normalized = normalizeTime(time);
+  if (!normalized) return "";
+
+  const [hourStr, minute] = normalized.split(":");
   let hour = Number(hourStr);
 
   const ampm = hour >= 12 ? "PM" : "AM";
@@ -91,7 +92,7 @@ const AdminCalendar = () => {
   const [slots, setSlots] = useState([]);
   const [isBlocked, setIsBlocked] = useState(false);
   const [showGenerator, setShowGenerator] = useState(false);
-  const [timesInput, setTimesInput] = useState("");
+  const [timeInputs, setTimeInputs] = useState([""]);
   const [weeklyRecurring, setWeeklyRecurring] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showSlotModal, setShowSlotModal] = useState(false);
@@ -101,6 +102,66 @@ const AdminCalendar = () => {
   const [editedTime, setEditedTime] = useState("");
   const [editError, setEditError] = useState("");
   const [selectedRange, setSelectedRange] = useState(null);
+
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    title: "",
+    message: "",
+    confirmText: "Confirm",
+    cancelText: "Cancel",
+    variant: "primary",
+    onConfirm: null,
+  });
+
+  const openConfirmModal = ({
+    title,
+    message,
+    confirmText = "Confirm",
+    cancelText = "Cancel",
+    variant = "primary",
+    onConfirm,
+  }) => {
+    setConfirmModal({
+      open: true,
+      title,
+      message,
+      confirmText,
+      cancelText,
+      variant,
+      onConfirm,
+    });
+  };
+
+  const closeConfirmModal = () => {
+    setConfirmModal({
+      open: false,
+      title: "",
+      message: "",
+      confirmText: "Confirm",
+      cancelText: "Cancel",
+      variant: "primary",
+      onConfirm: null,
+    });
+  };
+
+  const handleTimeInputChange = (index, value) => {
+    setTimeInputs((prev) => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
+  };
+
+  const addTimeInput = () => {
+    setTimeInputs((prev) => [...prev, ""]);
+  };
+
+  const removeTimeInput = (index) => {
+    setTimeInputs((prev) => {
+      if (prev.length === 1) return [""];
+      return prev.filter((_, i) => i !== index);
+    });
+  };
 
   /* ================= LOAD SERVICES ================= */
   useEffect(() => {
@@ -218,6 +279,7 @@ const AdminCalendar = () => {
       setIsBlocked(false);
     }
   };
+
   /* ================= DAY STYLE ================= */
   const dayPropGetter = (date) => {
     const today = new Date();
@@ -277,6 +339,7 @@ const AdminCalendar = () => {
     loadSlots(startDate);
 
     if (action === "select" && startDate !== endDate) {
+      setTimeInputs([""]);
       setShowGenerator(true);
     }
   };
@@ -302,7 +365,7 @@ const AdminCalendar = () => {
     if (!selectedDate) return false;
 
     const normalizedTime = normalizeTime(slot.time);
-    if (!normalizeTime) return false;
+    if (!normalizedTime) return false;
 
     const now = new Date();
     const slotDateTime = new Date(`${selectedDate}T${normalizedTime}:00`);
@@ -312,6 +375,7 @@ const AdminCalendar = () => {
 
   const isDuplicateTime = (time) => {
     const normalizedTarget = normalizeTime(time);
+
     return slots.some((slot) => {
       return (
         normalizeTime(slot.time) === normalizedTarget &&
@@ -360,57 +424,81 @@ const AdminCalendar = () => {
       return toast.error("Cannot delete past slot.");
     }
 
-    if (!window.confirm("Delete this slot?")) return;
-
-    try {
-      setLoading(true);
-
-      await deleteSlot(selectedSlot.id);
-      await loadSlots(selectedDate);
-
-      setShowSlotModal(false);
-      toast.success("Slot deleted.");
-    } catch (err) {
-      console.error("Error deleting slot:", err);
-      toast.error("Failed to delete slot.");
-    } finally {
-      setLoading(false);
-    }
+    openConfirmModal({
+      title: "Delete Slot",
+      message: `Are you sure you want to delete the slot at ${formatTime12h(selectedSlot.time)}?`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "danger",
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          await deleteSlot(selectedSlot.id);
+          await loadSlots(selectedDate);
+          setShowSlotModal(false);
+          closeConfirmModal();
+          toast.success("Slot deleted.");
+        } catch (err) {
+          console.error("Error deleting slot:", err);
+          toast.error("Failed to delete slot.");
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   /* ================= BLOCK DAY ================= */
   const handleBlockDay = async () => {
     if (!selectedDate) return;
-    if (!window.confirm("Block this entire day?")) return;
 
-    try {
-      setLoading(true);
-      await blockDayGlobally(selectedDate);
-      await loadSlots(selectedDate);
-      toast.success("Day blocked.");
-    } catch (err) {
-      console.error("Error blocking day:", err);
-      toast.error("Failed to block day.");
-    } finally {
-      setLoading(false);
-    }
+    openConfirmModal({
+      title: "Block Day",
+      message: `Are you sure you want to block all slots for ${selectedDate}?`,
+      confirmText: "Block Day",
+      cancelText: "Cancel",
+      variant: "danger",
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          await blockDayGlobally(selectedDate);
+          await loadSlots(selectedDate);
+          closeConfirmModal();
+          toast.success("Day blocked.");
+        } catch (err) {
+          console.error("Error blocking day:", err);
+          toast.error("Failed to block day.");
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   const handleUnblockDay = async () => {
     if (!selectedDate) return;
-    if (!window.confirm("Unblock this day?")) return;
 
-    try {
-      setLoading(true);
-      await unblockDayGlobally(selectedDate);
-      await loadSlots(selectedDate);
-      toast.success("Day unblocked.");
-    } catch (err) {
-      console.error("Error unblocking day:", err);
-      toast.error("Failed to unblock day.");
-    } finally {
-      setLoading(false);
-    }
+    openConfirmModal({
+      title: "Unblock Day",
+      message: `Are you sure you want to unblock ${selectedDate}?`,
+      confirmText: "Unblock Day",
+      cancelText: "Cancel",
+      variant: "success",
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          await unblockDayGlobally(selectedDate);
+          await loadSlots(selectedDate);
+          closeConfirmModal();
+          toast.success("Day unblocked.");
+        } catch (err) {
+          console.error("Error unblocking day:", err);
+          toast.error("Failed to unblock day.");
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   /* ================= AUTO GENERATE ================= */
@@ -422,41 +510,13 @@ const AdminCalendar = () => {
       generated.push(`${String(hour).padStart(2, "0")}:30`);
     }
 
-    setTimesInput(generated.join(", "));
+    setTimeInputs(generated);
   };
 
-  /* ================= BULK GENERATE ================= */
-  const handleGenerate = async () => {
-    if (isBlocked) {
-      return toast.error("Cannot generate. Day is blocked.");
-    }
-
-    const times = timesInput
-      .split(",")
-      .map((time) => normalizeTime(time.trim))
-      .filter(Boolean);
-
-    if (!times.length) {
-      return toast.error("Enter times.");
-    }
-
+  /* ================= SUBMIT GENERATE ================= */
+  const submitGenerateSlots = async (times, finalEnd) => {
     try {
       setLoading(true);
-
-      let finalEnd;
-
-      if (weeklyRecurring) {
-        finalEnd = format(addWeeks(new Date(rangeStart), 4), "yyyy-MM-dd");
-      } else {
-        finalEnd = rangeEnd || rangeStart;
-      }
-
-      if (!weeklyRecurring && slots.length > 0) {
-        if (!window.confirm("Slots already exist for this date. Continue?")) {
-          setLoading(false);
-          return;
-        }
-      }
 
       await createSlotsBulk({
         service_id: selectedService,
@@ -467,6 +527,8 @@ const AdminCalendar = () => {
 
       await loadSlots(rangeStart);
       setShowGenerator(false);
+      setTimeInputs([""]);
+      closeConfirmModal();
       toast.success("Slots generated!");
     } catch (err) {
       console.error("Error generating slots:", err);
@@ -474,6 +536,46 @@ const AdminCalendar = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  /* ================= BULK GENERATE ================= */
+  const handleGenerate = async () => {
+    if (isBlocked) {
+      return toast.error("Cannot generate. Day is blocked.");
+    }
+
+    const times = timeInputs
+      .map((time) => normalizeTime(time))
+      .filter(Boolean);
+
+    if (!times.length) {
+      return toast.error("Enter times.");
+    }
+
+    let finalEnd;
+
+    if (weeklyRecurring) {
+      finalEnd = format(addWeeks(new Date(rangeStart), 4), "yyyy-MM-dd");
+    } else {
+      finalEnd = rangeEnd || rangeStart;
+    }
+
+    if (!weeklyRecurring && slots.length > 0) {
+      openConfirmModal({
+        title: "Overwrite Existing Slots",
+        message:
+          "Slots already exist for this date. Do you want to continue generating new slots?",
+        confirmText: "Continue",
+        cancelText: "Cancel",
+        variant: "primary",
+        onConfirm: async () => {
+          await submitGenerateSlots(times, finalEnd);
+        },
+      });
+      return;
+    }
+
+    await submitGenerateSlots(times, finalEnd);
   };
 
   return (
@@ -530,7 +632,10 @@ const AdminCalendar = () => {
               <div className="calendar-actions">
                 <button
                   className="btn-primary"
-                  onClick={() => setShowGenerator(true)}
+                  onClick={() => {
+                    setTimeInputs([""]);
+                    setShowGenerator(true);
+                  }}
                 >
                   Create Slots
                 </button>
@@ -642,6 +747,7 @@ const AdminCalendar = () => {
                   disabled={!editedTime || !!editError}
                   onClick={async () => {
                     const normalizedEditedTime = normalizeTime(editedTime);
+
                     if (!normalizedEditedTime) {
                       return toast.error("Enter valid time.");
                     }
@@ -724,15 +830,50 @@ const AdminCalendar = () => {
                 </p>
               </div>
 
-              <input
-                value={timesInput}
-                onChange={(e) => setTimesInput(e.target.value)}
-                placeholder="09:00, 10:00"
-              />
+              <div className="time-picker-stack">
+                {timeInputs.map((time, index) => (
+                  <div key={index} className="time-row">
+                    <input
+                      type="time"
+                      value={time}
+                      onChange={(e) =>
+                        handleTimeInputChange(index, e.target.value)
+                      }
+                      className="time-row-input"
+                    />
 
-              <button className="btn-outline" onClick={autoGenerateTimes}>
-                Auto 9AM–6PM (30min)
-              </button>
+                    {timeInputs.length > 1 && (
+                      <button
+                        type="button"
+                        className="time-row-remove"
+                        onClick={() => removeTimeInput(index)}
+                        aria-label={`Remove time ${index + 1}`}
+                        title="Remove"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="generator-inline-actions">
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={addTimeInput}
+                >
+                  + Add Time
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={autoGenerateTimes}
+                >
+                  Auto 9AM–6PM (30min)
+                </button>
+              </div>
 
               <label className="checkbox-row">
                 <input
@@ -749,9 +890,49 @@ const AdminCalendar = () => {
                 </button>
                 <button
                   className="btn-outline"
-                  onClick={() => setShowGenerator(false)}
+                  onClick={() => {
+                    setShowGenerator(false);
+                    setTimeInputs([""]);
+                  }}
                 >
                   Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {confirmModal.open && (
+          <div className="modal-overlay">
+            <div className="confirm-modal">
+              <h3>{confirmModal.title}</h3>
+              <p className="confirm-message">{confirmModal.message}</p>
+
+              <div className="modal-actions">
+                <button
+                  className="btn-outline"
+                  onClick={closeConfirmModal}
+                  disabled={loading}
+                >
+                  {confirmModal.cancelText}
+                </button>
+
+                <button
+                  className={
+                    confirmModal.variant === "danger"
+                      ? "btn-danger"
+                      : confirmModal.variant === "success"
+                        ? "btn-success"
+                        : "btn-primary"
+                  }
+                  onClick={async () => {
+                    if (confirmModal.onConfirm) {
+                      await confirmModal.onConfirm();
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  {confirmModal.confirmText}
                 </button>
               </div>
             </div>
