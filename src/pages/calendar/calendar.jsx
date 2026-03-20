@@ -37,6 +37,49 @@ const localizer = dateFnsLocalizer({
 
 const ACTIVE_BOOKING_STATUSES = ["pending_approval", "approved"];
 
+// TIME NORMALIZER HELPER
+const normalizeTime = (time) => {
+  if (!time) return "";
+
+  const raw = String(time).trim();
+
+  // Handle 12-hour format like "9:00 AM"
+  const ampmMatch = raw.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (ampmMatch) {
+    let hour = Number(ampmMatch[1]);
+    const minute = ampmMatch[2];
+    const modifier = ampmMatch[3].toUpperCase();
+
+    if (modifier === "AM" && hour === 12) hour = 0;
+    if (modifier === "PM" && hour !== 12) hour += 12;
+
+    return `${String(hour).padStart(2, "0")}:${minute}`;
+  }
+
+  // Handle "HH:mm:ss" or "H:mm:ss"
+  const parts = raw.split(":");
+  if (parts.length >= 2) {
+    const hour = String(parts[0]).padStart(2, "0");
+    const minute = String(parts[1]).padStart(2, "0");
+    return `${hour}:${minute}`;
+  }
+
+  return raw;
+};
+
+const formatTime12h = (time) => {
+  if (!time) return "";
+
+  const [hourStr, minute] = normalizeTime(time).split(":");
+  let hour = Number(hourStr);
+
+  const ampm = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12;
+  if (hour === 0) hour = 12;
+
+  return `${hour}:${minute} ${ampm}`;
+};
+
 const AdminCalendar = () => {
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
@@ -155,14 +198,19 @@ const AdminCalendar = () => {
       const data = await getAvailableSlots(selectedService, dateStr);
       const slotData = data || [];
 
-      setSlots([...slotData].sort((a, b) => a.time.localeCompare(b.time)));
+      const normalizedSlots = slotData.map((slot) => ({
+        ...slot,
+        time: normalizeTime(slot.time),
+      }));
 
-      if (slotData.length === 0) {
+      setSlots(normalizedSlots.sort((a, b) => a.time.localeCompare(b.time)));
+
+      if (normalizedSlots.length === 0) {
         setIsBlocked(false);
         return;
       }
 
-      const hasAvailable = slotData.some((slot) => slot.is_available);
+      const hasAvailable = normalizedSlots.some((slot) => slot.is_available);
       setIsBlocked(!hasAvailable);
     } catch (err) {
       console.error("Error loading slots:", err);
@@ -170,7 +218,6 @@ const AdminCalendar = () => {
       setIsBlocked(false);
     }
   };
-
   /* ================= DAY STYLE ================= */
   const dayPropGetter = (date) => {
     const today = new Date();
@@ -244,7 +291,7 @@ const AdminCalendar = () => {
 
       return (
         bookingDate === selectedDate &&
-        booking.booking_time === slot.time &&
+        normalizeTime(booking.booking_time) === normalizeTime(slot.time) &&
         Number(booking.service_id) === Number(selectedService) &&
         ACTIVE_BOOKING_STATUSES.includes(booking.status)
       );
@@ -254,15 +301,22 @@ const AdminCalendar = () => {
   const isPastTime = (slot) => {
     if (!selectedDate) return false;
 
+    const normalizedTime = normalizeTime(slot.time);
+    if (!normalizeTime) return false;
+
     const now = new Date();
-    const slotDateTime = new Date(`${selectedDate}T${slot.time}:00`);
+    const slotDateTime = new Date(`${selectedDate}T${normalizedTime}:00`);
 
     return slotDateTime < now;
   };
 
   const isDuplicateTime = (time) => {
+    const normalizedTarget = normalizeTime(time);
     return slots.some((slot) => {
-      return slot.time === time && slot.id !== selectedSlot?.id;
+      return (
+        normalizeTime(slot.time) === normalizedTarget &&
+        slot.id !== selectedSlot?.id
+      );
     });
   };
 
@@ -379,7 +433,7 @@ const AdminCalendar = () => {
 
     const times = timesInput
       .split(",")
-      .map((time) => time.trim())
+      .map((time) => normalizeTime(time.trim))
       .filter(Boolean);
 
     if (!times.length) {
@@ -514,7 +568,7 @@ const AdminCalendar = () => {
                       setShowSlotModal(true);
                     }}
                   >
-                    <span>{slot.time}</span>
+                    <span>{formatTime12h(slot.time)}</span>
 
                     {booked && <div className="slot-badge">BOOKED</div>}
                     {past && !booked && (
@@ -530,7 +584,9 @@ const AdminCalendar = () => {
         {showSlotModal && selectedSlot && (
           <div className="modal-overlay">
             <div className="slot-modal">
-              <h3>{editMode ? "Edit Slot" : selectedSlot.time}</h3>
+              <h3>
+                {editMode ? "Edit Slot" : formatTime12h(selectedSlot.time)}
+              </h3>
 
               {isSlotBooked(selectedSlot) && (
                 <div className="warning-text">This slot has a booking.</div>
@@ -585,20 +641,23 @@ const AdminCalendar = () => {
                   className="btn-primary"
                   disabled={!editedTime || !!editError}
                   onClick={async () => {
-                    if (!editedTime) {
+                    const normalizedEditedTime = normalizeTime(editedTime);
+                    if (!normalizedEditedTime) {
                       return toast.error("Enter valid time.");
                     }
 
-                    if (isDuplicateTime(editedTime)) {
+                    if (isDuplicateTime(normalizedEditedTime)) {
                       return toast.error("Time already exists.");
                     }
 
-                    if (isPastTime({ time: editedTime })) {
+                    if (isPastTime({ time: normalizedEditedTime })) {
                       return toast.error("Cannot move to past time.");
                     }
 
                     try {
-                      await updateSlot(selectedSlot.id, { time: editedTime });
+                      await updateSlot(selectedSlot.id, {
+                        time: normalizedEditedTime,
+                      });
                       await loadSlots(selectedDate);
                       setEditMode(false);
                       setShowSlotModal(false);
