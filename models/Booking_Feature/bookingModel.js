@@ -412,10 +412,16 @@ export const getAllBookings = async ({
     query = query.eq("status", status);
   }
 
-  if (search) {
+  if (search?.trim()) {
+    const keyword = search.trim();
+
     query = query.or(
-      `customer_name.ilike.%${search}%,customer_email.ilike.%${search}%,customers.full_name.ilike.%${search}%,customers.email.ilike.%${search}%`,
+      `customer_name.ilike.%${keyword}%,customer_email.ilike.%${keyword}%`,
     );
+
+    query = query.or(`full_name.ilike.%${keyword}%,email.ilike.%${keyword}%`, {
+      referencedTable: "customers",
+    });
   }
 
   if (dateFrom) {
@@ -438,7 +444,6 @@ export const getAllBookings = async ({
     totalPages: Math.ceil((count || 0) / safeLimit),
   };
 };
-
 /* ==========================================
    ADMIN: update booking status (generic)
 ========================================== */
