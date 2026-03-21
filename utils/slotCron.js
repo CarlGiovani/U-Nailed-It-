@@ -39,7 +39,7 @@ export const scheduleSlotCleanup = () => {
 
       console.log(`[CRON] Deleted unused past slots: ${deletedCount}`);
 
-      // 2️⃣ Block past times today
+      // Block past times today
       const { data: todayData, error: todayError } = await supabase
         .from("calendar_slots")
         .update({ is_available: false })
