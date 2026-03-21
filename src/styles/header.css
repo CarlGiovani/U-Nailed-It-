@@ -6,20 +6,16 @@
   position: sticky;
   top: 0;
   z-index: 1500;
-
   height: 70px;
   display: flex;
   align-items: center;
-
   background: linear-gradient(
     to right,
     rgba(255, 255, 255, 0.7),
     rgba(255, 240, 245, 0.6)
   );
-
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-
   border-bottom: 1px solid rgba(255, 215, 0, 0.25);
 }
 
@@ -41,7 +37,7 @@
 }
 
 .logo img {
-  height: 250px; /* perfect header size */
+  height: 250px;
   width: auto;
   object-fit: contain;
   transition: transform 0.3s ease;
@@ -55,13 +51,13 @@
    DESKTOP NAVIGATION
 ================================= */
 
-.nav-menu {
+.desktop-nav {
   display: flex;
   gap: 32px;
   align-items: center;
 }
 
-.nav-menu a {
+.desktop-nav a {
   font-weight: 600;
   font-size: 0.95rem;
   position: relative;
@@ -71,12 +67,11 @@
   transition: 0.3s ease;
 }
 
-.nav-menu a:hover {
+.desktop-nav a:hover {
   color: var(--primary-pink);
 }
 
-/* Premium underline */
-.nav-menu a::after {
+.desktop-nav a::after {
   content: "";
   position: absolute;
   left: 50%;
@@ -89,30 +84,26 @@
   border-radius: 4px;
 }
 
-.nav-menu a:hover::after {
+.desktop-nav a:hover::after {
   width: 100%;
 }
 
 /* =================================
-   HAMBURGER DEFAULT (HIDDEN)
+   MOBILE MENU BUTTON
 ================================= */
 
 .mobile-menu-btn {
-  display: none; /* 🔥 hidden on desktop */
-
+  display: none;
   width: 46px;
   height: 46px;
   border-radius: 14px;
   border: none;
   cursor: pointer;
-
   background: linear-gradient(to right, var(--primary-pink), var(--gold));
   color: white;
-
   box-shadow:
     0 10px 25px rgba(255, 105, 180, 0.3),
     0 6px 20px rgba(255, 215, 0, 0.3);
-
   transition: 0.3s ease;
 }
 
@@ -121,15 +112,20 @@
 }
 
 /* =================================
-   OVERLAY
+   MOBILE DRAWER BASE
 ================================= */
+
+.nav-menu {
+  display: none;
+}
 
 .nav-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(4px);
-  z-index: 1400;
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1900;
   opacity: 0;
   pointer-events: none;
   transition: 0.3s ease;
@@ -145,40 +141,50 @@
 ================================= */
 
 @media (max-width: 768px) {
-  /* Hide desktop nav */
+  .desktop-nav {
+    display: none;
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2100;
+  }
+
   .nav-menu {
     position: fixed;
-    top: 70px;
+    top: 0;
     left: 0;
-    width: min(85vw, 360px);
-    height: calc(100vh - 70px);
-
+    width: min(65vw, 360px);
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    justify-content: flex-start;
+    padding: 90px 30px 30px;
+    gap: 30px;
 
     background: linear-gradient(
       165deg,
-      rgba(255, 255, 255, 0.96),
-      rgba(255, 240, 245, 0.92)
+      rgba(255, 255, 255, 0.97),
+      rgba(255, 240, 245, 0.94)
     );
 
     backdrop-filter: blur(22px);
-
-    padding: 40px 30px;
-    gap: 18px;
+    -webkit-backdrop-filter: blur(22px);
 
     transform: translateX(-110%);
     transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 
     z-index: 2000;
+    overflow-y: auto;
 
     box-shadow:
       0 40px 80px rgba(255, 105, 180, 0.18),
       0 25px 60px rgba(212, 175, 55, 0.18);
 
-    border-top-right-radius: 24px;
-    border-bottom-right-radius: 24px;
+    
   }
 
   .nav-menu.active {
@@ -188,18 +194,20 @@
   .nav-menu a {
     width: 100%;
     font-size: 1.05rem;
+    font-weight: 600;
     padding: 14px 0;
     border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+    color: #222;
+    text-decoration: none;
+    transition: 0.3s ease;
   }
 
   .nav-menu a:hover {
     transform: translateX(6px);
+    color: var(--primary-pink);
   }
 
-  /* SHOW hamburger on mobile */
-  .mobile-menu-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .nav-menu a::after {
+    display: none;
   }
 }

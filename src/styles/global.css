@@ -46,6 +46,11 @@ body {
     linear-gradient(135deg, #fdf8f2 0%, #fffaf5 40%, #fff4f8 100%);
 }
 
+html,
+body {
+  height: 100%;
+}
+
 a {
   text-decoration: none;
   color: inherit;

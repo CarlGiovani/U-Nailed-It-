@@ -64,7 +64,8 @@ const Header = () => {
             <img src={logo} alt="UNAiledIt Logo" />
           </div>
 
-          <nav className={`nav-menu ${isMenuOpen ? "active" : ""}`}>
+          {/* desktop nav */}
+          <nav className="desktop-nav">
             <a
               href="#home"
               onClick={(e) => {
@@ -145,6 +146,79 @@ const Header = () => {
           </button>
         </div>
       </header>
+
+      {/* mobile fixed drawer */}
+      <nav className={`nav-menu ${isMenuOpen ? "active" : ""}`}>
+        <a
+          href="#home"
+          onClick={(e) => {
+            e.preventDefault();
+            scrollToSection("home");
+          }}
+        >
+          Home
+        </a>
+
+        <a
+          href="#about-us"
+          onClick={(e) => {
+            e.preventDefault();
+            scrollToSection("about-us");
+          }}
+        >
+          About Us
+        </a>
+
+        <a
+          href="#policies"
+          onClick={(e) => {
+            e.preventDefault();
+            scrollToSection("policies");
+          }}
+        >
+          Policies
+        </a>
+
+        <a
+          href="#portfolio"
+          onClick={(e) => {
+            e.preventDefault();
+            scrollToSection("portfolio");
+          }}
+        >
+          Portfolio
+        </a>
+
+        <a
+          href="#promos"
+          onClick={(e) => {
+            e.preventDefault();
+            scrollToSection("promos");
+          }}
+        >
+          Promos
+        </a>
+
+        <a
+          href="/booking"
+          onClick={(e) => {
+            e.preventDefault();
+            goToBookingPage();
+          }}
+        >
+          Book Now
+        </a>
+
+        <a
+          href="#reviews"
+          onClick={(e) => {
+            e.preventDefault();
+            scrollToSection("reviews");
+          }}
+        >
+          Reviews
+        </a>
+      </nav>
 
       <div
         className={`nav-overlay ${isMenuOpen ? "show" : ""}`}
