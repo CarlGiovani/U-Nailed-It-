@@ -64,24 +64,24 @@ const AdminLogin = () => {
             <input
               type="email"
               name="email"
-              placeholder=" "
+              placeholder="Email"
               value={form.email}
               onChange={handleChange}
               required
             />
-            <label className={form.email ? "filled" : ""}>Email</label>
+            <label className={form.email ? "filled" : ""}></label>
           </div>
 
           <div className="input-group">
             <input
               type="password"
               name="password"
-              placeholder=" "
+              placeholder="Password"
               value={form.password}
               onChange={handleChange}
               required
             />
-            <label className={form.password ? "filled" : ""}>Password</label>
+            <label className={form.password ? "filled" : ""}></label>
           </div>
 
           <button type="submit" disabled={loading} className="login-btn">
