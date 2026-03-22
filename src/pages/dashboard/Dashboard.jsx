@@ -1,7 +1,8 @@
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
-import { useEffect, useRef, useState } from "react";
-import { useReactToPrint } from "react-to-print";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -41,8 +42,8 @@ const Dashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [activities, setActivities] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-
-  const reportRef = useRef(null);
+  const [exportingPDF, setExportingPDF] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   /* ===============================
      FETCH DATA
@@ -65,10 +66,12 @@ const Dashboard = () => {
           revenuePerMonth: data?.analytics?.revenuePerMonth || {},
         });
 
-        setBookings(data?.recentBookings || []);
+        setBookings(
+          Array.isArray(data?.recentBookings) ? data.recentBookings : [],
+        );
 
         const logs = await getAuditLogs();
-        setActivities(logs || []);
+        setActivities(Array.isArray(logs) ? logs : []);
       } catch (err) {
         console.error("Dashboard error:", err);
       }
@@ -82,50 +85,98 @@ const Dashboard = () => {
   =============================== */
   const totalPages = Math.ceil(bookings.length / ITEMS_PER_PAGE);
 
-  const paginatedBookings = bookings.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
-  );
+  const paginatedBookings = useMemo(() => {
+    return bookings.slice(
+      (currentPage - 1) * ITEMS_PER_PAGE,
+      currentPage * ITEMS_PER_PAGE,
+    );
+  }, [bookings, currentPage]);
 
   /* ===============================
      CHART DATA
   =============================== */
-  const bookingChart = Object.keys(analytics.bookingsPerMonth || {}).map(
-    (month) => ({
+  const bookingChart = useMemo(() => {
+    return Object.keys(analytics.bookingsPerMonth || {}).map((month) => ({
       month,
       bookings: analytics.bookingsPerMonth[month],
-    }),
-  );
+    }));
+  }, [analytics.bookingsPerMonth]);
 
-  const revenueChart = Object.keys(analytics.revenuePerMonth || {}).map(
-    (month) => ({
+  const revenueChart = useMemo(() => {
+    return Object.keys(analytics.revenuePerMonth || {}).map((month) => ({
       month,
       revenue: analytics.revenuePerMonth[month],
-    }),
-  );
+    }));
+  }, [analytics.revenuePerMonth]);
 
   /* ===============================
      TOP SERVICES
   =============================== */
-  const serviceCount = {};
+  const topServices = useMemo(() => {
+    const serviceCount = {};
 
-  bookings.forEach((booking) => {
-    const name = booking.services?.name || "Unknown";
-    serviceCount[name] = (serviceCount[name] || 0) + 1;
-  });
+    bookings.forEach((booking) => {
+      const name = booking?.services?.name || "Unknown";
+      serviceCount[name] = (serviceCount[name] || 0) + 1;
+    });
 
-  const topServices = Object.keys(serviceCount).map((service) => ({
-    name: service,
-    value: serviceCount[service],
-  }));
+    return Object.keys(serviceCount).map((service) => ({
+      name: service,
+      value: serviceCount[service],
+    }));
+  }, [bookings]);
 
   const COLORS = ["#d4af37", "#ff69b4", "#8884d8", "#82ca9d", "#60a5fa"];
+
+  /* ===============================
+     HELPERS
+  =============================== */
+  const getStatusClass = (status) => {
+    if (status === "approved") return "status approved";
+    if (status === "completed") return "status completed";
+    if (status === "pending_approval") return "status pending";
+    if (status === "cancelled") return "status cancelled";
+    if (status === "rejected") return "status rejected";
+    return "status";
+  };
+
+  const formatCurrency = (value) => {
+    return `₱${Number(value || 0).toLocaleString()}`;
+  };
+
+  const formatMoneyPdf = (value) => {
+    return `PHP ${Number(value || 0).toLocaleString()}`;
+  };
+
+  const safeText = (value) => {
+    if (value === null || value === undefined || value === "") return "N/A";
+    return String(value);
+  };
+
+  const getVariantLabel = (variant) => {
+    if (!variant) return "N/A";
+
+    return (
+      [variant.body_part, variant.size].filter(Boolean).join(" - ") || "N/A"
+    );
+  };
+
+  const formatDateTime = (value) => {
+    if (!value) return "N/A";
+    try {
+      return new Date(value).toLocaleString();
+    } catch {
+      return String(value);
+    }
+  };
 
   /* ===============================
      EXPORT EXCEL
   =============================== */
   const exportExcel = async () => {
     try {
+      setExportingExcel(true);
+
       const data = await getSystemExportData();
 
       const workbook = new ExcelJS.Workbook();
@@ -143,6 +194,11 @@ const Dashboard = () => {
             left: { style: "thin" },
             bottom: { style: "thin" },
             right: { style: "thin" },
+          };
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFF4E7B2" },
           };
         });
       };
@@ -194,7 +250,7 @@ const Dashboard = () => {
         { header: "Updated At", key: "updated_at" },
       ];
 
-      (data.bookings || []).forEach((booking) => {
+      (data?.bookings || []).forEach((booking) => {
         bookingsSheet.addRow({
           id: booking.id,
           customer_id: booking.customer_id,
@@ -211,14 +267,7 @@ const Dashboard = () => {
             booking.customer_facebook_link ||
             "",
           service_name: booking.services?.name || "N/A",
-          variant: booking.service_variants
-            ? [
-                booking.service_variants.body_part,
-                booking.service_variants.size,
-              ]
-                .filter(Boolean)
-                .join(" - ")
-            : "N/A",
+          variant: getVariantLabel(booking.service_variants),
           booking_date: booking.booking_date || "",
           booking_time: booking.booking_time || "",
           total_price: booking.total_price || 0,
@@ -255,7 +304,7 @@ const Dashboard = () => {
         { header: "Created At", key: "created_at" },
       ];
 
-      (data.customers || []).forEach((item) => {
+      (data?.customers || []).forEach((item) => {
         customersSheet.addRow({
           id: item.id,
           full_name: item.full_name || "",
@@ -285,7 +334,7 @@ const Dashboard = () => {
         { header: "Updated At", key: "updated_at" },
       ];
 
-      (data.services || []).forEach((item) => {
+      (data?.services || []).forEach((item) => {
         servicesSheet.addRow({
           id: item.id,
           name: item.name || "",
@@ -315,7 +364,7 @@ const Dashboard = () => {
         { header: "Updated At", key: "updated_at" },
       ];
 
-      (data.serviceCategories || []).forEach((item) => {
+      (data?.serviceCategories || []).forEach((item) => {
         categoriesSheet.addRow({
           id: item.id,
           service_id: item.service_id,
@@ -346,7 +395,7 @@ const Dashboard = () => {
         { header: "Updated At", key: "updated_at" },
       ];
 
-      (data.serviceVariants || []).forEach((item) => {
+      (data?.serviceVariants || []).forEach((item) => {
         variantsSheet.addRow({
           id: item.id,
           category_id: item.category_id,
@@ -380,7 +429,7 @@ const Dashboard = () => {
         { header: "Created At", key: "created_at" },
       ];
 
-      (data.reviews || []).forEach((item) => {
+      (data?.reviews || []).forEach((item) => {
         reviewsSheet.addRow({
           id: item.id,
           booking_id: item.booking_id,
@@ -414,7 +463,7 @@ const Dashboard = () => {
         { header: "Created At", key: "created_at" },
       ];
 
-      (data.notifications || []).forEach((item) => {
+      (data?.notifications || []).forEach((item) => {
         notificationsSheet.addRow({
           id: item.id,
           type: item.type || "",
@@ -446,7 +495,7 @@ const Dashboard = () => {
         { header: "Created At", key: "created_at" },
       ];
 
-      (data.revenueLogs || []).forEach((item) => {
+      (data?.revenueLogs || []).forEach((item) => {
         revenueLogsSheet.addRow({
           id: item.id,
           booking_id: item.booking_id,
@@ -479,7 +528,7 @@ const Dashboard = () => {
         { header: "Updated At", key: "updated_at" },
       ];
 
-      (data.announcements || []).forEach((item) => {
+      (data?.announcements || []).forEach((item) => {
         announcementsSheet.addRow({
           id: item.id,
           title: item.title || "",
@@ -511,7 +560,7 @@ const Dashboard = () => {
         { header: "Updated At", key: "updated_at" },
       ];
 
-      (data.policies || []).forEach((item) => {
+      (data?.policies || []).forEach((item) => {
         policiesSheet.addRow({
           id: item.id,
           title: item.title || "",
@@ -540,7 +589,7 @@ const Dashboard = () => {
         { header: "Updated At", key: "updated_at" },
       ];
 
-      (data.calendarSlots || []).forEach((item) => {
+      (data?.calendarSlots || []).forEach((item) => {
         calendarSlotsSheet.addRow({
           id: item.id,
           service_id: item.service_id,
@@ -567,97 +616,442 @@ const Dashboard = () => {
       );
     } catch (error) {
       console.error("Excel export failed:", error);
+    } finally {
+      setExportingExcel(false);
     }
   };
 
   /* ===============================
-     PRINT
+     EXPORT PDF
+     - Uses getSystemExportData for accuracy
   =============================== */
-  const handlePrint = useReactToPrint({
-    contentRef: reportRef,
-  });
+  const exportPDF = async () => {
+    try {
+      setExportingPDF(true);
 
-  /* ===============================
-     HELPERS
-  =============================== */
-  const getStatusClass = (status) => {
-    if (status === "approved") return "status approved";
-    if (status === "completed") return "status completed";
-    if (status === "pending_approval") return "status pending";
-    if (status === "cancelled") return "status cancelled";
-    if (status === "rejected") return "status rejected";
-    return "status";
-  };
+      const data = await getSystemExportData();
 
-  const formatCurrency = (value) => {
-    return `₱${Number(value || 0).toLocaleString()}`;
+      const allBookings = Array.isArray(data?.bookings) ? data.bookings : [];
+      const completedBookings = allBookings.filter(
+        (booking) => booking?.status === "completed",
+      );
+
+      const allCustomers = Array.isArray(data?.customers) ? data.customers : [];
+      const allServices = Array.isArray(data?.services) ? data.services : [];
+      const allReviews = Array.isArray(data?.reviews) ? data.reviews : [];
+      const allRevenueLogs = Array.isArray(data?.revenueLogs)
+        ? data.revenueLogs
+        : [];
+      const allNotifications = Array.isArray(data?.notifications)
+        ? data.notifications
+        : [];
+      const allAnnouncements = Array.isArray(data?.announcements)
+        ? data.announcements
+        : [];
+      const allPolicies = Array.isArray(data?.policies) ? data.policies : [];
+      const allCalendarSlots = Array.isArray(data?.calendarSlots)
+        ? data.calendarSlots
+        : [];
+
+      const pdfServiceCount = {};
+      allBookings.forEach((booking) => {
+        const serviceName = booking?.services?.name || "Unknown";
+        pdfServiceCount[serviceName] = (pdfServiceCount[serviceName] || 0) + 1;
+      });
+
+      const pdfTopServices = Object.keys(pdfServiceCount)
+        .map((name) => ({
+          name,
+          value: pdfServiceCount[name],
+        }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 10);
+
+      const pdfBookingsPerMonth = {};
+      allBookings.forEach((booking) => {
+        if (!booking?.booking_date) return;
+
+        const rawDate = new Date(booking.booking_date);
+        if (Number.isNaN(rawDate.getTime())) return;
+
+        const monthKey = rawDate.toLocaleString("en-US", {
+          month: "short",
+          year: "numeric",
+        });
+
+        pdfBookingsPerMonth[monthKey] =
+          (pdfBookingsPerMonth[monthKey] || 0) + 1;
+      });
+
+      const pdfRevenuePerMonth = {};
+      allRevenueLogs.forEach((log) => {
+        const sourceDate = log?.created_at || log?.bookings?.booking_date;
+        if (!sourceDate) return;
+
+        const rawDate = new Date(sourceDate);
+        if (Number.isNaN(rawDate.getTime())) return;
+
+        const monthKey = rawDate.toLocaleString("en-US", {
+          month: "short",
+          year: "numeric",
+        });
+
+        pdfRevenuePerMonth[monthKey] =
+          (pdfRevenuePerMonth[monthKey] || 0) + Number(log?.amount || 0);
+      });
+
+      const doc = new jsPDF("p", "mm", "a4");
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const marginX = 14;
+      const generatedAt = new Date().toLocaleString();
+
+      const addHeader = () => {
+        doc.setFillColor(212, 175, 55);
+        doc.rect(0, 0, pageWidth, 22, "F");
+
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(18);
+        doc.text("UNAILEDIT System Report", pageWidth / 2, 14, {
+          align: "center",
+        });
+
+        doc.setTextColor(40, 40, 40);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(`Generated: ${generatedAt}`, marginX, 30);
+      };
+
+      const addFooter = () => {
+        const pageCount = doc.getNumberOfPages();
+
+        for (let i = 1; i <= pageCount; i += 1) {
+          doc.setPage(i);
+          doc.setDrawColor(220, 220, 220);
+          doc.line(
+            marginX,
+            pageHeight - 12,
+            pageWidth - marginX,
+            pageHeight - 12,
+          );
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(120, 120, 120);
+          doc.text(
+            `UNAILEDIT Report • Page ${i} of ${pageCount}`,
+            pageWidth / 2,
+            pageHeight - 6,
+            { align: "center" },
+          );
+        }
+      };
+
+      addHeader();
+
+      /* SUMMARY */
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(33, 33, 33);
+      doc.text("Executive Summary", marginX, 42);
+
+      autoTable(doc, {
+        startY: 46,
+        head: [["Metric", "Value"]],
+        body: [
+          ["Total Bookings", safeText(allBookings.length)],
+          ["Completed Bookings", safeText(completedBookings.length)],
+          [
+            "Completion Rate",
+            `${
+              allBookings.length > 0
+                ? (
+                    (completedBookings.length / allBookings.length) *
+                    100
+                  ).toFixed(1)
+                : 0
+            }%`,
+          ],
+          ["Total Revenue", formatMoneyPdf(stats.totalRevenue)],
+          [
+            "Pending Approval Bookings",
+            safeText(stats.pendingApprovalBookings),
+          ],
+          [
+            "Pending Reviews",
+            safeText(allReviews.filter((r) => !r?.is_approved).length),
+          ],
+          [
+            "Active Services",
+            safeText(
+              allServices.filter((service) => service?.is_active).length,
+            ),
+          ],
+          ["Total Customers", safeText(allCustomers.length)],
+          ["Total Notifications", safeText(allNotifications.length)],
+          ["Total Announcements", safeText(allAnnouncements.length)],
+          ["Total Policies", safeText(allPolicies.length)],
+          ["Total Calendar Slots", safeText(allCalendarSlots.length)],
+        ],
+        theme: "grid",
+        headStyles: {
+          fillColor: [212, 175, 55],
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+        },
+        styles: {
+          fontSize: 10,
+          cellPadding: 3,
+          lineColor: [220, 220, 220],
+          lineWidth: 0.2,
+        },
+        columnStyles: {
+          0: { cellWidth: 90, fontStyle: "bold" },
+          1: { cellWidth: 80 },
+        },
+        margin: { left: marginX, right: marginX },
+      });
+
+      /* MONTHLY BOOKINGS */
+      const monthlyBookingRows =
+        Object.keys(pdfBookingsPerMonth).length > 0
+          ? Object.entries(pdfBookingsPerMonth).map(([month, count]) => [
+              month,
+              safeText(count),
+            ])
+          : [["No data", "0"]];
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text(
+        "Monthly Booking Summary",
+        marginX,
+        doc.lastAutoTable.finalY + 12,
+      );
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 16,
+        head: [["Month", "Bookings"]],
+        body: monthlyBookingRows,
+        theme: "striped",
+        headStyles: {
+          fillColor: [255, 182, 193],
+          textColor: [0, 0, 0],
+        },
+        styles: {
+          fontSize: 9.5,
+          cellPadding: 2.8,
+        },
+        margin: { left: marginX, right: marginX },
+      });
+
+      /* MONTHLY REVENUE */
+      const monthlyRevenueRows =
+        Object.keys(pdfRevenuePerMonth).length > 0
+          ? Object.entries(pdfRevenuePerMonth).map(([month, revenue]) => [
+              month,
+              formatMoneyPdf(revenue),
+            ])
+          : [["No data", "PHP 0"]];
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text(
+        "Monthly Revenue Summary",
+        marginX,
+        doc.lastAutoTable.finalY + 12,
+      );
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 16,
+        head: [["Month", "Revenue"]],
+        body: monthlyRevenueRows,
+        theme: "striped",
+        headStyles: {
+          fillColor: [212, 175, 55],
+          textColor: [0, 0, 0],
+        },
+        styles: {
+          fontSize: 9.5,
+          cellPadding: 2.8,
+        },
+        margin: { left: marginX, right: marginX },
+      });
+
+      /* TOP SERVICES */
+      const topServiceRows =
+        pdfTopServices.length > 0
+          ? pdfTopServices.map((item, index) => [
+              safeText(index + 1),
+              safeText(item.name),
+              safeText(item.value),
+            ])
+          : [["-", "No data", "0"]];
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text("Top Services", marginX, doc.lastAutoTable.finalY + 12);
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 16,
+        head: [["Rank", "Service", "Bookings"]],
+        body: topServiceRows,
+        theme: "grid",
+        headStyles: {
+          fillColor: [255, 105, 180],
+        },
+        styles: {
+          fontSize: 9.5,
+          cellPadding: 2.8,
+        },
+        margin: { left: marginX, right: marginX },
+      });
+
+      /* BOOKINGS TABLE */
+      const bookingRows =
+        allBookings.length > 0
+          ? allBookings
+              .slice(0, 20)
+              .map((booking) => [
+                safeText(booking.id),
+                safeText(
+                  booking.customers?.full_name ||
+                    booking.customer_name ||
+                    "N/A",
+                ),
+                safeText(booking.services?.name || "N/A"),
+                safeText(getVariantLabel(booking.service_variants)),
+                safeText(booking.status),
+                safeText(booking.booking_date),
+                formatMoneyPdf(booking.total_price),
+              ])
+          : [["-", "No bookings", "-", "-", "-", "-", "PHP 0"]];
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text("Bookings Snapshot", marginX, doc.lastAutoTable.finalY + 12);
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 16,
+        head: [
+          ["ID", "Customer", "Service", "Variant", "Status", "Date", "Amount"],
+        ],
+        body: bookingRows,
+        theme: "striped",
+        headStyles: {
+          fillColor: [212, 175, 55],
+          textColor: [0, 0, 0],
+        },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 2.2,
+          overflow: "linebreak",
+        },
+        columnStyles: {
+          0: { cellWidth: 14 },
+          1: { cellWidth: 34 },
+          2: { cellWidth: 28 },
+          3: { cellWidth: 28 },
+          4: { cellWidth: 22 },
+          5: { cellWidth: 24 },
+          6: { cellWidth: 26, halign: "right" },
+        },
+        margin: { left: marginX, right: marginX },
+      });
+
+      /* REVIEWS */
+      const reviewRows =
+        allReviews.length > 0
+          ? allReviews
+              .slice(0, 15)
+              .map((review) => [
+                safeText(review.id),
+                safeText(review.booking_id),
+                safeText(review.rating),
+                safeText(review.comment),
+                review.is_approved ? "Yes" : "No",
+                safeText(review.bookings?.booking_date),
+              ])
+          : [["-", "-", "-", "No reviews", "-", "-"]];
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text("Reviews Snapshot", marginX, doc.lastAutoTable.finalY + 12);
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 16,
+        head: [
+          ["ID", "Booking ID", "Rating", "Comment", "Approved", "Booking Date"],
+        ],
+        body: reviewRows,
+        theme: "striped",
+        headStyles: {
+          fillColor: [255, 182, 193],
+          textColor: [0, 0, 0],
+        },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 2.2,
+          overflow: "linebreak",
+        },
+        margin: { left: marginX, right: marginX },
+      });
+
+      /* AUDIT LOGS */
+      const auditRows =
+        activities.length > 0
+          ? activities
+              .slice(0, 15)
+              .map((log) => [
+                safeText(log.action?.replaceAll("_", " ")),
+                safeText(log.description),
+                formatDateTime(log.created_at),
+              ])
+          : [["No logs", "No audit logs found.", "N/A"]];
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text("Recent Audit Logs", marginX, doc.lastAutoTable.finalY + 12);
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 16,
+        head: [["Action", "Description", "Date / Time"]],
+        body: auditRows,
+        theme: "striped",
+        headStyles: {
+          fillColor: [212, 175, 55],
+          textColor: [0, 0, 0],
+        },
+        styles: {
+          fontSize: 8.8,
+          cellPadding: 2.5,
+          overflow: "linebreak",
+        },
+        columnStyles: {
+          0: { cellWidth: 35 },
+          1: { cellWidth: 95 },
+          2: { cellWidth: 40 },
+        },
+        margin: { left: marginX, right: marginX },
+      });
+
+      addFooter();
+
+      doc.save(
+        `unailedit_system_report_${new Date().toISOString().slice(0, 10)}.pdf`,
+      );
+    } catch (error) {
+      console.error("PDF export failed:", error);
+    } finally {
+      setExportingPDF(false);
+    }
   };
 
   return (
     <AdminLayout>
-      <div className="dashboard-container" ref={reportRef}>
+      <div className="dashboard-container">
         <h1 className="dashboard-title">Dashboard Overview</h1>
-
-        <div style={{ display: "none" }}>
-          <div className="print-report">
-            <h1>UNAILEDIT Business Report</h1>
-
-            <p>Date Generated: {new Date().toLocaleDateString()}</p>
-
-            <h2>Statistics</h2>
-
-            <table className="report-table">
-              <tbody>
-                <tr>
-                  <td>Total Bookings</td>
-                  <td>{stats.totalBookings}</td>
-                </tr>
-                <tr>
-                  <td>Total Revenue</td>
-                  <td>{formatCurrency(stats.totalRevenue)}</td>
-                </tr>
-                <tr>
-                  <td>Pending Approval</td>
-                  <td>{stats.pendingApprovalBookings}</td>
-                </tr>
-                <tr>
-                  <td>Pending Reviews</td>
-                  <td>{stats.pendingReviews}</td>
-                </tr>
-                <tr>
-                  <td>Active Services</td>
-                  <td>{stats.activeServices}</td>
-                </tr>
-              </tbody>
-            </table>
-
-            <h2>Recent Bookings</h2>
-
-            <table className="report-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Customer</th>
-                  <th>Service</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {bookings.slice(0, 10).map((booking) => (
-                  <tr key={booking.id}>
-                    <td>{booking.id}</td>
-                    <td>{booking.customers?.full_name || "N/A"}</td>
-                    <td>{booking.services?.name || "N/A"}</td>
-                    <td>{booking.status}</td>
-                    <td>{booking.booking_date}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
 
         <div className="stats-grid">
           <div className="stat-card">
@@ -727,7 +1121,10 @@ const Dashboard = () => {
                   outerRadius={100}
                 >
                   {topServices.map((entry, index) => (
-                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                    <Cell
+                      key={entry.name || index}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -750,13 +1147,15 @@ const Dashboard = () => {
 
                   <div className="activity-content">
                     <div className="activity-title">
-                      {log.action.replaceAll("_", " ")}
+                      {safeText(log.action).replaceAll("_", " ")}
                     </div>
 
-                    <div className="activity-desc">{log.description}</div>
+                    <div className="activity-desc">
+                      {safeText(log.description)}
+                    </div>
 
                     <div className="activity-time">
-                      {new Date(log.created_at).toLocaleString()}
+                      {formatDateTime(log.created_at)}
                     </div>
                   </div>
                 </div>
@@ -768,12 +1167,20 @@ const Dashboard = () => {
         </div>
 
         <div className="dashboard-actions">
-          <button onClick={exportExcel} className="admin-btn">
-            Export Excel
+          <button
+            onClick={exportExcel}
+            className="admin-btn"
+            disabled={exportingExcel}
+          >
+            {exportingExcel ? "Exporting Excel..." : "Export Excel"}
           </button>
 
-          <button onClick={handlePrint} className="admin-btn">
-            Print Report
+          <button
+            onClick={exportPDF}
+            className="admin-btn"
+            disabled={exportingPDF}
+          >
+            {exportingPDF ? "Exporting PDF..." : "Export PDF Report"}
           </button>
         </div>
 
