@@ -745,15 +745,15 @@ export const completeBooking = async (id) => {
   const bookingId = Number(id);
   if (!bookingId) throw new Error("Invalid Booking Id");
 
-  //  generate review token
   const reviewToken = crypto.randomUUID();
+  const completedAt = new Date().toISOString();
 
-  // update status -> completed (only if currently approved)
+  // update booking status -> completed
   const { data: updated, error } = await supabase
     .from("bookings")
     .update({
       status: "completed",
-      completed_at: new Date().toISOString(),
+      completed_at: completedAt,
       review_token: reviewToken,
     })
     .eq("id", bookingId)
@@ -765,7 +765,20 @@ export const completeBooking = async (id) => {
     throw new Error("Booking cannot be completed");
   }
 
-  // return full booking with joins (same pattern ng approve/reject)
+  // insert revenue log
+  const { error: revenueError } = await supabase.from("revenue_logs").insert([
+    {
+      booking_id: updated.id,
+      amount: updated.total_price,
+      note: "Revenue recorded from completed booking",
+    },
+  ]);
+
+  if (revenueError) {
+    throw new Error(revenueError.message);
+  }
+
+  // return full booking with joins
   const { data, error: fetchError } = await supabase
     .from("bookings")
     .select(
