@@ -21,3 +21,7 @@ export const getDashboardData = async () => {
     recentBookings,
   };
 };
+
+export const getSystemExportData = async () => {
+  return await dashboard.getSystemExportData();
+}

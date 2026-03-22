@@ -10,3 +10,12 @@ export const getDashboardData = async (req , res) => {
     console.error("Dashboard error:", error);
   };
 };
+
+export const getSystemExportData = async (req, res) => {
+  try {
+    const data = await dashboardService.getSystemExportData();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({error: error.message});
+  }  
+}

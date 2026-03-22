@@ -147,3 +147,150 @@ export const getRecentBookings = async () => {
 
   return data || [];
 };
+
+
+
+export const getSystemExportData = async () => {
+  const [
+    bookingsRes,
+    customersRes,
+    servicesRes,
+    categoriesRes,
+    variantsRes,
+    reviewsRes,
+    notificationsRes,
+    revenueLogsRes,
+    announcementsRes,
+    policiesRes,
+    calendarSlotsRes,
+  ] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select(
+        `
+      id,
+      customer_id,
+      service_id,
+      service_variant_id,
+      booking_date,
+      booking_time,
+      total_price,
+      downpayment,
+      notes,
+      proof_payment_path,
+      status,
+      created_at,
+      updated_at,
+      approved_at,
+      cancelled_at,
+      completed_at,
+      expires_at,
+      review_token,
+      cancel_token,
+      cancellation_reason,
+      customer_name,
+      customer_email,
+      customer_phone,
+      customer_facebook_link,
+      customers(full_name, email, phone, facebook_link),
+      services(name),
+      service_variants(body_part, size, price, downpayment)
+    `,
+      )
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("customers")
+      .select("*")
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("services")
+      .select("*")
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("service_categories")
+      .select("*")
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("service_variants")
+      .select("*")
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("reviews")
+      .select(
+        `
+      *,
+      bookings(id, booking_date, status)
+    `,
+      )
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("notifications")
+      .select("*")
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("revenue_logs")
+      .select(
+        `
+      *,
+      bookings(id, booking_date, status)
+    `,
+      )
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("announcements")
+      .select("*")
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("policies")
+      .select("*")
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("calendar_slots")
+      .select("*")
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const responses = [
+    bookingsRes,
+    customersRes,
+    servicesRes,
+    categoriesRes,
+    variantsRes,
+    reviewsRes,
+    notificationsRes,
+    revenueLogsRes,
+    announcementsRes,
+    policiesRes,
+    calendarSlotsRes,
+  ];
+
+  for (const res of responses) {
+    if (res.error) {
+      throw new Error(res.error.message);
+    }
+  }
+
+  return {
+    bookings: bookingsRes.data || [],
+    customers: customersRes.data || [],
+    services: servicesRes.data || [],
+    serviceCategories: categoriesRes.data || [],
+    serviceVariants: variantsRes.data || [],
+    reviews: reviewsRes.data || [],
+    notifications: notificationsRes.data || [],
+    revenueLogs: revenueLogsRes.data || [],
+    announcements: announcementsRes.data || [],
+    policies: policiesRes.data || [],
+    calendarSlots: calendarSlotsRes.data || [],
+  };
+};
