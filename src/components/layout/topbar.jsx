@@ -22,9 +22,7 @@ import "../../styles/topbar.css";
 const Topbar = ({ setMobileOpen }) => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(
-    localStorage.getItem("admin_dark") === "true",
-  );
+
   const [notifications, setNotifications] = useState([]);
   const [notifCount, setNotifCount] = useState(0);
   const [page, setPage] = useState(1);
@@ -88,17 +86,7 @@ const Topbar = ({ setMobileOpen }) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  /* ================= DARK MODE ================= */
 
-  useEffect(() => {
-    if (darkMode) {
-      document.body.classList.add("dark");
-      localStorage.setItem("admin_dark", "true");
-    } else {
-      document.body.classList.remove("dark");
-      localStorage.setItem("admin_dark", "false");
-    }
-  }, [darkMode]);
 
   /* ================= CLOSE DROPDOWN ================= */
 
@@ -211,14 +199,7 @@ const Topbar = ({ setMobileOpen }) => {
       </div>
 
       <div className="topbar-right">
-        <div className="icon-wrapper">
-          {darkMode ? (
-            <FaSun onClick={() => setDarkMode(false)} />
-          ) : (
-            <FaMoon onClick={() => setDarkMode(true)} />
-          )}
-        </div>
-
+        
         <div className="icon-wrapper" ref={notifRef}>
           <FaBell
             onClick={() => {
