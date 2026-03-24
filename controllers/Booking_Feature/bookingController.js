@@ -22,24 +22,35 @@ import { createAdminNotifAndSendGmail } from "../../services/Admin_Gmail_Notif_F
 ========================================== */
 export const createBooking = async (req, res) => {
   const errors = validate(createBookingSchema, req.body);
-  if (errors) return res.status(400).json({ errors });
+
+  if (errors) {
+    console.log("VALIDATION ERRORS:", errors);
+    return res.status(400).json({ errors });
+  }
 
   try {
     const newBooking = await booking.createBookingWithCustomer(req.body);
+    console.log("BOOKING CREATED:", newBooking);
 
-    // ADMIN NOTIF + GMAIL
-    await createAdminNotifAndSendGmail({
-      type: "booking",
-      title: "New Booking",
-      message: `${newBooking.customer_name || "A customer"} created a new booking.`,
-      link: `/bookings?bookingId=${newBooking.id}`,
-      related_entity: "bookings",
-      related_id: newBooking.id,
-    });
+    try {
+      await createAdminNotifAndSendGmail({
+        type: "booking",
+        title: "New Booking",
+        message: `${newBooking.customer_name || "A customer"} created a new booking.`,
+        link: `/bookings?bookingId=${newBooking.id}`,
+        related_entity: "bookings",
+        related_id: newBooking.id,
+      });
 
-    res.status(201).json(newBooking);
+      console.log("ADMIN NOTIF + GMAIL SENT");
+    } catch (notifErr) {
+      console.error("ADMIN NOTIF/GMAIL ERROR:", notifErr);
+    }
+
+    return res.status(201).json(newBooking);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error("BOOKING CREATE ERROR:", err);
+    return res.status(400).json({ error: err.message });
   }
 };
 
