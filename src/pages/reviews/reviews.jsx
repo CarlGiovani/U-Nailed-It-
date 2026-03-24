@@ -30,14 +30,12 @@ const AdminReviews = () => {
       const result = await getAllReviewsAdmin(pageToLoad, limit);
 
       if (pageToLoad === 1) {
-        setReviews(result.data);
+        setReviews(result.data || []);
       } else {
-        setReviews((prev) => [...prev, ...result.data]);
+        setReviews((prev) => [...prev, ...(result.data || [])]);
       }
 
-      if (pageToLoad >= result.totalPages) {
-        setHasMore(false);
-      }
+      setHasMore(pageToLoad < (result.totalPages || 1));
     } catch (err) {
       console.error(err);
     } finally {
@@ -50,7 +48,6 @@ const AdminReviews = () => {
 
     const nextPage = page + 1;
     setPage(nextPage);
-
     await fetchReviews(nextPage);
   };
 
@@ -70,7 +67,6 @@ const AdminReviews = () => {
     };
 
     window.addEventListener("scroll", handleScroll);
-
     return () => window.removeEventListener("scroll", handleScroll);
   }, [page, hasMore, loading, actionLoading]);
 
@@ -78,12 +74,11 @@ const AdminReviews = () => {
     setPage(1);
     setHasMore(true);
     fetchReviews(1);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, fetchReviews]);
 
   /* ================= FILTER ================= */
-
   const filteredReviews = reviews.filter((r) => {
-    const name = r.bookings?.customers?.full_name || "";
+    const name = r.booking?.customer_name || "";
 
     const matchSearch = name.toLowerCase().includes(search.toLowerCase());
 
@@ -98,7 +93,6 @@ const AdminReviews = () => {
   });
 
   /* ================= ACTION ================= */
-
   const executeAction = async () => {
     if (!confirmAction) return;
 
@@ -118,7 +112,6 @@ const AdminReviews = () => {
       setPage(1);
       setHasMore(true);
       await fetchReviews(1);
-
       setSelectedReview(null);
     } catch (err) {
       console.error(err);
@@ -137,14 +130,12 @@ const AdminReviews = () => {
   };
 
   const renderStars = (rating) => {
-    return "⭐".repeat(rating);
+    return "⭐".repeat(Number(rating) || 0);
   };
 
   return (
     <AdminLayout>
       <h1>Reviews Management</h1>
-
-      {/* FILTERS */}
 
       <div className="review-filters">
         <input
@@ -163,7 +154,6 @@ const AdminReviews = () => {
         </select>
       </div>
 
-      {/* TABLE */}
       {loading ? (
         <div className="loading">Loading...</div>
       ) : (
@@ -189,10 +179,10 @@ const AdminReviews = () => {
                       className="clickable"
                       onClick={() => setSelectedReview(r)}
                     >
-                      {r.bookings?.customers?.full_name}
+                      {r.booking?.customer_name || "Unknown Customer"}
                     </td>
 
-                    <td>{r.bookings?.services?.name}</td>
+                    <td>{r.booking?.service?.name || "Unknown Service"}</td>
 
                     <td>{renderStars(r.rating)}</td>
 
@@ -218,14 +208,14 @@ const AdminReviews = () => {
 
       {!hasMore && <div className="lazy-end">No more reviews</div>}
 
-      {/* REVIEW MODAL */}
-
       {selectedReview && (
         <div className="modal-overlay" onClick={() => setSelectedReview(null)}>
           <div className="review-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
-                <h2>{selectedReview.bookings?.customers?.full_name}</h2>
+                <h2>
+                  {selectedReview.booking?.customer_name || "Unknown Customer"}
+                </h2>
                 {statusBadge(selectedReview.is_approved)}
               </div>
 
@@ -242,13 +232,23 @@ const AdminReviews = () => {
                 <h3>Service Information</h3>
                 <p>
                   <strong>Service:</strong>{" "}
-                  {selectedReview.bookings?.services?.name}
+                  {selectedReview.booking?.service?.name || "Unknown Service"}
                 </p>
                 <p>
                   <strong>Date:</strong>{" "}
-                  {new Date(
-                    selectedReview.bookings?.booking_date,
-                  ).toLocaleDateString()}
+                  {selectedReview.booking?.booking_date
+                    ? new Date(
+                        selectedReview.booking.booking_date,
+                      ).toLocaleDateString()
+                    : "N/A"}
+                </p>
+                <p>
+                  <strong>Time:</strong>{" "}
+                  {selectedReview.booking?.booking_time || "N/A"}
+                </p>
+                <p>
+                  <strong>Email:</strong>{" "}
+                  {selectedReview.booking?.customer_email || "N/A"}
                 </p>
               </div>
 
@@ -273,8 +273,6 @@ const AdminReviews = () => {
                 )}
               </div>
             </div>
-
-            {/* ACTIONS */}
 
             <div className="modal-actions">
               {!selectedReview.is_approved && (
@@ -308,6 +306,7 @@ const AdminReviews = () => {
               >
                 {actionLoading ? <span className="spinner"></span> : "Reject"}
               </button>
+
               <button
                 className="btn-close"
                 onClick={() => setSelectedReview(null)}
@@ -319,36 +318,35 @@ const AdminReviews = () => {
         </div>
       )}
 
-      {/* CONFIRM MODAL */}
       {confirmAction && (
         <div className="modal-overlay">
           <div className="confirm-modal">
-          <h3 className="confirm-title">
-  {confirmAction.type === "approve"
-    ? "Approve this review?"
-    : "Reject this review?"}
-</h3>
+            <h3 className="confirm-title">
+              {confirmAction.type === "approve"
+                ? "Approve this review?"
+                : "Reject this review?"}
+            </h3>
 
-<div className="confirm-actions">
-  <button
-    className="confirm-btn confirm-btn-yes"
-    onClick={executeAction}
-    disabled={actionLoading}
-  >
-    {actionLoading ? <span className="spinner"></span> : "Confirm"}
-  </button>
+            <div className="confirm-actions">
+              <button
+                className="confirm-btn confirm-btn-yes"
+                onClick={executeAction}
+                disabled={actionLoading}
+              >
+                {actionLoading ? <span className="spinner"></span> : "Confirm"}
+              </button>
 
-  <button
-    className="confirm-btn confirm-btn-cancel"
-    onClick={() => setConfirmAction(null)}
-  >
-    Cancel
-  </button>
-</div>
-
+              <button
+                className="confirm-btn confirm-btn-cancel"
+                onClick={() => setConfirmAction(null)}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
+
       {previewImage && (
         <div className="modal-overlay" onClick={() => setPreviewImage(null)}>
           <div
@@ -357,6 +355,7 @@ const AdminReviews = () => {
           >
             <img src={previewImage} alt="Review Preview" />
             <button className="btn-close" onClick={() => setPreviewImage(null)}>
+              Close
             </button>
           </div>
         </div>
