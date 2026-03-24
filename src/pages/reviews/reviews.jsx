@@ -7,6 +7,7 @@ import {
 } from "../../services/BACKEND/adminReviewsApi";
 import "../../styles/reviews.css";
 
+// ADMIN REV
 const AdminReviews = () => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,13 +44,13 @@ const AdminReviews = () => {
     }
   }, []);
 
-  const loadMoreReviews = async () => {
+  const loadMoreReviews = useCallback(async () => {
     if (!hasMore || loading) return;
 
     const nextPage = page + 1;
     setPage(nextPage);
     await fetchReviews(nextPage);
-  };
+  }, [hasMore, loading, page, fetchReviews]);
 
   useEffect(() => {
     fetchReviews(1);
@@ -68,7 +69,7 @@ const AdminReviews = () => {
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [page, hasMore, loading, actionLoading]);
+  }, [hasMore, loading, actionLoading, loadMoreReviews]);
 
   useEffect(() => {
     setPage(1);
