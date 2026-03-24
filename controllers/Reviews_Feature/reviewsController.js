@@ -1,4 +1,5 @@
 import * as review from "../../models/Reviews_Feature/reviewsModel.js";
+import { createAdminNotifAndSendGmail } from "../../services/Admin_Gmail_Notif_Feature/adminGmailNotIFService.js";
 import {
   createReviewSchema,
   validate,
@@ -10,10 +11,8 @@ import {
 
 export const createReview = async (req, res) => {
   try {
-    // galing sa body, hindi function args
     const { token, rating, comment, image_url } = req.body;
 
-    // normalize
     const payload = {
       token,
       rating: Number(rating),
@@ -21,7 +20,6 @@ export const createReview = async (req, res) => {
       image_url: image_url ?? null,
     };
 
-    // Joi validation
     const errors = validate(createReviewSchema, payload);
     if (errors) {
       return res.status(400).json({
@@ -30,8 +28,20 @@ export const createReview = async (req, res) => {
       });
     }
 
-    // DELEGATE TO MODEL (important!)
     const data = await review.createReview(payload);
+
+    try {
+      await createAdminNotifAndSendGmail({
+        type: "review",
+        title: "New Review",
+        message: "A customer submitted a new review.",
+        link: "/admin/reviews",
+        related_entity: "reviews",
+        related_id: data.id,
+      });
+    } catch (error) {
+      console.error("Admin notification/email failed:", notifErr.message);
+    }
 
     return res.status(201).json(data);
   } catch (err) {
@@ -40,7 +50,6 @@ export const createReview = async (req, res) => {
     });
   }
 };
-
 
 /* ==========================================
    PUBLIC: GET /api/reviews (paginated)
@@ -57,7 +66,6 @@ export const getApprovedReviews = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 
 /* ==========================================
    PUBLIC: Verify review token
@@ -88,7 +96,6 @@ export const getAllReviewsAdmin = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 
 /* ==========================================
    ADMIN: PATCH /api/reviews/:id/approve

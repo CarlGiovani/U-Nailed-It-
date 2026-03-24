@@ -15,6 +15,8 @@ import {
   validate,
 } from "../../utils/validators/bookingValidation.js";
 
+import { createAdminNotifAndSendGmail } from "../../services/Admin_Gmail_Notif_Feature/adminGmailNotIFService.js";
+
 /* ==========================================
    PUBLIC: Step 1 - Create booking (pending_payment)
 ========================================== */
@@ -24,6 +26,17 @@ export const createBooking = async (req, res) => {
 
   try {
     const newBooking = await booking.createBookingWithCustomer(req.body);
+
+    // ADMIN NOTIF + GMAIL
+    await createAdminNotifAndSendGmail({
+      type: "booking",
+      title: "New Booking",
+      message: `${newBooking.customer_name || "A customer"} created a new booking.`,
+      link: `/bookings?bookingId=${newBooking.id}`,
+      related_entity: "bookings",
+      related_id: newBooking.id,
+    });
+
     res.status(201).json(newBooking);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -78,6 +91,15 @@ export const confirmBooking = async (req, res) => {
       });
     }
 
+    await createAdminNotifAndSendGmail({
+      type: "booking",
+      title: "Booking Submitted",
+      message: `${updatedBooking.customers.full_name} confirmed their booking.`,
+      link: `/bookings?bookingId=${updatedBooking.id}`,
+      related_entity: "bookings",
+      related_id: updatedBooking.id,
+    });
+
     res.status(200).json({
       message: "Booking confirmed (pending approval)",
       booking: updatedBooking,
@@ -98,7 +120,7 @@ export const getAllBookings = async (req, res) => {
       search = "",
       status = "",
       dateFrom = "",
-      dateTo = "" ,
+      dateTo = "",
       sortBy = "created_at",
       order = "desc",
     } = req.query;
@@ -218,10 +240,21 @@ export const rejectBooking = async (req, res) => {
 export const cancelBooking = async (req, res) => {
   try {
     const { token } = req.query;
-     const {reason} = req.body;
+    const { reason } = req.body;
     if (!token)
-      return res.status(400).json({ error: "Cancellation token is required" }); 
-    const result = await booking.cancelBookingByToken(token , reason);
+      return res.status(400).json({ error: "Cancellation token is required" });
+    const result = await booking.cancelBookingByToken(token, reason);
+
+    //ADMIN NOTIFICATION + EMAIL
+    await createAdminNotifAndSendGmail({
+      type: "booking",
+      title: "Booking Cancelled",
+      message: `${result.customer_name || "A customer"} cancelled their booking.`,
+      link: `/bookings?bookingId=${result.id}&status=cancelled`,
+      related_entity: "bookings",
+      related_id: result.id,
+    });
+
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
