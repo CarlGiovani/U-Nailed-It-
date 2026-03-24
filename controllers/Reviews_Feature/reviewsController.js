@@ -8,7 +8,6 @@ import {
 /* ==========================================
    PUBLIC: POST /api/reviews
 ========================================== */
-
 export const createReview = async (req, res) => {
   try {
     const { token, rating, comment, image_url } = req.body;
@@ -34,13 +33,13 @@ export const createReview = async (req, res) => {
       await createAdminNotifAndSendGmail({
         type: "review",
         title: "New Review",
-        message: "A customer submitted a new review.",
+        message: `${data.customer_name || "A customer"} submitted a new review.`,
         link: "/admin/reviews",
         related_entity: "reviews",
         related_id: data.id,
       });
     } catch (error) {
-      console.error("Admin notification/email failed:", notifErr.message);
+      console.error("Admin notification/email failed:", error.message);
     }
 
     return res.status(201).json(data);
@@ -61,9 +60,9 @@ export const getApprovedReviews = async (req, res) => {
 
     const result = await review.getApprovedReviews({ page, limit });
 
-    res.json(result);
+    return res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -75,9 +74,9 @@ export const verifyReviewToken = async (req, res) => {
   try {
     const { token } = req.query;
     const data = await review.verifyReviewToken(token);
-    res.json(data);
+    return res.json(data);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message });
   }
 };
 
@@ -91,9 +90,9 @@ export const getAllReviewsAdmin = async (req, res) => {
 
     const result = await review.getAllReviewsAdmin({ page, limit });
 
-    res.json(result);
+    return res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -103,9 +102,9 @@ export const getAllReviewsAdmin = async (req, res) => {
 export const approveReview = async (req, res) => {
   try {
     const data = await review.approveReview(req.params.id);
-    res.json({ message: "Review approved", review: data });
+    return res.json({ message: "Review approved", review: data });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message });
   }
 };
 
@@ -115,8 +114,8 @@ export const approveReview = async (req, res) => {
 export const rejectReview = async (req, res) => {
   try {
     const data = await review.rejectReview(req.params.id);
-    res.json({ message: "Review rejected", review: data });
+    return res.json({ message: "Review rejected", review: data });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message });
   }
 };

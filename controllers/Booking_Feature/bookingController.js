@@ -22,35 +22,24 @@ import { createAdminNotifAndSendGmail } from "../../services/Admin_Gmail_Notif_F
 ========================================== */
 export const createBooking = async (req, res) => {
   const errors = validate(createBookingSchema, req.body);
-
-  if (errors) {
-    console.log("VALIDATION ERRORS:", errors);
-    return res.status(400).json({ errors });
-  }
+  if (errors) return res.status(400).json({ errors });
 
   try {
     const newBooking = await booking.createBookingWithCustomer(req.body);
-    console.log("BOOKING CREATED:", newBooking);
 
-    try {
-      await createAdminNotifAndSendGmail({
-        type: "booking",
-        title: "New Booking",
-        message: `${newBooking.customer_name || "A customer"} created a new booking.`,
-        link: `/bookings?bookingId=${newBooking.id}`,
-        related_entity: "bookings",
-        related_id: newBooking.id,
-      });
-
-      console.log("ADMIN NOTIF + GMAIL SENT");
-    } catch (notifErr) {
-      console.error("ADMIN NOTIF/GMAIL ERROR:", notifErr);
-    }
-
-    return res.status(201).json(newBooking);
+    // ADMIN NOTIF + GMAIL
+    await createAdminNotifAndSendGmail({
+      type: "booking",
+      title: "New Booking",
+      message: `${newBooking.customer_name || "A customer"} created a new booking.`,
+      link: `/bookings?bookingId=${newBooking.id}`,
+      related_entity: "bookings",
+      related_id: newBooking.id,
+    });
+    console.log(errors);
+    res.status(201).json(newBooking);
   } catch (err) {
-    console.error("BOOKING CREATE ERROR:", err);
-    return res.status(400).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 };
 
@@ -91,12 +80,12 @@ export const confirmBooking = async (req, res) => {
 
     // Email: booking moved to pending_approval (confirmed by user)
     // NOTE: Make sure updatedBooking includes customers/services
-    if (updatedBooking.customers?.email) {
+    if (updatedBooking.customer_email) {
       await sendEmail({
-        to: updatedBooking.customers.email,
+        to: updatedBooking.customer_email,
         subject: "Booking Confirmed",
         html: bookingSubmittedTemplate({
-          name: updatedBooking.customers.full_name,
+          name: updatedBooking.customer_name || "Customer",
           service: updatedBooking.services?.name || "Selected Service",
         }),
       });
@@ -105,7 +94,7 @@ export const confirmBooking = async (req, res) => {
     await createAdminNotifAndSendGmail({
       type: "booking",
       title: "Booking Submitted",
-      message: `${updatedBooking.customers.full_name} confirmed their booking.`,
+      message: `${updatedBooking.customer_name || "A customer"} confirmed their booking.`,
       link: `/bookings?bookingId=${updatedBooking.id}`,
       related_entity: "bookings",
       related_id: updatedBooking.id,
@@ -185,10 +174,10 @@ export const approveBooking = async (req, res) => {
     const cancelLink = `${FRONTEND_CANCEL_URL}?token=${result.cancel_token}`;
 
     await sendEmail({
-      to: result.customers.email,
+      to: result.customer_email,
       subject: "Booking Approved",
       html: bookingApprovedTemplate({
-        name: result.customers.full_name,
+        name: result.customer_name || "Customer",
         service: result.services.name,
         date: result.booking_date,
         time: result.booking_time,
@@ -219,10 +208,10 @@ export const rejectBooking = async (req, res) => {
     const result = await booking.rejectBooking(req.params.id);
 
     await sendEmail({
-      to: result.customers.email,
+      to: result.customer_email,
       subject: "Booking Rejected",
       html: bookingRejectedTemplate({
-        name: result.customers.full_name,
+        name: result.customer_name || "Customer",
         service: result.services.name,
         date: result.booking_date,
         time: result.booking_time,
@@ -287,10 +276,10 @@ export const completeBooking = async (req, res) => {
     const reviewLink = `${FRONTEND_REVIEW_URL}/review?token=${result.review_token}`;
 
     await sendEmail({
-      to: result.customers.email,
+      to: result.customer_email,
       subject: "How was your appointment?",
       html: bookingCompletedTemplate({
-        name: result.customers.full_name,
+        name: result.customer_name || "Customer",
         service: result.services?.name || "Your Service",
         date: result.booking_date,
         time: result.booking_time,
