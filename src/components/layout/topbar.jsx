@@ -1,12 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FaBars,
   FaBell,
   FaBullhorn,
   FaCalendarAlt,
-  FaMoon,
   FaStar,
-  FaSun,
   FaUserCircle,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -33,15 +31,20 @@ const Topbar = ({ setMobileOpen }) => {
   const navigate = useNavigate();
   const notifRef = useRef(null);
   const profileRef = useRef(null);
+  const intervalRef = useRef(null);
+  const loadingNotifRef = useRef(false);
 
   const user = JSON.parse(localStorage.getItem("admin_user"));
 
   /* ================= LOAD NOTIFICATIONS ================= */
+  const loadNotifications = useCallback(async () => {
+    if (loadingNotifRef.current) return;
 
-  const loadNotifications = async () => {
     try {
+      loadingNotifRef.current = true;
+
       const notifRes = await getNotifications();
-      const notifData = notifRes?.data || [];
+      const notifData = Array.isArray(notifRes?.data) ? notifRes.data : [];
 
       const filtered = notifData.filter((n) => {
         const created = new Date(n.created_at);
@@ -52,30 +55,30 @@ const Topbar = ({ setMobileOpen }) => {
       setNotifications(filtered);
 
       const countRes = await getUnreadNotificationCount();
-      setNotifCount(countRes?.count || 0);
+      setNotifCount(Number(countRes?.count || 0));
     } catch (err) {
       console.error("Notification fetch error:", err);
+    } finally {
+      loadingNotifRef.current = false;
     }
-  };
-
-  /* ================= AUTO REFRESH ================= */
-
-  useEffect(() => {
-    const fetchData = async () => {
-      await loadNotifications();
-    };
-
-    fetchData();
-
-    const interval = setInterval(() => {
-      fetchData();
-    }, 10000);
-
-    return () => clearInterval(interval);
   }, []);
 
-  /* ================= SCROLL EFFECT ================= */
+  /* ================= AUTO REFRESH ================= */
+  useEffect(() => {
+    loadNotifications();
 
+    intervalRef.current = setInterval(() => {
+      loadNotifications();
+    }, 10000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [loadNotifications]);
+
+  /* ================= SCROLL EFFECT ================= */
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 10);
@@ -86,10 +89,7 @@ const Topbar = ({ setMobileOpen }) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-
-
   /* ================= CLOSE DROPDOWN ================= */
-
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notifRef.current && !notifRef.current.contains(event.target)) {
@@ -107,10 +107,18 @@ const Topbar = ({ setMobileOpen }) => {
   }, []);
 
   /* ================= PAGINATION ================= */
+  useEffect(() => {
+    const total = Math.max(1, Math.ceil(notifications.length / NOTIF_PER_PAGE));
+    if (page > total) {
+      setPage(1);
+    }
+  }, [notifications, page]);
 
-  const totalPages = Math.ceil(notifications.length / NOTIF_PER_PAGE) || 1;
+  const totalPages = Math.max(
+    1,
+    Math.ceil(notifications.length / NOTIF_PER_PAGE),
+  );
   const currentPage = page > totalPages ? 1 : page;
-
   const startIndex = (currentPage - 1) * NOTIF_PER_PAGE;
 
   const paginatedNotifications = notifications.slice(
@@ -119,7 +127,6 @@ const Topbar = ({ setMobileOpen }) => {
   );
 
   /* ================= ICON PER TYPE / ENTITY ================= */
-
   const getNotifIcon = (notif) => {
     if (notif.related_entity === "reviews" || notif.type === "review") {
       return <FaStar className="notif-icon review" />;
@@ -140,7 +147,6 @@ const Topbar = ({ setMobileOpen }) => {
   };
 
   /* ================= CLICK NOTIFICATION ================= */
-
   const normalizeNotificationLink = (link, relatedEntity) => {
     if (link === "/admin/bookings") return "/bookings";
     if (link === "/admin/reviews") return "/reviews";
@@ -181,10 +187,15 @@ const Topbar = ({ setMobileOpen }) => {
   };
 
   /* ================= LOGOUT ================= */
-
   const handleLogout = () => {
+    setNotifications([]);
+    setNotifCount(0);
+    setNotifOpen(false);
+    setProfileOpen(false);
+
     localStorage.removeItem("admin_session");
     localStorage.removeItem("admin_user");
+
     navigate("/");
   };
 
@@ -199,7 +210,6 @@ const Topbar = ({ setMobileOpen }) => {
       </div>
 
       <div className="topbar-right">
-        
         <div className="icon-wrapper" ref={notifRef}>
           <FaBell
             onClick={() => {
@@ -241,7 +251,7 @@ const Topbar = ({ setMobileOpen }) => {
                 <div className="notif-pagination">
                   <button
                     disabled={currentPage === 1}
-                    onClick={() => setPage((p) => p - 1)}
+                    onClick={() => setPage((prev) => prev - 1)}
                   >
                     Prev
                   </button>
@@ -252,7 +262,7 @@ const Topbar = ({ setMobileOpen }) => {
 
                   <button
                     disabled={currentPage === totalPages}
-                    onClick={() => setPage((p) => p + 1)}
+                    onClick={() => setPage((prev) => prev + 1)}
                   >
                     Next
                   </button>
