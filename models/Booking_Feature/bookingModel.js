@@ -1,9 +1,6 @@
 import crypto from "crypto";
 import supabase from "../../utils/supabaseClient.js";
-import {
-  blockSlotGlobally,
-  unblockSlotGlobally,
-} from "../Calendar_Feature/calendarModel.js";
+import { unblockSlotGlobally } from "../Calendar_Feature/calendarModel.js";
 import { getOrCreateCustomer } from "../Customer_Feature/customerModel.js";
 
 /* ==========================================
@@ -240,7 +237,7 @@ export const createBookingWithCustomer = async (bookingData) => {
    - rollback if anything fails
 ========================================== */
 export const createBookingWithPaymentIntent = async (intentId) => {
-  // fetch intent dapat pending pa, and get booking_id from there
+  // 1) Load pending intent
   const { data: intent, error: intentErr } = await supabase
     .from("payment_intents")
     .select("*")
@@ -249,10 +246,11 @@ export const createBookingWithPaymentIntent = async (intentId) => {
     .maybeSingle();
 
   if (intentErr) throw new Error(intentErr.message);
-  if (!intent)
+  if (!intent) {
     throw new Error("Payment intent not found or already used/expired");
+  }
 
-  // expiry check
+  // 2) Expiry check
   if (new Date(intent.expires_at).getTime() < Date.now()) {
     const { error: intentExpireError } = await supabase
       .from("payment_intents")
@@ -272,74 +270,96 @@ export const createBookingWithPaymentIntent = async (intentId) => {
     throw new Error("Payment proof expired");
   }
 
-  // booking must be pending_payment
+  // 3) Load booking
   const { data: bookingRow, error: bookingErr } = await supabase
     .from("bookings")
-    .select("id, status")
+    .select("id, status, booking_date, booking_time")
     .eq("id", intent.booking_id)
     .maybeSingle();
 
   if (bookingErr) throw new Error(bookingErr.message);
   if (!bookingRow) throw new Error("Booking not found");
+
   if (bookingRow.status !== "pending_payment") {
     throw new Error("Booking is not eligible for confirmation");
   }
 
-  // atomic lock the service slot
-  const { data: lockedSlot, error: lockErr } = await supabase
-    .from("calendar_slots")
-    .update({ is_available: false })
-    .eq("service_id", intent.service_id)
-    .eq("date", intent.booking_date)
-    .eq("time", intent.booking_time)
-    .eq("is_available", true)
-    .select("id")
+  // 4) Soft pre-check for existing active booking on same global slot
+  //    (helpful message, but DB unique index is still the real protection)
+  const { data: existingActive, error: existingActiveErr } = await supabase
+    .from("bookings")
+    .select("id, status")
+    .eq("booking_date", intent.booking_date)
+    .eq("booking_time", intent.booking_time)
+    .in("status", ["pending_approval", "approved"])
+    .neq("id", intent.booking_id)
+    .limit(1)
     .maybeSingle();
 
-  if (lockErr) throw new Error(lockErr.message);
-  if (!lockedSlot) throw new Error("Selected slot is no longer available");
+  if (existingActiveErr) throw new Error(existingActiveErr.message);
 
-  try {
-    // global block
-    await blockSlotGlobally(intent.booking_date, intent.booking_time);
+  if (existingActive) {
+    throw new Error("Selected slot is no longer available");
+  }
 
-    // update booking -> pending_approval
-    const { data: updatedBooking, error: updateErr } = await supabase
+  // 5) Update all same date+time calendar slots globally to unavailable first
+  //    so UI/service slots reflect the real business rule
+  const { error: globalBlockErr } = await supabase
+    .from("calendar_slots")
+    .update({ is_available: false })
+    .eq("date", intent.booking_date)
+    .eq("time", intent.booking_time);
+
+  if (globalBlockErr) throw new Error(globalBlockErr.message);
+
+  // 6) Confirm booking
+  //    IMPORTANT: the DB unique index is what prevents double booking here.
+  const { data: updatedBooking, error: updateErr } = await supabase
+    .from("bookings")
+    .update({
+      status: "pending_approval",
+      proof_payment_path: intent.proof_path,
+    })
+    .eq("id", intent.booking_id)
+    .eq("status", "pending_payment")
+    .select("*")
+    .single();
+
+  if (updateErr) {
+    // PostgreSQL unique violation
+    if (updateErr.code === "23505") {
+      throw new Error("Selected slot is no longer available");
+    }
+    throw new Error(updateErr.message);
+  }
+
+  // 7) Mark intent used
+  const { error: intentUsedErr } = await supabase
+    .from("payment_intents")
+    .update({ status: "used" })
+    .eq("id", intentId)
+    .eq("status", "pending");
+
+  if (intentUsedErr) {
+    // rollback booking status if marking intent fails
+    await supabase
       .from("bookings")
       .update({
-        status: "pending_approval",
-        proof_payment_path: intent.proof_path,
+        status: "pending_payment",
+        proof_payment_path: null,
       })
       .eq("id", intent.booking_id)
-      .select("*")
-      .single();
+      .eq("status", "pending_approval");
 
-    if (updateErr) throw new Error(updateErr.message);
-
-    // mark intent used
-    const { error: intentUsedErr } = await supabase
-      .from("payment_intents")
-      .update({ status: "used" })
-      .eq("id", intentId);
-
-    if (intentUsedErr) throw new Error(intentUsedErr.message);
-
-    return updatedBooking;
-  } catch (err) {
-    // rollback service slot
-    await supabase
-      .from("calendar_slots")
-      .update({ is_available: true })
-      .eq("id", lockedSlot.id);
-
-    // rollback global only if no other active booking exists
     await safeUnblockGlobalIfNoActiveBooking(
       intent.booking_date,
       intent.booking_time,
     );
 
-    throw err;
+    throw new Error(intentUsedErr.message);
   }
+
+  return updatedBooking;
 };
 
 /* ==========================================
@@ -520,26 +540,16 @@ export const rejectBooking = async (id) => {
     .update({ status: "rejected" })
     .eq("id", id)
     .eq("status", "pending_approval")
-    .select("booking_date, booking_time, service_id")
+    .select("booking_date, booking_time")
     .single();
 
   if (error || !updated) throw new Error("Booking cannot be rejected");
 
-  // RELEASE SERVICE SLOT
-  await supabase
-    .from("calendar_slots")
-    .update({ is_available: true })
-    .eq("service_id", updated.service_id)
-    .eq("date", updated.booking_date)
-    .eq("time", updated.booking_time);
-
-  // SAFE UNBLOCK GLOBAL (if no other active booking)
   await safeUnblockGlobalIfNoActiveBooking(
     updated.booking_date,
     updated.booking_time,
   );
 
-  // (rest stays the same)
   const { data, error: fetchError } = await supabase
     .from("bookings")
     .select(
@@ -625,15 +635,6 @@ export const cancelBookingByToken = async (token, reason) => {
     .single();
 
   if (cancelError) throw new Error(cancelError.message);
-
-  const { error: slotError } = await supabase
-    .from("calendar_slots")
-    .update({ is_available: true })
-    .eq("service_id", booking.service_id)
-    .eq("date", booking.booking_date)
-    .eq("time", booking.booking_time);
-
-  if (slotError) throw new Error(slotError.message);
 
   await safeUnblockGlobalIfNoActiveBooking(
     booking.booking_date,

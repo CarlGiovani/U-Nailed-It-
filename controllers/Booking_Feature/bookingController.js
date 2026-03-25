@@ -4,7 +4,6 @@ import { logAction } from "../../services/Audit_Service/auditService.js";
 import sendEmail from "../../services/Email_Feature/emailService.js";
 import { bookingApprovedTemplate } from "../../templates/emails/bookingApproved.js";
 import { bookingCompletedTemplate } from "../../templates/emails/bookingCompletedTemplate.js";
-import { bookingRejectedTemplate } from "../../templates/emails/bookingRejected.js";
 import { bookingSubmittedTemplate } from "../../templates/emails/bookingSubmitted.js";
 
 dotenv.config();
@@ -36,7 +35,6 @@ export const createBooking = async (req, res) => {
       related_entity: "bookings",
       related_id: newBooking.id,
     });
-    console.log(errors);
     res.status(201).json(newBooking);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -70,16 +68,11 @@ export const confirmBooking = async (req, res) => {
   }
 
   try {
-    // IMPORTANT:
-    // Dapat sa model: i-check na intent.booking_id === bookingId
-    // Suggest: gumawa ng function confirmBookingForBookingId(bookingId, intentId)
     const updatedBooking = await booking.confirmBookingForBookingId(
       bookingId,
       payment_intent_id,
     );
 
-    // Email: booking moved to pending_approval (confirmed by user)
-    // NOTE: Make sure updatedBooking includes customers/services
     if (updatedBooking.customer_email) {
       await sendEmail({
         to: updatedBooking.customer_email,
@@ -100,12 +93,20 @@ export const confirmBooking = async (req, res) => {
       related_id: updatedBooking.id,
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Booking confirmed (pending approval)",
       booking: updatedBooking,
     });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    if (
+      err.message === "Selected slot is no longer available" ||
+      err.message === "Booking is not eligible for confirmation" ||
+      err.message === "Payment intent is not pending"
+    ) {
+      return res.status(409).json({ error: err.message });
+    }
+
+    return res.status(400).json({ error: err.message });
   }
 };
 
@@ -172,19 +173,19 @@ export const approveBooking = async (req, res) => {
       process.env.FRONTEND_CANCEL_URL || "http://localhost:5173/cancel";
 
     const cancelLink = `${FRONTEND_CANCEL_URL}?token=${result.cancel_token}`;
-
-    await sendEmail({
-      to: result.customer_email,
-      subject: "Booking Approved",
-      html: bookingApprovedTemplate({
-        name: result.customer_name || "Customer",
-        service: result.services.name,
-        date: result.booking_date,
-        time: result.booking_time,
-        cancelLink,
-      }),
-    });
-
+    if (result.customer_email) {
+      await sendEmail({
+        to: result.customer_email,
+        subject: "Booking Approved",
+        html: bookingApprovedTemplate({
+          name: result.customer_name || "Customer",
+          service: result.services.name,
+          date: result.booking_date,
+          time: result.booking_time,
+          cancelLink,
+        }),
+      });
+    }
     // AUDIT LOG
     await logAction({
       admin_id: req.user?.id || null,
@@ -207,18 +208,19 @@ export const rejectBooking = async (req, res) => {
   try {
     const result = await booking.rejectBooking(req.params.id);
 
-    await sendEmail({
-      to: result.customer_email,
-      subject: "Booking Rejected",
-      html: bookingRejectedTemplate({
-        name: result.customer_name || "Customer",
-        service: result.services.name,
-        date: result.booking_date,
-        time: result.booking_time,
-      }),
-    });
+    if (result.customer_email) {
+      await sendEmail({
+        to: result.customer_email,
+        subject: "Booking Rejected",
+        html: bookingRejectedTemplate({
+          name: result.customer_name || "Customer",
+          service: result.services.name,
+          date: result.booking_date,
+          time: result.booking_time,
+        }),
+      });
+    }
 
-    // AUDIT LOG
     await logAction({
       admin_id: req.user?.id || null,
       action: "reject_booking",
@@ -275,17 +277,19 @@ export const completeBooking = async (req, res) => {
 
     const reviewLink = `${FRONTEND_REVIEW_URL}/review?token=${result.review_token}`;
 
-    await sendEmail({
-      to: result.customer_email,
-      subject: "How was your appointment?",
-      html: bookingCompletedTemplate({
-        name: result.customer_name || "Customer",
-        service: result.services?.name || "Your Service",
-        date: result.booking_date,
-        time: result.booking_time,
-        reviewLink,
-      }),
-    });
+    if (result.customer_email) {
+      await sendEmail({
+        to: result.customer_email,
+        subject: "How was your appointment?",
+        html: bookingCompletedTemplate({
+          name: result.customer_name || "Customer",
+          service: result.services?.name || "Your Service",
+          date: result.booking_date,
+          time: result.booking_time,
+          reviewLink,
+        }),
+      });
+    }
 
     // AUDIT LOG
     await logAction({

@@ -110,14 +110,46 @@ export const updateSlot = async (id, updates) => {
     is_available,
   }))(updates);
 
+  const { data: existingSlot, error: existingSlotErr } = await supabase
+    .from("calendar_slots")
+    .select("id, date, time")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (existingSlotErr) throw new Error(existingSlotErr.message);
+  if (!existingSlot) throw new Error("Slot not found");
+
+  const finalDate = allowedUpdates.date ?? existingSlot.date;
+  const finalTime = allowedUpdates.time ?? existingSlot.time;
+
+  if (allowedUpdates.is_available === true) {
+    const { data: activeBooking, error: activeBookingErr } = await supabase
+      .from("bookings")
+      .select("id")
+      .eq("booking_date", finalDate)
+      .eq("booking_time", finalTime)
+      .in("status", ["pending_approval", "approved"])
+      .limit(1)
+      .maybeSingle();
+
+    if (activeBookingErr) throw new Error(activeBookingErr.message);
+
+    if (activeBooking) {
+      throw new Error(
+        "Cannot mark slot available because an active booking exists",
+      );
+    }
+  }
+
   const { data, error } = await supabase
     .from("calendar_slots")
     .update(allowedUpdates)
     .eq("id", id)
-    .select();
+    .select()
+    .single();
 
   if (error) throw new Error(error.message);
-  return data[0];
+  return data;
 };
 
 /* =========================
@@ -133,11 +165,6 @@ export const deleteSlot = async (id) => {
   if (error) throw new Error(error.message);
   return data;
 };
-
-
-
-
-
 
 /* =========================
    GLOBAL BLOCK / UNBLOCK
@@ -156,6 +183,21 @@ export const blockSlotGlobally = async (date, time) => {
 
 // NOTE: this is "force unblock". Huwag gamitin sa normal reject/cancel flow.
 export const unblockSlotGlobally = async (date, time) => {
+  const { data: activeBooking, error: activeBookingErr } = await supabase
+    .from("bookings")
+    .select("id")
+    .eq("booking_date", date)
+    .eq("booking_time", time)
+    .in("status", ["pending_approval", "approved"])
+    .limit(1)
+    .maybeSingle();
+
+  if (activeBookingErr) throw new Error(activeBookingErr.message);
+
+  if (activeBooking) {
+    throw new Error("Cannot unblock slot with active booking");
+  }
+
   const { data, error } = await supabase
     .from("calendar_slots")
     .update({ is_available: true })
@@ -167,14 +209,15 @@ export const unblockSlotGlobally = async (date, time) => {
   return data;
 };
 
-
-
-
-
 /* =========================
    BULK SLOT CREATION
 ========================= */
-export const createSlotsBulk = async ({ service_id, startDate, endDate, times }) => {
+export const createSlotsBulk = async ({
+  service_id,
+  startDate,
+  endDate,
+  times,
+}) => {
   if (!service_id || !startDate || !endDate || !times?.length)
     throw new Error("Missing required parameters");
 
@@ -236,6 +279,21 @@ export const createSlotsBulk = async ({ service_id, startDate, endDate, times })
    BULK DAY BLOCKING
 ========================= */
 export const blockDayGlobally = async (date, isAvailable = false) => {
+  if (isAvailable === true) {
+    const { data: activeBookings, error: activeBookingErr } = await supabase
+      .from("bookings")
+      .select("id")
+      .eq("booking_date", date)
+      .in("status", ["pending_approval", "approved"])
+      .limit(1);
+
+    if (activeBookingErr) throw new Error(activeBookingErr.message);
+
+    if (activeBookings?.length) {
+      throw new Error("Cannot unblock day with active bookings");
+    }
+  }
+
   const { data, error } = await supabase
     .from("calendar_slots")
     .update({ is_available: isAvailable })
@@ -246,7 +304,26 @@ export const blockDayGlobally = async (date, isAvailable = false) => {
   return data;
 };
 
-export const blockDayForService = async (service_id, date, isAvailable = false) => {
+export const blockDayForService = async (
+  service_id,
+  date,
+  isAvailable = false,
+) => {
+  if (isAvailable === true) {
+    const { data: activeBookings, error: activeBookingErr } = await supabase
+      .from("bookings")
+      .select("id")
+      .eq("booking_date", date)
+      .in("status", ["pending_approval", "approved"])
+      .limit(1);
+
+    if (activeBookingErr) throw new Error(activeBookingErr.message);
+
+    if (activeBookings?.length) {
+      throw new Error("Cannot unblock service day with active bookings");
+    }
+  }
+
   const { data, error } = await supabase
     .from("calendar_slots")
     .update({ is_available: isAvailable })
