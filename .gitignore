@@ -1,6 +1,31 @@
+# =========================
+# ENV FILES
+# =========================
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 
+# =========================
+# NODE MODULES
+# =========================
+node_modules/
+
+# =========================
+# LOGS
+# =========================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# COVERAGE
+# =========================
+coverage/
+
+# =========================
+# OS FILES
+# =========================
+.DS_Store
+Thumbs.db
+
+node_modules/
