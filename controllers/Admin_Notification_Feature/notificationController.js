@@ -2,7 +2,16 @@ import * as notificationService from "../../services/Admin_Notification_Feature/
 
 export const getNotifications = async (req, res) => {
   try {
-    const notifications = await notificationService.getNotifications();
+    const adminId = req.admin?.id;
+
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: admin id is missing",
+      });
+    }
+
+    const notifications = await notificationService.getNotifications(adminId);
 
     res.status(200).json({
       success: true,
@@ -19,7 +28,16 @@ export const getNotifications = async (req, res) => {
 
 export const getUnreadCount = async (req, res) => {
   try {
-    const count = await notificationService.getUnreadCount();
+    const adminId = req.admin?.id;
+
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: admin id is missing",
+      });
+    }
+
+    const count = await notificationService.getUnreadCount(adminId);
 
     res.status(200).json({
       success: true,
@@ -36,9 +54,17 @@ export const getUnreadCount = async (req, res) => {
 
 export const markAsRead = async (req, res) => {
   try {
+    const adminId = req.admin?.id;
     const { id } = req.params;
 
-    const result = await notificationService.markNotificationRead(id);
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: admin id is missing",
+      });
+    }
+
+    const result = await notificationService.markNotificationRead(id, adminId);
 
     res.status(200).json({
       success: true,
@@ -46,7 +72,11 @@ export const markAsRead = async (req, res) => {
       data: result,
     });
   } catch (err) {
-    const status = err.message.includes("Invalid notification id") ? 400 : 500;
+    const status =
+      err.message.includes("Invalid notification id") ||
+      err.message.includes("Admin id is required")
+        ? 400
+        : 500;
 
     res.status(status).json({
       success: false,
@@ -58,7 +88,16 @@ export const markAsRead = async (req, res) => {
 
 export const markAllAsRead = async (req, res) => {
   try {
-    await notificationService.markAllRead();
+    const adminId = req.admin?.id;
+
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: admin id is missing",
+      });
+    }
+
+    await notificationService.markAllRead(adminId);
 
     res.status(200).json({
       success: true,
@@ -75,9 +114,17 @@ export const markAllAsRead = async (req, res) => {
 
 export const singleDeleteNotification = async (req, res) => {
   try {
+    const adminId = req.admin?.id;
     const { id } = req.params;
 
-    const deleted = await notificationService.deleteNotification(id);
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: admin id is missing",
+      });
+    }
+
+    const deleted = await notificationService.deleteNotification(id, adminId);
 
     res.status(200).json({
       success: true,
@@ -85,7 +132,11 @@ export const singleDeleteNotification = async (req, res) => {
       data: deleted,
     });
   } catch (err) {
-    const status = err.message.includes("Invalid notification id") ? 400 : 500;
+    const status =
+      err.message.includes("Invalid notification id") ||
+      err.message.includes("Admin id is required")
+        ? 400
+        : 500;
 
     res.status(status).json({
       success: false,
@@ -97,9 +148,15 @@ export const singleDeleteNotification = async (req, res) => {
 
 export const deleteNotificationsBulk = async (req, res) => {
   try {
-    console.log("BODY SA BULK DELETE:", req.body);
-
+    const adminId = req.admin?.id;
     const { ids } = req.body;
+
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: admin id is missing",
+      });
+    }
 
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({
@@ -108,16 +165,22 @@ export const deleteNotificationsBulk = async (req, res) => {
       });
     }
 
-    const deleted = await notificationService.deleteNotificationsBulk(ids);
+    const deleted = await notificationService.deleteNotificationsBulk(
+      ids,
+      adminId,
+    );
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Selected notifications deleted successfully",
       data: deleted,
     });
   } catch (err) {
     console.error("BULK DELETE ERROR:", err);
-    res.status(500).json({
+
+    const status = err.message.includes("Admin id is required") ? 400 : 500;
+
+    res.status(status).json({
       success: false,
       message: "Failed to bulk delete notifications",
       error: err.message,

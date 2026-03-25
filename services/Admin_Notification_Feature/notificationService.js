@@ -1,25 +1,25 @@
 import { NotificationModel } from "../../models/Admin_Notification_Feature/notificationModel.js";
 
-export const getNotifications = async () => {
-  return await NotificationModel.getAll();
+export const getNotifications = async (adminId) => {
+  return await NotificationModel.getAll(adminId);
 };
 
-export const getUnreadCount = async () => {
-  return await NotificationModel.getUnreadCount();
+export const getUnreadCount = async (adminId) => {
+  return await NotificationModel.getUnreadCount(adminId);
 };
 
-export const markNotificationRead = async (id) => {
-  return await NotificationModel.markAsRead(id);
+export const markNotificationRead = async (id, adminId) => {
+  return await NotificationModel.markAsRead(id, adminId);
 };
 
-export const markAllRead = async () => {
-  return await NotificationModel.markAllAsRead();
+export const markAllRead = async (adminId) => {
+  return await NotificationModel.markAllAsRead(adminId);
 };
 
-export const deleteNotification = async (id) => {
-  return await NotificationModel.deleteOne(id);
+export const deleteNotification = async (id, adminId) => {
+  return await NotificationModel.deleteOne(id, adminId);
 };
 
-export const deleteNotificationsBulk = async (ids) => {
-  return await NotificationModel.deleteBulk(ids);
+export const deleteNotificationsBulk = async (ids, adminId) => {
+  return await NotificationModel.deleteBulk(ids, adminId);
 };
