@@ -10,6 +10,7 @@ import {
   getAvailableSlots,
   getMonthlyAvailability,
 } from "../../backend/calendarApi.js";
+import supabase from "../config/supabaseClient.js";
 import "../styles/booking-system.css";
 
 // DATE FORMATTER (YYYY-MM-DD)
@@ -900,6 +901,126 @@ const Booking = ({ services: servicesProp = [] }) => {
     }
   }, [formData.service_id, selectedDate]);
 
+  // ===============================
+  // REALTIME SYNC
+  // ===============================
+  useEffect(() => {
+    if (!formData.service_id) return;
+
+    const slotsChannel = supabase
+      .channel(`public-booking-slots-${formData.service_id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "calendar_slots",
+        },
+        async (payload) => {
+          const row = payload.new || payload.old;
+          if (!row) return;
+
+          const rowServiceId = Number(row.service_id);
+          if (rowServiceId !== Number(formData.service_id)) return;
+
+          await fetchMonthlyAvailability();
+
+          if (selectedDate) {
+            await fetchAvailableSlots();
+          }
+        },
+      )
+      .subscribe();
+
+    const bookingsChannel = supabase
+      .channel(`public-booking-bookings-${formData.service_id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bookings",
+        },
+        async () => {
+          await fetchMonthlyAvailability();
+
+          if (selectedDate) {
+            await fetchAvailableSlots();
+          }
+
+          if (bookingId) {
+            try {
+              const latest = await getBookingById(bookingId);
+              setBookingPreview(latest);
+
+              if (latest.status === "expired" && (step === 4 || step === 5)) {
+                setIsExpiredLocal(true);
+              }
+
+              if (
+                latest.status === "pending_approval" ||
+                latest.status === "approved"
+              ) {
+                setStep(6);
+              }
+
+              if (
+                ["expired", "cancelled", "rejected", "completed"].includes(
+                  latest.status,
+                )
+              ) {
+                clearActiveFlow();
+
+                if (
+                  latest.status !== "completed" &&
+                  (step === 4 || step === 5)
+                ) {
+                  setModal({
+                    open: true,
+                    title: "Booking No Longer Active",
+                    message:
+                      latest.status === "expired"
+                        ? "Your booking has expired. Please start a new booking."
+                        : latest.status === "cancelled"
+                          ? "This booking was cancelled."
+                          : latest.status === "rejected"
+                            ? "This booking was rejected."
+                            : "This booking is no longer active.",
+                    actions: [
+                      {
+                        label: "OK",
+                        variant: "btn-primary",
+                        onClick: () => {
+                          setModal((m) => ({ ...m, open: false }));
+                          hardRestart();
+                        },
+                      },
+                    ],
+                  });
+                }
+              }
+            } catch (err) {
+              console.warn("Realtime booking refresh failed:", err);
+            }
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(slotsChannel);
+      supabase.removeChannel(bookingsChannel);
+    };
+  }, [
+    formData.service_id,
+    selectedDate,
+    bookingId,
+    fetchMonthlyAvailability,
+    fetchAvailableSlots,
+    step,
+    hardRestart,
+  ]);
+
   useEffect(() => {
     if (formData.service_id && selectedDate) {
       fetchAvailableSlots();
@@ -1426,7 +1547,10 @@ const Booking = ({ services: servicesProp = [] }) => {
         errorType = "payment_not_found";
         errorMessage = "Payment record not found. Please upload proof again.";
         showRetry = false;
-      } else if (error.response?.status === 400) {
+      } else if (
+        error.response?.status === 400 ||
+        error.response?.status === 409
+      ) {
         if (String(msg).toLowerCase().includes("expired")) {
           errorType = "payment_expired";
           errorMessage =
