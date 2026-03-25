@@ -1,21 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FaBars,
   FaBell,
   FaBullhorn,
   FaCalendarAlt,
   FaStar,
+  FaTrash,
   FaUserCircle,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 import {
+  deleteNotification,
   getNotifications,
-  getUnreadNotificationCount,
+  markAllNotificationsAsRead,
   markNotificationAsRead,
 } from "../../services/BACKEND/adminNotificationApi";
 
+import supabase from "../../../config/supabaseClient.js";
+
 import "../../styles/topbar.css";
+
+const NOTIF_PER_PAGE = 6;
+const NOTIF_MAX_AGE_DAYS = 7;
 
 const Topbar = ({ setMobileOpen }) => {
   const [notifOpen, setNotifOpen] = useState(false);
@@ -25,109 +32,48 @@ const Topbar = ({ setMobileOpen }) => {
   const [notifCount, setNotifCount] = useState(0);
   const [page, setPage] = useState(1);
   const [scrolled, setScrolled] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
-  const NOTIF_PER_PAGE = 6;
+  const [manageMode, setManageMode] = useState(false);
+  const [selectedNotifIds, setSelectedNotifIds] = useState([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const navigate = useNavigate();
   const notifRef = useRef(null);
   const profileRef = useRef(null);
-  const intervalRef = useRef(null);
   const loadingNotifRef = useRef(false);
+  const realtimeChannelRef = useRef(null);
 
-  const user = JSON.parse(localStorage.getItem("admin_user"));
+  const user = JSON.parse(localStorage.getItem("admin_user") || "null");
 
-  /* ================= LOAD NOTIFICATIONS ================= */
-  const loadNotifications = useCallback(async () => {
-    if (loadingNotifRef.current) return;
+  /* ================= HELPERS ================= */
+  const isRecentNotification = useCallback((notif) => {
+    if (!notif?.created_at) return false;
 
-    try {
-      loadingNotifRef.current = true;
+    const created = new Date(notif.created_at);
+    if (Number.isNaN(created.getTime())) return false;
 
-      const notifRes = await getNotifications();
-      const notifData = Array.isArray(notifRes?.data) ? notifRes.data : [];
-
-      const filtered = notifData.filter((n) => {
-        const created = new Date(n.created_at);
-        const diffDays = (new Date() - created) / (1000 * 60 * 60 * 24);
-        return diffDays <= 7;
-      });
-
-      setNotifications(filtered);
-
-      const countRes = await getUnreadNotificationCount();
-      setNotifCount(Number(countRes?.count || 0));
-    } catch (err) {
-      console.error("Notification fetch error:", err);
-    } finally {
-      loadingNotifRef.current = false;
-    }
+    const diffDays = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays <= NOTIF_MAX_AGE_DAYS;
   }, []);
 
-  /* ================= AUTO REFRESH ================= */
-  useEffect(() => {
-    loadNotifications();
+  const normalizeNotificationLink = useCallback((link, relatedEntity) => {
+    if (link === "/admin/bookings") return "/bookings";
+    if (link === "/admin/reviews") return "/reviews";
+    if (link === "/admin/announcements") return "/announcements";
 
-    intervalRef.current = setInterval(() => {
-      loadNotifications();
-    }, 10000);
+    if (link) return link;
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [loadNotifications]);
+    if (relatedEntity === "bookings") return "/bookings";
+    if (relatedEntity === "reviews") return "/reviews";
+    if (relatedEntity === "announcements") return "/announcements";
 
-  /* ================= SCROLL EFFECT ================= */
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 10);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-
-    return () => window.removeEventListener("scroll", handleScroll);
+    return "/dashboard";
   }, []);
 
-  /* ================= CLOSE DROPDOWN ================= */
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (notifRef.current && !notifRef.current.contains(event.target)) {
-        setNotifOpen(false);
-      }
-
-      if (profileRef.current && !profileRef.current.contains(event.target)) {
-        setProfileOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  /* ================= PAGINATION ================= */
-  useEffect(() => {
-    const total = Math.max(1, Math.ceil(notifications.length / NOTIF_PER_PAGE));
-    if (page > total) {
-      setPage(1);
-    }
-  }, [notifications, page]);
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(notifications.length / NOTIF_PER_PAGE),
-  );
-  const currentPage = page > totalPages ? 1 : page;
-  const startIndex = (currentPage - 1) * NOTIF_PER_PAGE;
-
-  const paginatedNotifications = notifications.slice(
-    startIndex,
-    startIndex + NOTIF_PER_PAGE,
-  );
-
-  /* ================= ICON PER TYPE / ENTITY ================= */
-  const getNotifIcon = (notif) => {
+  const getNotifIcon = useCallback((notif) => {
     if (notif.related_entity === "reviews" || notif.type === "review") {
       return <FaStar className="notif-icon review" />;
     }
@@ -144,45 +90,314 @@ const Topbar = ({ setMobileOpen }) => {
     }
 
     return <FaBell className="notif-icon default" />;
+  }, []);
+
+  /* ================= LOAD NOTIFICATIONS ================= */
+  const loadNotifications = useCallback(async () => {
+    if (loadingNotifRef.current) return;
+
+    try {
+      loadingNotifRef.current = true;
+      setNotifLoading(true);
+
+      const notifRes = await getNotifications();
+      const notifData = Array.isArray(notifRes?.data) ? notifRes.data : [];
+
+      const filtered = notifData
+        .filter(isRecentNotification)
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      setNotifications(filtered);
+      setNotifCount(filtered.filter((item) => !item.is_read).length);
+    } catch (err) {
+      console.error("Notification fetch error:", err);
+    } finally {
+      loadingNotifRef.current = false;
+      setNotifLoading(false);
+    }
+  }, [isRecentNotification]);
+
+  /* ================= INITIAL LOAD ================= */
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  /* ================= REALTIME SUBSCRIPTION ================= */
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-topbar-notifications")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+        },
+        (payload) => {
+          const newNotif = payload.new;
+
+          if (!isRecentNotification(newNotif)) return;
+
+          setNotifications((prev) => {
+            const exists = prev.some((item) => item.id === newNotif.id);
+            if (exists) return prev;
+
+            return [newNotif, ...prev].sort(
+              (a, b) => new Date(b.created_at) - new Date(a.created_at),
+            );
+          });
+
+          setNotifCount((prev) => prev + (newNotif.is_read ? 0 : 1));
+        },
+      )
+      .subscribe((status) => {
+        console.log("Notifications realtime status:", status);
+      });
+
+    realtimeChannelRef.current = channel;
+
+    return () => {
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
+    };
+  }, [isRecentNotification]);
+
+  /* ================= SCROLL EFFECT ================= */
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  /* ================= CLOSE DROPDOWN ================= */
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setNotifOpen(false);
+        setManageMode(false);
+        setSelectedNotifIds([]);
+      }
+
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setProfileOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  /* ================= DERIVED STATE ================= */
+  const unreadVisibleCount = useMemo(() => {
+    return notifications.filter((item) => !item.is_read).length;
+  }, [notifications]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(notifications.length / NOTIF_PER_PAGE),
+  );
+
+  const currentPage = page > totalPages ? 1 : page;
+  const startIndex = (currentPage - 1) * NOTIF_PER_PAGE;
+
+  const paginatedNotifications = useMemo(() => {
+    return notifications.slice(startIndex, startIndex + NOTIF_PER_PAGE);
+  }, [notifications, startIndex]);
+
+  const allVisibleSelected =
+    paginatedNotifications.length > 0 &&
+    paginatedNotifications.every((notif) =>
+      selectedNotifIds.includes(notif.id),
+    );
+
+  /* ================= PAGINATION GUARD ================= */
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(1);
+    }
+  }, [page, totalPages]);
+
+  /* ================= RESET SELECTION PER PAGE ================= */
+  useEffect(() => {
+    setSelectedNotifIds([]);
+  }, [page]);
+
+  /* ================= OPEN NOTIFICATION DROPDOWN ================= */
+  const handleToggleNotifications = async () => {
+    const nextOpen = !notifOpen;
+    setNotifOpen(nextOpen);
+
+    if (!notifOpen) {
+      setPage(1);
+      setManageMode(false);
+      setSelectedNotifIds([]);
+      await loadNotifications();
+    }
+  };
+
+  /* ================= MANAGE MODE ================= */
+  const handleToggleManageMode = (e) => {
+    e.stopPropagation();
+
+    setManageMode((prev) => {
+      const next = !prev;
+      if (!next) {
+        setSelectedNotifIds([]);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectNotification = (e, id) => {
+    e.stopPropagation();
+
+    setSelectedNotifIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
+
+  const toggleSelectAllVisible = (e) => {
+    e.stopPropagation();
+
+    const visibleIds = paginatedNotifications.map((notif) => notif.id);
+
+    setSelectedNotifIds((prev) => {
+      const areAllSelected = visibleIds.every((id) => prev.includes(id));
+
+      if (areAllSelected) {
+        return prev.filter((id) => !visibleIds.includes(id));
+      }
+
+      return [...new Set([...prev, ...visibleIds])];
+    });
   };
 
   /* ================= CLICK NOTIFICATION ================= */
-  const normalizeNotificationLink = (link, relatedEntity) => {
-    if (link === "/admin/bookings") return "/bookings";
-    if (link === "/admin/reviews") return "/reviews";
-    if (link === "/admin/announcements") return "/announcements";
-
-    if (link) return link;
-
-    if (relatedEntity === "bookings") return "/bookings";
-    if (relatedEntity === "reviews") return "/reviews";
-    if (relatedEntity === "announcements") return "/announcements";
-
-    return "/dashboard";
-  };
-
   const handleNotificationClick = async (notif) => {
     try {
-      if (!notif.is_read) {
-        await markNotificationAsRead(notif.id);
-        setNotifCount((prev) => Math.max(prev - 1, 0));
+      if (!notif?.id) return;
+
+      if (manageMode) {
+        setSelectedNotifIds((prev) =>
+          prev.includes(notif.id)
+            ? prev.filter((item) => item !== notif.id)
+            : [...prev, notif.id],
+        );
+        return;
       }
 
-      setNotifications((prev) =>
-        prev.map((item) =>
-          item.id === notif.id ? { ...item, is_read: true } : item,
-        ),
-      );
+      if (!notif.is_read) {
+        await markNotificationAsRead(notif.id);
+
+        setNotifications((prev) =>
+          prev.map((item) =>
+            item.id === notif.id ? { ...item, is_read: true } : item,
+          ),
+        );
+
+        setNotifCount((prev) => Math.max(prev - 1, 0));
+      }
 
       const targetPath = normalizeNotificationLink(
         notif.link,
         notif.related_entity,
       );
 
-      navigate(targetPath);
       setNotifOpen(false);
+      setManageMode(false);
+      setSelectedNotifIds([]);
+      navigate(targetPath);
     } catch (err) {
       console.error("Notification click error:", err);
+    }
+  };
+
+  /* ================= MARK ALL AS READ ================= */
+  const handleMarkAllAsRead = async (e) => {
+    e.stopPropagation();
+
+    if (markingAllRead || unreadVisibleCount === 0) return;
+
+    try {
+      setMarkingAllRead(true);
+
+      await markAllNotificationsAsRead();
+
+      setNotifications((prev) =>
+        prev.map((item) => ({
+          ...item,
+          is_read: true,
+        })),
+      );
+
+      setNotifCount(0);
+    } catch (err) {
+      console.error("Mark all as read error:", err);
+    } finally {
+      setMarkingAllRead(false);
+    }
+  };
+
+  /* ================= DELETE SINGLE NOTIFICATION ================= */
+  const handleDeleteNotification = async (e, id) => {
+    e.stopPropagation();
+
+    if (!id || deletingId === id) return;
+
+    try {
+      setDeletingId(id);
+
+      const targetNotif = notifications.find((item) => item.id === id);
+      const wasUnread = targetNotif && !targetNotif.is_read;
+
+      await deleteNotification(id);
+
+      setNotifications((prev) => prev.filter((item) => item.id !== id));
+      setSelectedNotifIds((prev) => prev.filter((item) => item !== id));
+
+      if (wasUnread) {
+        setNotifCount((prev) => Math.max(prev - 1, 0));
+      }
+    } catch (err) {
+      console.error("Delete notification error:", err);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  /* ================= BULK DELETE ================= */
+  const handleBulkDelete = async (e) => {
+    e.stopPropagation();
+
+    if (bulkDeleting || selectedNotifIds.length === 0) return;
+
+    try {
+      setBulkDeleting(true);
+
+      const selectedSet = new Set(selectedNotifIds);
+
+      const unreadToDelete = notifications.filter(
+        (item) => selectedSet.has(item.id) && !item.is_read,
+      ).length;
+
+      await Promise.all(selectedNotifIds.map((id) => deleteNotification(id)));
+
+      setNotifications((prev) =>
+        prev.filter((item) => !selectedSet.has(item.id)),
+      );
+
+      setNotifCount((prev) => Math.max(prev - unreadToDelete, 0));
+      setSelectedNotifIds([]);
+      setManageMode(false);
+    } catch (err) {
+      console.error("Bulk delete notifications error:", err);
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -192,6 +407,8 @@ const Topbar = ({ setMobileOpen }) => {
     setNotifCount(0);
     setNotifOpen(false);
     setProfileOpen(false);
+    setManageMode(false);
+    setSelectedNotifIds([]);
 
     localStorage.removeItem("admin_session");
     localStorage.removeItem("admin_user");
@@ -211,34 +428,115 @@ const Topbar = ({ setMobileOpen }) => {
 
       <div className="topbar-right">
         <div className="icon-wrapper" ref={notifRef}>
-          <FaBell
-            onClick={() => {
-              setNotifOpen((prev) => !prev);
-              setPage(1);
-              loadNotifications();
-            }}
-          />
+          <FaBell onClick={handleToggleNotifications} />
 
           {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
 
           {notifOpen && (
             <div className="notifications-dropdown">
-              <div className="notif-header">Notifications</div>
+              <div className="notif-header">
+                <span>Notifications</span>
 
-              {paginatedNotifications.length === 0 ? (
+                {!manageMode ? (
+                  <div className="notif-header-actions">
+                    <button
+                      type="button"
+                      className="notif-text-btn"
+                      onClick={handleMarkAllAsRead}
+                      disabled={markingAllRead || unreadVisibleCount === 0}
+                    >
+                      Mark all read
+                    </button>
+
+                    <button
+                      type="button"
+                      className="notif-text-btn"
+                      onClick={handleToggleManageMode}
+                      disabled={paginatedNotifications.length === 0}
+                    >
+                      Manage
+                    </button>
+                  </div>
+                ) : (
+                  <div className="notif-header-actions">
+                    <button
+                      type="button"
+                      className="notif-text-btn"
+                      onClick={toggleSelectAllVisible}
+                      disabled={paginatedNotifications.length === 0}
+                    >
+                      {allVisibleSelected ? "Unselect all" : "Select all"}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="notif-text-btn danger"
+                      onClick={handleBulkDelete}
+                      disabled={bulkDeleting || selectedNotifIds.length === 0}
+                    >
+                      Delete selected
+                    </button>
+
+                    <button
+                      type="button"
+                      className="notif-text-btn"
+                      onClick={handleToggleManageMode}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {notifLoading ? (
+                <p className="no-notif">Loading notifications...</p>
+              ) : paginatedNotifications.length === 0 ? (
                 <p className="no-notif">No notifications</p>
               ) : (
                 paginatedNotifications.map((notif) => (
                   <div
                     key={notif.id}
-                    className={`notif-item ${notif.is_read ? "read" : "unread"}`}
+                    className={`notif-item ${notif.is_read ? "read" : "unread"} ${manageMode ? "manage-mode" : ""}`}
                     onClick={() => handleNotificationClick(notif)}
                   >
+                    {manageMode && (
+                      <div
+                        className="notif-checkbox"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedNotifIds.includes(notif.id)}
+                          onChange={(e) =>
+                            toggleSelectNotification(e, notif.id)
+                          }
+                        />
+                      </div>
+                    )}
+
                     <div className="notif-left">{getNotifIcon(notif)}</div>
 
                     <div className="notif-content">
-                      <div className="notif-title">{notif.title}</div>
+                      <div className="notif-top-row">
+                        <div className="notif-title">{notif.title}</div>
+
+                        {!manageMode && (
+                          <button
+                            type="button"
+                            className="notif-delete-btn"
+                            onClick={(e) =>
+                              handleDeleteNotification(e, notif.id)
+                            }
+                            disabled={deletingId === notif.id}
+                            title="Delete notification"
+                          >
+                            <FaTrash />
+                          </button>
+                        )}
+                      </div>
+
                       <div className="notif-message">{notif.message}</div>
+
                       <div className="notif-time">
                         {new Date(notif.created_at).toLocaleString()}
                       </div>
@@ -250,6 +548,7 @@ const Topbar = ({ setMobileOpen }) => {
               {notifications.length > NOTIF_PER_PAGE && (
                 <div className="notif-pagination">
                   <button
+                    type="button"
                     disabled={currentPage === 1}
                     onClick={() => setPage((prev) => prev - 1)}
                   >
@@ -261,6 +560,7 @@ const Topbar = ({ setMobileOpen }) => {
                   </span>
 
                   <button
+                    type="button"
                     disabled={currentPage === totalPages}
                     onClick={() => setPage((prev) => prev + 1)}
                   >
@@ -277,7 +577,7 @@ const Topbar = ({ setMobileOpen }) => {
 
           {profileOpen && (
             <div className="dropdown">
-              <p className="profile-email">{user?.email}</p>
+              <p className="profile-email">{user?.email || "Admin User"}</p>
 
               <hr />
 

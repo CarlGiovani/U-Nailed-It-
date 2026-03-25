@@ -27,3 +27,17 @@ export const markAllNotificationsAsRead = async () => {
   const res = await api.patch("/notifications/read-all");
   return res.data;
 };
+
+// SINGLE DELETE
+export const deleteNotification = async (id) => {
+  const res = await api.delete(`/notifications/${id}`);
+  return res.data;
+};
+
+// BULK DELETE
+export const deleteNotificationsBulk = async (ids) => {
+  const res = await api.delete("/notifications/bulk/delete", {
+    data: { ids },
+  });
+  return res.data;
+};
