@@ -11,7 +11,10 @@ export const addPortfolioItem = async (formData) => {
     console.log("✅ Portfolio created:", res.data);
     return res.data;
   } catch (error) {
-    console.error("❌ Portfolio creation error:", error.response?.data || error.message);
+    console.error(
+      "❌ Portfolio creation error:",
+      error.response?.data || error.message,
+    );
     throw error;
   }
 };
@@ -24,7 +27,10 @@ export const getAllPortfolio = async () => {
     console.log("✅ Portfolio items retrieved:", res.data);
     return res.data;
   } catch (error) {
-    console.error("❌ Fetch all portfolio error:", error.response?.data || error.message);
+    console.error(
+      "❌ Fetch all portfolio error:",
+      error.response?.data || error.message,
+    );
     throw error;
   }
 };
@@ -37,7 +43,10 @@ export const getPortfolioById = async (id) => {
     console.log("✅ Portfolio item retrieved:", res.data);
     return res.data;
   } catch (error) {
-    console.error("❌ Get portfolio by ID error:", error.response?.data || error.message);
+    console.error(
+      "❌ Get portfolio by ID error:",
+      error.response?.data || error.message,
+    );
     throw error;
   }
 };
@@ -52,7 +61,10 @@ export const updatePortfolioItem = async (id, formData) => {
     console.log("✅ Portfolio item updated:", res.data);
     return res.data;
   } catch (error) {
-    console.error("❌ Update portfolio error:", error.response?.data || error.message);
+    console.error(
+      "❌ Update portfolio error:",
+      error.response?.data || error.message,
+    );
     throw error;
   }
 };
@@ -65,7 +77,10 @@ export const deletePortfolioItem = async (id) => {
     console.log("✅ Portfolio item deleted:", res.data);
     return res.data;
   } catch (error) {
-    console.error("❌ Delete portfolio error:", error.response?.data || error.message);
+    console.error(
+      "❌ Delete portfolio error:",
+      error.response?.data || error.message,
+    );
     throw error;
   }
 };
