@@ -6,7 +6,7 @@ export const createPortfolio = async (payload) => {
     .from("portfolio")
     .insert([payload])
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
   return data;
@@ -29,7 +29,7 @@ export const getPortfolioById = async (id) => {
     .from("portfolio")
     .select("*")
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
   return data;
@@ -42,7 +42,7 @@ export const updatePortfolio = async (id, payload) => {
     .update(payload)
     .eq("id", id)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
   return data;
@@ -50,10 +50,7 @@ export const updatePortfolio = async (id, payload) => {
 
 // DELETE
 export const deletePortfolio = async (id) => {
-  const { error } = await supabase
-    .from("portfolio")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("portfolio").delete().eq("id", id);
 
   if (error) throw error;
 };

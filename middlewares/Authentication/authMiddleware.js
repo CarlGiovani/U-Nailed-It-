@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import supabase from "../../utils/supabaseClient.js";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_KEY;
@@ -21,6 +22,7 @@ export const verifyAdmin = async (req, res, next) => {
       return res.status(401).json({ error: "Malformed token" });
     }
 
+    // User-scoped client only for validating the token/user identity
     const supabaseUserClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
         headers: {
@@ -29,6 +31,7 @@ export const verifyAdmin = async (req, res, next) => {
       },
       auth: {
         persistSession: false,
+        autoRefreshToken: false,
       },
     });
 
@@ -40,7 +43,8 @@ export const verifyAdmin = async (req, res, next) => {
 
     const user = data.user;
 
-    const { data: adminProfile, error: profileError } = await supabaseUserClient
+    // Use backend service-role client for admin profile lookup
+    const { data: adminProfile, error: profileError } = await supabase
       .from("admin_profiles")
       .select("id, email, role, username, full_name")
       .eq("id", user.id)
@@ -60,8 +64,8 @@ export const verifyAdmin = async (req, res, next) => {
 
     req.user = user;
     req.admin = adminProfile;
-    req.supabase = supabaseUserClient;
 
+    // wag mo na i-attach yung req.supabase = supabaseUserClient
     next();
   } catch (err) {
     console.error("Verify admin error:", err);

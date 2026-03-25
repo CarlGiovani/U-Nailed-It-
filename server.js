@@ -1,11 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import { scheduleBookingExpiry } from "./utils/bookingExpiryCron.js";
 import { scheduleSlotCleanup } from "./utils/slotCron.js";
 
-//ENDPOINTS IMPORT
+// ENDPOINTS IMPORT
 import notificationRoutes from "./routes/Admin_Notification_Feature/notificationRoutes.js";
 import announcementRoutes from "./routes/Announcement_Feature/announcementRoutes.js";
 import auditRoutes from "./routes/Audit_Feature/auditRoutes.js";
@@ -20,22 +19,34 @@ import portfolioRoutes from "./routes/portfolio_Feature/portfolioRoutes.js";
 import reviewsRoutes from "./routes/Review_Feature/reviewsRoutes.js";
 import servicesRouter from "./routes/Services_Feature/serviceRoutes.js";
 import testEmailRoutes from "./routes/testEmail.js";
+
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// MIDDLEWALRE
+// MIDDLEWARE
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: [
+      "http://192.168.100.5:5173",
+      "http://192.168.100.5:5174",
+      "http://localhost:5173",
+      "http://localhost:5174",
+    ],
     credentials: true,
   }),
 );
 
-app.use(express.json()); // for parsing application/json
-app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// HEALTH CHECK
+app.get("/", (req, res) => {
+  res.send("YOUR SERVER IS RUNNING!!!!!!");
+});
+
+// ROUTES
 app.use("/api/auth", authRoutes);
 app.use("/api/customers", customerRouter);
 app.use("/api/services", servicesRouter);
@@ -51,28 +62,11 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/notifications", notificationRoutes);
 
-// db or supabaseclienr
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY,
-);
-
-// start cron job
+// START CRON JOBS
 scheduleSlotCleanup();
 scheduleBookingExpiry();
-// TEST SERVER ROUTES
-app.get("/", (req, res) => {
-  res.send("YOUR SERVER IS RUNNING!!!!!!");
-});
 
-// Example route to test Supabase connection
-app.get("/test-supabase", async (req, res) => {
-  const { data, error } = await supabase.from("services").select("*").limit(1);
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
-});
-
-// Start server
+// START SERVER
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

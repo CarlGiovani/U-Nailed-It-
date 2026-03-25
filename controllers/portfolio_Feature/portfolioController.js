@@ -1,9 +1,9 @@
 import {
   createPortfolio,
+  deletePortfolio,
   getAllPortfolio,
   getPortfolioById,
   updatePortfolio,
-  deletePortfolio,
 } from "../../models/Portfolio_Feature/portfolioModel.js";
 
 import crypto from "crypto";
@@ -25,6 +25,15 @@ const uploadImage = async (file) => {
 
   const { data } = supabase.storage.from("portfolio").getPublicUrl(filePath);
   return data.publicUrl;
+};
+
+const getStoragePathFromUrl = (url) => {
+  const marker = "/storage/v1/object/public/portfolio/";
+  const index = url.indexOf(marker);
+
+  if (index === -1) return null;
+
+  return url.substring(index + marker.length);
 };
 
 /* ================= CREATE ================= */
@@ -58,8 +67,10 @@ export const addPortfolioItem = async (req, res) => {
 export const fetchAllPortfolio = async (req, res) => {
   try {
     const data = await getAllPortfolio();
+    res.set("Cache-Control", "no-store");
     res.json(data);
   } catch (err) {
+    console.error("[GET /portfolio] error:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -79,7 +90,8 @@ export const fetchPortfolioById = async (req, res) => {
 export const editPortfolioItem = async (req, res) => {
   try {
     const portfolio = await getPortfolioById(req.params.id);
-    if (!portfolio) return res.status(404).json({ error: "Portfolio not found" });
+    if (!portfolio)
+      return res.status(404).json({ error: "Portfolio not found" });
 
     let images = portfolio.images;
 
@@ -107,9 +119,27 @@ export const editPortfolioItem = async (req, res) => {
 export const removePortfolioItem = async (req, res) => {
   try {
     const portfolio = await getPortfolioById(req.params.id);
-    if (!portfolio) return res.status(404).json({ error: "Portfolio not found" });
+
+    if (!portfolio) {
+      return res.status(404).json({ error: "Portfolio not found" });
+    }
+
+    if (portfolio.images && portfolio.images.length > 0) {
+      const filePaths = portfolio.images
+        .map((url) => getStoragePathFromUrl(url))
+        .filter(Boolean);
+
+      if (filePaths.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from("portfolio")
+          .remove(filePaths);
+
+        if (storageError) throw storageError;
+      }
+    }
 
     await deletePortfolio(req.params.id);
+
     res.json({ message: "Portfolio deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });

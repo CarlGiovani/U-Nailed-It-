@@ -1,4 +1,4 @@
-import supabaseAdmin from "../../utils/supabaseAdminClient.js";
+
 import supabase from "../../utils/supabaseClient.js";
 
 // CREATE ACCOUNT

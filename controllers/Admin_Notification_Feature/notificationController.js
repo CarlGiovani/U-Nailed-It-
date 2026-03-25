@@ -3,17 +3,15 @@ import * as notificationService from "../../services/Admin_Notification_Feature/
 export const getNotifications = async (req, res) => {
   try {
     const notifications = await notificationService.getNotifications();
-
     res.json({
       success: true,
       data: notifications,
     });
   } catch (err) {
-    console.error(err);
-
     res.status(500).json({
       success: false,
       message: "Failed to fetch notifications",
+      error: err.message,
     });
   }
 };
@@ -21,7 +19,6 @@ export const getNotifications = async (req, res) => {
 export const getUnreadCount = async (req, res) => {
   try {
     const count = await notificationService.getUnreadCount();
-
     res.json({
       success: true,
       count,

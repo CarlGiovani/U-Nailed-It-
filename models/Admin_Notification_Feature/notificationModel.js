@@ -1,7 +1,6 @@
 import supabase from "../../utils/supabaseClient.js";
 
 export const NotificationModel = {
-
   async getAll(limit = 20) {
     const { data, error } = await supabase
       .from("notifications")
@@ -16,8 +15,11 @@ export const NotificationModel = {
   async getUnreadCount() {
     const { count, error } = await supabase
       .from("notifications")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("is_read", false);
+
+    console.log("UNREAD COUNT:", count);
+    console.log("UNREAD ERROR:", error);
 
     if (error) throw error;
     return count;
@@ -42,5 +44,4 @@ export const NotificationModel = {
 
     if (error) throw error;
   },
-
 };
