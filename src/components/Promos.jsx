@@ -1,58 +1,38 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { getActiveAnnouncements } from "../../backend/promosApi";
 import "../styles/promos.css";
 
 const Promos = () => {
-  const [announcements, setAnnouncements] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    data: announcements = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["announcements"],
+    queryFn: getActiveAnnouncements,
+    staleTime: 1000 * 60 * 5, // 5 mins
+    gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+  });
 
   const [previewImages, setPreviewImages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-
-  useEffect(() => {
-    const fetchAnnouncements = async () => {
-      try {
-        const data = await getActiveAnnouncements();
-        setAnnouncements(data);
-      } catch (err) {
-        console.error("Failed to fetch announcements", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAnnouncements();
-  }, []);
-
-  /* =========================
-     OPEN PREVIEW
-  ========================= */
 
   const openPreview = (images, index) => {
     setPreviewImages(images);
     setCurrentIndex(index);
   };
 
-  /* =========================
-     CLOSE PREVIEW
-  ========================= */
-
   const closePreview = () => {
     setPreviewImages([]);
     setCurrentIndex(0);
   };
 
-  /* =========================
-     LOCK SCROLL WHEN OPEN
-  ========================= */
-
   useEffect(() => {
     document.body.style.overflow = previewImages.length > 0 ? "hidden" : "auto";
   }, [previewImages]);
-
-  /* =========================
-     NAVIGATION
-  ========================= */
 
   const nextImage = () => {
     setCurrentIndex((prev) =>
@@ -66,12 +46,12 @@ const Promos = () => {
     );
   };
 
+  if (isError) {
+    console.error("Failed to fetch announcements", error);
+  }
+
   return (
     <>
-      {/* =========================
-         PROMOS SECTION
-      ========================= */}
-
       <section className="bulletin" id="promos">
         <div className="container">
           <div className="section-title">
@@ -79,46 +59,50 @@ const Promos = () => {
             <p>Latest updates and special offers</p>
           </div>
 
-          {loading && <p className="loading-text">Loading announcements...</p>}
+          {isLoading && (
+            <p className="loading-text">Loading announcements...</p>
+          )}
 
-          <div className="bulletin-board">
-            {announcements.map((item) => (
-              <div key={item.id} className="note-card">
-                <div className="pin"></div>
+          {!isLoading && announcements.length === 0 && (
+            <p className="loading-text">No announcements available.</p>
+          )}
 
-                {item.images?.length > 0 && (
-                  <div className="note-image-grid">
-                    {item.images.map((img, index) => (
-                      <img
-                        key={index}
-                        src={img}
-                        alt={item.title}
-                        loading="lazy"
-                        onClick={() => openPreview(item.images, index)}
-                      />
-                    ))}
-                  </div>
-                )}
+          {!isLoading && !isError && announcements.length > 0 && (
+            <div className="bulletin-board">
+              {announcements.map((item) => (
+                <div key={item.id} className="note-card">
+                  <div className="pin"></div>
 
-                <h3>{item.title}</h3>
-                <p>{item.content}</p>
-
-                <div className="note-footer">
-                  {item.end_date ? (
-                    <span>Until {item.end_date}</span>
-                  ) : (
-                    <span>Ongoing</span>
+                  {item.images?.length > 0 && (
+                    <div className="note-image-grid">
+                      {item.images.map((img, index) => (
+                        <img
+                          key={index}
+                          src={img}
+                          alt={item.title}
+                          loading="lazy"
+                          onClick={() => openPreview(item.images, index)}
+                        />
+                      ))}
+                    </div>
                   )}
+
+                  <h3>{item.title}</h3>
+                  <p>{item.content}</p>
+
+                  <div className="note-footer">
+                    {item.end_date ? (
+                      <span>Until {item.end_date}</span>
+                    ) : (
+                      <span>Ongoing</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
-
-      {/* =========================
-         IMAGE PREVIEW MODAL
-      ========================= */}
 
       {previewImages.length > 0 && (
         <div className="image-preview-overlay" onClick={closePreview}>

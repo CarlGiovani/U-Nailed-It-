@@ -1,29 +1,27 @@
-import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { getActivePolicies } from "../../backend/policiesApi";
 import "../styles/policies.css";
 
 const Policies = () => {
-  const [policies, setPolicies] = useState([]);
-  const [loading, setLoading] = useState(true);
   const itemsRef = useRef([]);
 
-  useEffect(() => {
-    const fetchPolicies = async () => {
-      try {
-        const data = await getActivePolicies();
-        setPolicies(data);
-      } catch (error) {
-        console.error("Failed to fetch policies:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const {
+    data: policies = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["activePolicies"],
+    queryFn: getActivePolicies,
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 15, // keep cache for 15 minutes
+    refetchOnWindowFocus: false,
+  });
 
-    fetchPolicies();
-  }, []);
-
-  // 🔥 Scroll Reveal Animation
   useEffect(() => {
+    if (!policies.length) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -32,7 +30,7 @@ const Policies = () => {
           }
         });
       },
-      { threshold: 0.2 }
+      { threshold: 0.2 },
     );
 
     itemsRef.current.forEach((el) => {
@@ -42,6 +40,10 @@ const Policies = () => {
     return () => observer.disconnect();
   }, [policies]);
 
+  if (isError) {
+    console.error("Failed to fetch policies:", error);
+  }
+
   return (
     <section className="policies" id="policies">
       <div className="container">
@@ -50,8 +52,10 @@ const Policies = () => {
           <p>Important information for your appointment</p>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <p className="loading-text">Loading policies...</p>
+        ) : isError ? (
+          <p className="loading-text">Failed to load policies.</p>
         ) : policies.length === 0 ? (
           <p className="loading-text">No policies available.</p>
         ) : (

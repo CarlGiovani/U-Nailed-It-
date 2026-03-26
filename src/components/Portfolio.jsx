@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import Slider from "react-slick";
 import { getAllPortfolio } from "../../backend/portfolioApi";
@@ -31,7 +32,37 @@ const PrevArrow = ({ onClick }) => (
 );
 
 const Portfolio = () => {
-  const [portfolioItems, setPortfolioItems] = useState([]);
+  /* =========================
+     PORTFOLIO QUERY + CACHE
+  ========================= */
+  const {
+    data: portfolioItems = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["portfolioItems"],
+    // CACHE KEY
+    // dito sine-save ni React Query ang portfolio data
+
+    queryFn: getAllPortfolio,
+    // FETCH FUNCTION
+    // ito ang tatawag sa API kapag walang cache
+    // o stale na ang cache
+
+    staleTime: 1000 * 60 * 10,
+    // CACHING
+    // 10 minutes fresh ang data
+    // within 10 mins, cached data muna ang gagamitin
+
+    gcTime: 1000 * 60 * 15,
+    // CACHE LIFETIME
+    // itatago ang cache sa memory for 15 minutes
+
+    refetchOnWindowFocus: false,
+    // CACHE BEHAVIOR
+    // pagbalik sa tab, hindi auto-refetch
+  });
 
   const [sliderImages, setSliderImages] = useState([]);
   const [sliderTitle, setSliderTitle] = useState("");
@@ -45,23 +76,6 @@ const Portfolio = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
-
-  /* =========================
-     FETCH PORTFOLIO
-  ========================= */
-
-  useEffect(() => {
-    const fetchPortfolio = async () => {
-      try {
-        const data = await getAllPortfolio();
-        setPortfolioItems(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Failed to load portfolio", err);
-      }
-    };
-
-    fetchPortfolio();
-  }, []);
 
   /* =========================
      OPEN SLIDER
@@ -91,6 +105,10 @@ const Portfolio = () => {
 
   useEffect(() => {
     document.body.style.overflow = isSliderOpen ? "hidden" : "auto";
+
+    return () => {
+      document.body.style.overflow = "auto";
+    };
   }, [isSliderOpen]);
 
   /* =========================
@@ -129,16 +147,16 @@ const Portfolio = () => {
   const currentItems = portfolioItems.slice(start, start + itemsPerPage);
   const totalPages = Math.ceil(portfolioItems.length / itemsPerPage);
 
+  if (isError) {
+    console.error("Failed to load portfolio", error);
+  }
+
   /* =========================
      COMPONENT
   ========================= */
 
   return (
     <>
-      {/* =========================
-         PORTFOLIO SECTION
-      ========================= */}
-
       <section className="portfolio" id="portfolio">
         <div className="container">
           <div className="section-title">
@@ -146,49 +164,59 @@ const Portfolio = () => {
             <p>This is some of the memories and works</p>
           </div>
 
-          <div className="portfolio-grid">
-            {currentItems.map((item) => (
-              <div
-                key={item.id}
-                className="portfolio-item"
-                onClick={() => openSlider(item)}
-              >
-                <img src={item.images?.[0]} alt={item.title} loading="lazy" />
+          {isLoading ? (
+            <p className="loading-text">Loading portfolio...</p>
+          ) : isError ? (
+            <p className="loading-text">Failed to load portfolio.</p>
+          ) : portfolioItems.length === 0 ? (
+            <p className="loading-text">No portfolio items available.</p>
+          ) : (
+            <>
+              <div className="portfolio-grid">
+                {currentItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="portfolio-item"
+                    onClick={() => openSlider(item)}
+                  >
+                    <img
+                      src={item.images?.[0]}
+                      alt={item.title}
+                      loading="lazy"
+                    />
 
-                <div className="portfolio-overlay">
-                  <h3>{item.title}</h3>
-                </div>
+                    <div className="portfolio-overlay">
+                      <h3>{item.title}</h3>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {totalPages > 1 && (
-            <div className="portfolio-pagination">
-              <button
-                onClick={() => setCurrentPage((p) => p - 1)}
-                disabled={currentPage === 1}
-              >
-                Prev
-              </button>
+              {totalPages > 1 && (
+                <div className="portfolio-pagination">
+                  <button
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Prev
+                  </button>
 
-              <span>
-                {currentPage} / {totalPages}
-              </span>
+                  <span>
+                    {currentPage} / {totalPages}
+                  </span>
 
-              <button
-                onClick={() => setCurrentPage((p) => p + 1)}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </button>
-            </div>
+                  <button
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
-
-      {/* =========================
-         SLIDER MODAL (OUTSIDE SECTION)
-      ========================= */}
 
       {isSliderOpen && (
         <div className={`slider-modal ${isFullscreen ? "fullscreen" : ""}`}>
