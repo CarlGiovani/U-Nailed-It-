@@ -21,12 +21,14 @@ const Reviews = () => {
   const [page, setPage] = useState(1);
   const [previewImage, setPreviewImage] = useState(null);
 
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError, error, isFetching } = useQuery({
     queryKey: ["approvedReviews", page],
     queryFn: () => getApprovedReviews(page, 6),
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
+
+    placeholderData: (prev) => prev,
   });
 
   const reviews = data?.data || [];
@@ -90,6 +92,10 @@ const Reviews = () => {
           <h2>Why Customers Love Us</h2>
           <p>Real experiences from our happy nail art clients</p>
         </div>
+
+        {isFetching && !isLoading && (
+          <p className="loading-text">Loading new page...</p>
+        )}
 
         {isError ? (
           <p className="loading-text">Failed to load reviews.</p>
