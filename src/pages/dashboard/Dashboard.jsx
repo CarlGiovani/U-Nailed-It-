@@ -1,3 +1,4 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
@@ -15,6 +16,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import supabase from "../../../config/supabaseClient.js";
 import AdminLayout from "../../components/layout/adminLayout";
 import { getAuditLogs } from "../../services/BACKEND/adminAudtiApi";
 import {
@@ -25,64 +27,130 @@ import "../../styles/dashboard.css";
 
 const ITEMS_PER_PAGE = 5;
 
+const fetchDashboardData = async () => {
+  const [dashboardData, logs] = await Promise.all([
+    getDashboardData(),
+    getAuditLogs(),
+  ]);
+
+  return {
+    stats: {
+      totalBookings: dashboardData?.stats?.totalBookings || 0,
+      totalRevenue: dashboardData?.stats?.totalRevenue || 0,
+      pendingReviews: dashboardData?.stats?.pendingReviews || 0,
+      activeServices: dashboardData?.stats?.activeServices || 0,
+      pendingApprovalBookings:
+        dashboardData?.stats?.pendingApprovalBookings || 0,
+    },
+    analytics: {
+      bookingsPerMonth: dashboardData?.analytics?.bookingsPerMonth || {},
+      revenuePerMonth: dashboardData?.analytics?.revenuePerMonth || {},
+    },
+    recentBookings: Array.isArray(dashboardData?.recentBookings)
+      ? dashboardData.recentBookings
+      : [],
+    activities: Array.isArray(logs) ? logs : [],
+  };
+};
+
 const Dashboard = () => {
-  const [stats, setStats] = useState({
+  const queryClient = useQueryClient();
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [exportingPDF, setExportingPDF] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
+
+  const {
+    data: dashboardData,
+    isLoading,
+    isFetching,
+    error,
+  } = useQuery({
+    queryKey: ["admin-dashboard"],
+    queryFn: fetchDashboardData,
+    staleTime: 1000 * 60 * 2, // 2 mins fresh
+    gcTime: 1000 * 60 * 10, // 10 mins cache
+    refetchOnWindowFocus: true,
+    retry: 2,
+  });
+
+  const stats = dashboardData?.stats || {
     totalBookings: 0,
     totalRevenue: 0,
     pendingReviews: 0,
     activeServices: 0,
     pendingApprovalBookings: 0,
-  });
+  };
 
-  const [analytics, setAnalytics] = useState({
+  const analytics = dashboardData?.analytics || {
     bookingsPerMonth: {},
     revenuePerMonth: {},
-  });
+  };
 
-  const [bookings, setBookings] = useState([]);
-  const [activities, setActivities] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [exportingPDF, setExportingPDF] = useState(false);
-  const [exportingExcel, setExportingExcel] = useState(false);
+  const bookings = useMemo(
+    () => dashboardData?.recentBookings || [],
+    [dashboardData?.recentBookings],
+  );
+  const activities = dashboardData?.activities || [];
 
-  /* ===============================
-     FETCH DATA
-  =============================== */
   useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        const data = await getDashboardData();
+    let timeoutId = null;
 
-        setStats({
-          totalBookings: data?.stats?.totalBookings || 0,
-          totalRevenue: data?.stats?.totalRevenue || 0,
-          pendingReviews: data?.stats?.pendingReviews || 0,
-          activeServices: data?.stats?.activeServices || 0,
-          pendingApprovalBookings: data?.stats?.pendingApprovalBookings || 0,
-        });
+    const invalidateDashboard = () => {
+      if (timeoutId) clearTimeout(timeoutId);
 
-        setAnalytics({
-          bookingsPerMonth: data?.analytics?.bookingsPerMonth || {},
-          revenuePerMonth: data?.analytics?.revenuePerMonth || {},
-        });
-
-        setBookings(
-          Array.isArray(data?.recentBookings) ? data.recentBookings : [],
-        );
-
-        const logs = await getAuditLogs();
-        setActivities(Array.isArray(logs) ? logs : []);
-      } catch (err) {
-        console.error("Dashboard error:", err);
-      }
+      timeoutId = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      }, 300);
     };
 
-    loadDashboard();
-  }, []);
+    const dashboardChannel = supabase
+      .channel("admin-dashboard-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "bookings" },
+        invalidateDashboard,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "revenue_logs" },
+        invalidateDashboard,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "reviews" },
+        invalidateDashboard,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications" },
+        invalidateDashboard,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "services" },
+        invalidateDashboard,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "audit_logs" },
+        invalidateDashboard,
+      )
+      .subscribe();
 
-  /* ===============================
-     PAGINATION
-  =============================== */
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      supabase.removeChannel(dashboardChannel);
+    };
+  }, [queryClient]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(bookings.length / ITEMS_PER_PAGE));
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [bookings.length, currentPage]);
+
   const totalPages = Math.ceil(bookings.length / ITEMS_PER_PAGE);
 
   const paginatedBookings = useMemo(() => {
@@ -92,9 +160,6 @@ const Dashboard = () => {
     );
   }, [bookings, currentPage]);
 
-  /* ===============================
-     CHART DATA
-  =============================== */
   const bookingChart = useMemo(() => {
     return Object.keys(analytics.bookingsPerMonth || {}).map((month) => ({
       month,
@@ -109,9 +174,6 @@ const Dashboard = () => {
     }));
   }, [analytics.revenuePerMonth]);
 
-  /* ===============================
-     TOP SERVICES
-  =============================== */
   const topServices = useMemo(() => {
     const serviceCount = {};
 
@@ -128,9 +190,6 @@ const Dashboard = () => {
 
   const COLORS = ["#d4af37", "#ff69b4", "#8884d8", "#82ca9d", "#60a5fa"];
 
-  /* ===============================
-     HELPERS
-  =============================== */
   const getStatusClass = (status) => {
     if (status === "approved") return "status approved";
     if (status === "completed") return "status completed";
@@ -155,7 +214,6 @@ const Dashboard = () => {
 
   const getVariantLabel = (variant) => {
     if (!variant) return "N/A";
-
     return (
       [variant.body_part, variant.size].filter(Boolean).join(" - ") || "N/A"
     );
@@ -170,9 +228,6 @@ const Dashboard = () => {
     }
   };
 
-  /* ===============================
-     EXPORT EXCEL
-  =============================== */
   const exportExcel = async () => {
     try {
       setExportingExcel(true);
@@ -216,9 +271,6 @@ const Dashboard = () => {
         });
       };
 
-      /* ===============================
-         BOOKINGS
-      =============================== */
       const bookingsSheet = workbook.addWorksheet("Bookings");
 
       bookingsSheet.columns = [
@@ -290,9 +342,6 @@ const Dashboard = () => {
       styleHeader(bookingsSheet);
       autoFitColumns(bookingsSheet);
 
-      /* ===============================
-         CUSTOMERS
-      =============================== */
       const customersSheet = workbook.addWorksheet("Customers");
 
       customersSheet.columns = [
@@ -318,9 +367,6 @@ const Dashboard = () => {
       styleHeader(customersSheet);
       autoFitColumns(customersSheet);
 
-      /* ===============================
-         SERVICES
-      =============================== */
       const servicesSheet = workbook.addWorksheet("Services");
 
       servicesSheet.columns = [
@@ -350,9 +396,6 @@ const Dashboard = () => {
       styleHeader(servicesSheet);
       autoFitColumns(servicesSheet);
 
-      /* ===============================
-         SERVICE CATEGORIES
-      =============================== */
       const categoriesSheet = workbook.addWorksheet("Service Categories");
 
       categoriesSheet.columns = [
@@ -378,9 +421,6 @@ const Dashboard = () => {
       styleHeader(categoriesSheet);
       autoFitColumns(categoriesSheet);
 
-      /* ===============================
-         SERVICE VARIANTS
-      =============================== */
       const variantsSheet = workbook.addWorksheet("Service Variants");
 
       variantsSheet.columns = [
@@ -412,9 +452,6 @@ const Dashboard = () => {
       styleHeader(variantsSheet);
       autoFitColumns(variantsSheet);
 
-      /* ===============================
-         REVIEWS
-      =============================== */
       const reviewsSheet = workbook.addWorksheet("Reviews");
 
       reviewsSheet.columns = [
@@ -446,9 +483,6 @@ const Dashboard = () => {
       styleHeader(reviewsSheet);
       autoFitColumns(reviewsSheet);
 
-      /* ===============================
-         NOTIFICATIONS
-      =============================== */
       const notificationsSheet = workbook.addWorksheet("Notifications");
 
       notificationsSheet.columns = [
@@ -480,9 +514,6 @@ const Dashboard = () => {
       styleHeader(notificationsSheet);
       autoFitColumns(notificationsSheet);
 
-      /* ===============================
-         REVENUE LOGS
-      =============================== */
       const revenueLogsSheet = workbook.addWorksheet("Revenue Logs");
 
       revenueLogsSheet.columns = [
@@ -510,9 +541,6 @@ const Dashboard = () => {
       styleHeader(revenueLogsSheet);
       autoFitColumns(revenueLogsSheet);
 
-      /* ===============================
-         ANNOUNCEMENTS
-      =============================== */
       const announcementsSheet = workbook.addWorksheet("Announcements");
 
       announcementsSheet.columns = [
@@ -546,9 +574,6 @@ const Dashboard = () => {
       styleHeader(announcementsSheet);
       autoFitColumns(announcementsSheet);
 
-      /* ===============================
-         POLICIES
-      =============================== */
       const policiesSheet = workbook.addWorksheet("Policies");
 
       policiesSheet.columns = [
@@ -574,9 +599,6 @@ const Dashboard = () => {
       styleHeader(policiesSheet);
       autoFitColumns(policiesSheet);
 
-      /* ===============================
-         CALENDAR SLOTS
-      =============================== */
       const calendarSlotsSheet = workbook.addWorksheet("Calendar Slots");
 
       calendarSlotsSheet.columns = [
@@ -621,10 +643,6 @@ const Dashboard = () => {
     }
   };
 
-  /* ===============================
-     EXPORT PDF
-     - Uses getSystemExportData for accuracy
-  =============================== */
   const exportPDF = async () => {
     try {
       setExportingPDF(true);
@@ -750,7 +768,6 @@ const Dashboard = () => {
 
       addHeader();
 
-      /* SUMMARY */
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
       doc.setTextColor(33, 33, 33);
@@ -813,7 +830,6 @@ const Dashboard = () => {
         margin: { left: marginX, right: marginX },
       });
 
-      /* MONTHLY BOOKINGS */
       const monthlyBookingRows =
         Object.keys(pdfBookingsPerMonth).length > 0
           ? Object.entries(pdfBookingsPerMonth).map(([month, count]) => [
@@ -846,7 +862,6 @@ const Dashboard = () => {
         margin: { left: marginX, right: marginX },
       });
 
-      /* MONTHLY REVENUE */
       const monthlyRevenueRows =
         Object.keys(pdfRevenuePerMonth).length > 0
           ? Object.entries(pdfRevenuePerMonth).map(([month, revenue]) => [
@@ -879,7 +894,6 @@ const Dashboard = () => {
         margin: { left: marginX, right: marginX },
       });
 
-      /* TOP SERVICES */
       const topServiceRows =
         pdfTopServices.length > 0
           ? pdfTopServices.map((item, index) => [
@@ -908,7 +922,6 @@ const Dashboard = () => {
         margin: { left: marginX, right: marginX },
       });
 
-      /* BOOKINGS TABLE */
       const bookingRows =
         allBookings.length > 0
           ? allBookings
@@ -960,7 +973,6 @@ const Dashboard = () => {
         margin: { left: marginX, right: marginX },
       });
 
-      /* REVIEWS */
       const reviewRows =
         allReviews.length > 0
           ? allReviews
@@ -998,7 +1010,6 @@ const Dashboard = () => {
         margin: { left: marginX, right: marginX },
       });
 
-      /* AUDIT LOGS */
       const auditRows =
         activities.length > 0
           ? activities
@@ -1048,10 +1059,36 @@ const Dashboard = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="dashboard-container">
+          <h1 className="dashboard-title">Dashboard Overview</h1>
+          <div className="empty-panel">Loading dashboard...</div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="dashboard-container">
+          <h1 className="dashboard-title">Dashboard Overview</h1>
+          <div className="empty-panel">Failed to load dashboard.</div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout>
       <div className="dashboard-container">
         <h1 className="dashboard-title">Dashboard Overview</h1>
+
+        {isFetching && (
+          <div className="loading-text">Refreshing dashboard...</div>
+        )}
 
         <div className="stats-grid">
           <div className="stat-card">
