@@ -1,17 +1,45 @@
 import cron from "node-cron";
-import { expirePendingBookings } from "./expirePendingBookings.js";
-// adjust path depende sa folder mo
+import supabase from "./supabaseClient.js";
+
+let isRunning = false;
 
 export const scheduleBookingExpiry = () => {
-  // runs every minute (recommended). pwede */5 for every 5 minutes
-  cron.schedule("0 1 * * * *", async () => {
+  cron.schedule("* * * * *", async () => {
+    if (isRunning) return;
+    isRunning = true;
+
     console.log("[CRON] Running booking expiry cleanup...");
 
+    const now = new Date().toISOString();
+
     try {
-      await expirePendingBookings();
+      const { error: bookingErr } = await supabase
+        .from("bookings")
+        .update({ status: "expired" })
+        .eq("status", "pending_payment")
+        .lt("expires_at", now)
+        .select("id");
+
+      if (bookingErr) {
+        console.error("Expire bookings error:", bookingErr.message);
+      }
+
+      const { error: intentErr } = await supabase
+        .from("payment_intents")
+        .update({ status: "expired" })
+        .eq("status", "pending")
+        .lt("expires_at", now)
+        .select("id");
+
+      if (intentErr) {
+        console.error("Expire intents error:", intentErr.message);
+      }
+
       console.log("[CRON] Booking expiry cleanup done");
     } catch (err) {
       console.error("[CRON ERROR - booking expiry]", err);
+    } finally {
+      isRunning = false;
     }
   });
 };
