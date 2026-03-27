@@ -1092,7 +1092,6 @@ const Booking = ({ services: servicesProp = [] }) => {
     bookingId,
     step,
     hardRestart,
-    clearActiveFlow,
     queryClient,
     currentMonth,
   ]);
