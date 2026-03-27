@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {  useState } from "react";
 import AdminLayout from "../../components/layout/adminLayout";
 
 import {
@@ -11,53 +12,64 @@ import {
 import "../../styles/policies.css";
 
 const ITEMS_PER_PAGE = 6;
+const POLICIES_QUERY_KEY = ["admin-policies"];
 
 const Policies = () => {
-  const [policies, setPolicies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   const [modal, setModal] = useState(null);
-  const [saving, setSaving] = useState(false);
-
   const [deleteItem, setDeleteItem] = useState(null);
-  const [deleting, setDeleting] = useState(false);
-
   const [currentPage, setCurrentPage] = useState(1);
-
   const [errors, setErrors] = useState({});
 
-  /* ================= FETCH ================= */
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
+  /* ================= CACHED FETCH ================= */
+  const { data: policies = [], isLoading } = useQuery({
+    queryKey: POLICIES_QUERY_KEY,
+    queryFn: async () => {
       const data = await getAllPolicies();
-      const list = data.data || data;
-      setPolicies(list);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+      return data?.data || data || [];
+    },
+    staleTime: 1000 * 60 * 3,
+    gcTime: 1000 * 60 * 10,
+  });
+
+  const invalidatePolicies = async () => {
+    await queryClient.invalidateQueries({ queryKey: POLICIES_QUERY_KEY });
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  /* ================= MUTATIONS ================= */
+  const createPolicyMutation = useMutation({
+    mutationFn: createPolicy,
+    onSuccess: invalidatePolicies,
+  });
+
+  const updatePolicyMutation = useMutation({
+    mutationFn: ({ id, payload }) => updatePolicy(id, payload),
+    onSuccess: invalidatePolicies,
+  });
+
+  const deletePolicyMutation = useMutation({
+    mutationFn: deletePolicy,
+    onSuccess: invalidatePolicies,
+  });
 
   /* ================= PAGINATION ================= */
-
-  const totalPages = Math.ceil(policies.length / ITEMS_PER_PAGE);
-
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-
+  const totalPages = Math.max(1, Math.ceil(policies.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
   const currentItems = policies.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  const goToPage = (page) => setCurrentPage(page);
+  const goToPage = (page) => {
+    const clampedPage = Math.min(Math.max(page, 1), totalPages);
+    setCurrentPage(clampedPage);
+  };
+
+
 
   /* ================= SAVE ================= */
-
   const handleSave = async () => {
+    if (!modal) return;
+
     const newErrors = {};
 
     if (!modal.title?.trim()) {
@@ -74,8 +86,6 @@ const Policies = () => {
     }
 
     try {
-      setSaving(true);
-
       const payload = {
         title: modal.title,
         content: modal.content,
@@ -83,34 +93,29 @@ const Policies = () => {
       };
 
       if (modal.id) {
-        await updatePolicy(modal.id, payload);
+        await updatePolicyMutation.mutateAsync({
+          id: modal.id,
+          payload,
+        });
       } else {
-        await createPolicy(payload);
+        await createPolicyMutation.mutateAsync(payload);
       }
 
       closeModal();
-      fetchData();
     } catch (err) {
       console.error(err);
-    } finally {
-      setSaving(false);
     }
   };
 
   /* ================= DELETE ================= */
-
   const confirmDelete = async () => {
+    if (!deleteItem?.id) return;
+
     try {
-      setDeleting(true);
-
-      await deletePolicy(deleteItem.id);
-
+      await deletePolicyMutation.mutateAsync(deleteItem.id);
       setDeleteItem(null);
-      fetchData();
     } catch (err) {
       console.error(err);
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -119,8 +124,12 @@ const Policies = () => {
     setErrors({});
   };
 
-  /* ================= RENDER ================= */
+  const saving =
+    createPolicyMutation.isPending || updatePolicyMutation.isPending;
 
+  const deleting = deletePolicyMutation.isPending;
+
+  /* ================= RENDER ================= */
   return (
     <AdminLayout>
       <div className="policies-page">
@@ -141,12 +150,10 @@ const Policies = () => {
           </button>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div>Loading...</div>
         ) : (
           <>
-            {/* TABLE */}
-
             <div className="policies-grid">
               {currentItems.map((item) => (
                 <div key={item.id} className="policy-card">
@@ -184,12 +191,11 @@ const Policies = () => {
                 </div>
               ))}
             </div>
-            {/* PAGINATION */}
 
             <div className="pagination">
               <button
-                disabled={currentPage === 1}
-                onClick={() => goToPage(currentPage - 1)}
+                disabled={safeCurrentPage === 1}
+                onClick={() => goToPage(safeCurrentPage - 1)}
               >
                 Prev
               </button>
@@ -200,7 +206,7 @@ const Policies = () => {
                 return (
                   <button
                     key={page}
-                    className={page === currentPage ? "active-page" : ""}
+                    className={page === safeCurrentPage ? "active-page" : ""}
                     onClick={() => goToPage(page)}
                   >
                     {page}
@@ -209,8 +215,8 @@ const Policies = () => {
               })}
 
               <button
-                disabled={currentPage === totalPages}
-                onClick={() => goToPage(currentPage + 1)}
+                disabled={safeCurrentPage === totalPages}
+                onClick={() => goToPage(safeCurrentPage + 1)}
               >
                 Next
               </button>
@@ -219,7 +225,6 @@ const Policies = () => {
         )}
 
         {/* MODAL */}
-
         {modal && (
           <div className="modal-overlay" onClick={closeModal}>
             <div className="premium-modal" onClick={(e) => e.stopPropagation()}>
@@ -278,7 +283,6 @@ const Policies = () => {
         )}
 
         {/* DELETE MODAL */}
-
         {deleteItem && (
           <div className="modal-overlay">
             <div

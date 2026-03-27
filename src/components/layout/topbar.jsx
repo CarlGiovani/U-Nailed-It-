@@ -1,3 +1,4 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FaBars,
@@ -18,32 +19,27 @@ import {
 } from "../../services/BACKEND/adminNotificationApi";
 
 import supabase from "../../../config/supabaseClient.js";
-
 import "../../styles/topbar.css";
 
 const NOTIF_PER_PAGE = 6;
 const NOTIF_MAX_AGE_DAYS = 7;
+const NOTIFICATIONS_QUERY_KEY = ["admin-topbar-notifications"];
 
 const Topbar = ({ setMobileOpen }) => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const [notifications, setNotifications] = useState([]);
-  const [notifCount, setNotifCount] = useState(0);
   const [page, setPage] = useState(1);
   const [scrolled, setScrolled] = useState(false);
-  const [notifLoading, setNotifLoading] = useState(false);
-  const [markingAllRead, setMarkingAllRead] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
-
   const [manageMode, setManageMode] = useState(false);
   const [selectedNotifIds, setSelectedNotifIds] = useState([]);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const notifRef = useRef(null);
   const profileRef = useRef(null);
-  const loadingNotifRef = useRef(false);
   const realtimeChannelRef = useRef(null);
 
   const user = JSON.parse(localStorage.getItem("admin_user") || "null");
@@ -92,35 +88,99 @@ const Topbar = ({ setMobileOpen }) => {
     return <FaBell className="notif-icon default" />;
   }, []);
 
-  /* ================= LOAD NOTIFICATIONS ================= */
-  const loadNotifications = useCallback(async () => {
-    if (loadingNotifRef.current) return;
-
-    try {
-      loadingNotifRef.current = true;
-      setNotifLoading(true);
-
-      const notifRes = await getNotifications();
+  const normalizeNotifications = useCallback(
+    (notifRes) => {
       const notifData = Array.isArray(notifRes?.data) ? notifRes.data : [];
 
-      const filtered = notifData
+      return notifData
         .filter(isRecentNotification)
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    },
+    [isRecentNotification],
+  );
 
-      setNotifications(filtered);
-      setNotifCount(filtered.filter((item) => !item.is_read).length);
-    } catch (err) {
-      console.error("Notification fetch error:", err);
-    } finally {
-      loadingNotifRef.current = false;
-      setNotifLoading(false);
-    }
-  }, [isRecentNotification]);
+  /* ================= REACT QUERY CACHE ================= */
+  const {
+    data: notifications = [],
+    isLoading: notifLoading,
+    refetch: refetchNotifications,
+  } = useQuery({
+    queryKey: NOTIFICATIONS_QUERY_KEY,
+    queryFn: async () => {
+      const notifRes = await getNotifications();
+      return normalizeNotifications(notifRes);
+    },
+    staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+  });
 
-  /* ================= INITIAL LOAD ================= */
-  useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications]);
+  const unreadVisibleCount = useMemo(() => {
+    return notifications.filter((item) => !item.is_read).length;
+  }, [notifications]);
+
+  const notifCount = unreadVisibleCount;
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(notifications.length / NOTIF_PER_PAGE),
+  );
+
+  const currentPage = page > totalPages ? 1 : page;
+  const startIndex = (currentPage - 1) * NOTIF_PER_PAGE;
+
+  const paginatedNotifications = useMemo(() => {
+    return notifications.slice(startIndex, startIndex + NOTIF_PER_PAGE);
+  }, [notifications, startIndex]);
+
+  const allVisibleSelected =
+    paginatedNotifications.length > 0 &&
+    paginatedNotifications.every((notif) =>
+      selectedNotifIds.includes(notif.id),
+    );
+
+  const setNotificationsCache = useCallback(
+    (updater) => {
+      queryClient.setQueryData(NOTIFICATIONS_QUERY_KEY, (old = []) => {
+        const nextValue =
+          typeof updater === "function" ? updater(old || []) : updater;
+        return Array.isArray(nextValue) ? nextValue : [];
+      });
+    },
+    [queryClient],
+  );
+
+  /* ================= MUTATIONS ================= */
+  const markOneReadMutation = useMutation({
+    mutationFn: markNotificationAsRead,
+    onSuccess: (_, notifId) => {
+      setNotificationsCache((prev) =>
+        prev.map((item) =>
+          item.id === notifId ? { ...item, is_read: true } : item,
+        ),
+      );
+    },
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: markAllNotificationsAsRead,
+    onSuccess: () => {
+      setNotificationsCache((prev) =>
+        prev.map((item) => ({
+          ...item,
+          is_read: true,
+        })),
+      );
+    },
+  });
+
+  const deleteOneMutation = useMutation({
+    mutationFn: deleteNotification,
+    onSuccess: (_, id) => {
+      setNotificationsCache((prev) => prev.filter((item) => item.id !== id));
+      setSelectedNotifIds((prev) => prev.filter((item) => item !== id));
+    },
+  });
 
   /* ================= REALTIME SUBSCRIPTION ================= */
   useEffect(() => {
@@ -138,7 +198,7 @@ const Topbar = ({ setMobileOpen }) => {
 
           if (!isRecentNotification(newNotif)) return;
 
-          setNotifications((prev) => {
+          setNotificationsCache((prev) => {
             const exists = prev.some((item) => item.id === newNotif.id);
             if (exists) return prev;
 
@@ -146,8 +206,6 @@ const Topbar = ({ setMobileOpen }) => {
               (a, b) => new Date(b.created_at) - new Date(a.created_at),
             );
           });
-
-          setNotifCount((prev) => prev + (newNotif.is_read ? 0 : 1));
         },
       )
       .subscribe((status) => {
@@ -162,7 +220,7 @@ const Topbar = ({ setMobileOpen }) => {
         realtimeChannelRef.current = null;
       }
     };
-  }, [isRecentNotification]);
+  }, [isRecentNotification, setNotificationsCache]);
 
   /* ================= SCROLL EFFECT ================= */
   useEffect(() => {
@@ -192,29 +250,6 @@ const Topbar = ({ setMobileOpen }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  /* ================= DERIVED STATE ================= */
-  const unreadVisibleCount = useMemo(() => {
-    return notifications.filter((item) => !item.is_read).length;
-  }, [notifications]);
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(notifications.length / NOTIF_PER_PAGE),
-  );
-
-  const currentPage = page > totalPages ? 1 : page;
-  const startIndex = (currentPage - 1) * NOTIF_PER_PAGE;
-
-  const paginatedNotifications = useMemo(() => {
-    return notifications.slice(startIndex, startIndex + NOTIF_PER_PAGE);
-  }, [notifications, startIndex]);
-
-  const allVisibleSelected =
-    paginatedNotifications.length > 0 &&
-    paginatedNotifications.every((notif) =>
-      selectedNotifIds.includes(notif.id),
-    );
-
   /* ================= PAGINATION GUARD ================= */
   useEffect(() => {
     if (page > totalPages) {
@@ -236,7 +271,7 @@ const Topbar = ({ setMobileOpen }) => {
       setPage(1);
       setManageMode(false);
       setSelectedNotifIds([]);
-      await loadNotifications();
+      await refetchNotifications();
     }
   };
 
@@ -292,15 +327,7 @@ const Topbar = ({ setMobileOpen }) => {
       }
 
       if (!notif.is_read) {
-        await markNotificationAsRead(notif.id);
-
-        setNotifications((prev) =>
-          prev.map((item) =>
-            item.id === notif.id ? { ...item, is_read: true } : item,
-          ),
-        );
-
-        setNotifCount((prev) => Math.max(prev - 1, 0));
+        await markOneReadMutation.mutateAsync(notif.id);
       }
 
       const targetPath = normalizeNotificationLink(
@@ -321,25 +348,12 @@ const Topbar = ({ setMobileOpen }) => {
   const handleMarkAllAsRead = async (e) => {
     e.stopPropagation();
 
-    if (markingAllRead || unreadVisibleCount === 0) return;
+    if (markAllReadMutation.isPending || unreadVisibleCount === 0) return;
 
     try {
-      setMarkingAllRead(true);
-
-      await markAllNotificationsAsRead();
-
-      setNotifications((prev) =>
-        prev.map((item) => ({
-          ...item,
-          is_read: true,
-        })),
-      );
-
-      setNotifCount(0);
+      await markAllReadMutation.mutateAsync();
     } catch (err) {
       console.error("Mark all as read error:", err);
-    } finally {
-      setMarkingAllRead(false);
     }
   };
 
@@ -351,18 +365,7 @@ const Topbar = ({ setMobileOpen }) => {
 
     try {
       setDeletingId(id);
-
-      const targetNotif = notifications.find((item) => item.id === id);
-      const wasUnread = targetNotif && !targetNotif.is_read;
-
-      await deleteNotification(id);
-
-      setNotifications((prev) => prev.filter((item) => item.id !== id));
-      setSelectedNotifIds((prev) => prev.filter((item) => item !== id));
-
-      if (wasUnread) {
-        setNotifCount((prev) => Math.max(prev - 1, 0));
-      }
+      await deleteOneMutation.mutateAsync(id);
     } catch (err) {
       console.error("Delete notification error:", err);
     } finally {
@@ -374,37 +377,29 @@ const Topbar = ({ setMobileOpen }) => {
   const handleBulkDelete = async (e) => {
     e.stopPropagation();
 
-    if (bulkDeleting || selectedNotifIds.length === 0) return;
+    if (selectedNotifIds.length === 0 || deleteOneMutation.isPending) return;
 
     try {
-      setBulkDeleting(true);
+      const idsToDelete = [...selectedNotifIds];
+      await Promise.all(idsToDelete.map((id) => deleteNotification(id)));
 
-      const selectedSet = new Set(selectedNotifIds);
+      const selectedSet = new Set(idsToDelete);
 
-      const unreadToDelete = notifications.filter(
-        (item) => selectedSet.has(item.id) && !item.is_read,
-      ).length;
-
-      await Promise.all(selectedNotifIds.map((id) => deleteNotification(id)));
-
-      setNotifications((prev) =>
+      setNotificationsCache((prev) =>
         prev.filter((item) => !selectedSet.has(item.id)),
       );
 
-      setNotifCount((prev) => Math.max(prev - unreadToDelete, 0));
       setSelectedNotifIds([]);
       setManageMode(false);
     } catch (err) {
       console.error("Bulk delete notifications error:", err);
-    } finally {
-      setBulkDeleting(false);
     }
   };
 
   /* ================= LOGOUT ================= */
   const handleLogout = () => {
-    setNotifications([]);
-    setNotifCount(0);
+    queryClient.removeQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
+
     setNotifOpen(false);
     setProfileOpen(false);
     setManageMode(false);
@@ -443,7 +438,10 @@ const Topbar = ({ setMobileOpen }) => {
                       type="button"
                       className="notif-text-btn"
                       onClick={handleMarkAllAsRead}
-                      disabled={markingAllRead || unreadVisibleCount === 0}
+                      disabled={
+                        markAllReadMutation.isPending ||
+                        unreadVisibleCount === 0
+                      }
                     >
                       Mark all read
                     </button>
@@ -472,7 +470,10 @@ const Topbar = ({ setMobileOpen }) => {
                       type="button"
                       className="notif-text-btn danger"
                       onClick={handleBulkDelete}
-                      disabled={bulkDeleting || selectedNotifIds.length === 0}
+                      disabled={
+                        deleteOneMutation.isPending ||
+                        selectedNotifIds.length === 0
+                      }
                     >
                       Delete selected
                     </button>

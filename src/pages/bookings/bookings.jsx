@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import AdminLayout from "../../components/layout/adminLayout";
 import {
   approveBooking,
@@ -14,6 +16,7 @@ const PAGE_SIZE = 10;
 
 const Bookings = () => {
   const location = useLocation();
+  const queryClient = useQueryClient();
 
   const queryParams = useMemo(
     () => new URLSearchParams(location.search),
@@ -23,9 +26,6 @@ const Bookings = () => {
   const bookingIdFromQuery = queryParams.get("bookingId");
   const statusFromQuery = queryParams.get("status");
   const highlightFromQuery = queryParams.get("highlight");
-
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [proofUrl, setProofUrl] = useState(null);
@@ -38,34 +38,36 @@ const Bookings = () => {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(Boolean(statusFromQuery));
 
   const [page, setPage] = useState(1);
-  const [limit] = useState(PAGE_SIZE);
-  const [totalBookings, setTotalBookings] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
+  const limit = PAGE_SIZE;
 
   const highlightedRowRef = useRef(null);
-
-  /* ================= SYNC STATUS FILTER FROM QUERY ================= */
-  useEffect(() => {
-    if (statusFromQuery) {
-      setStatusFilter(statusFromQuery);
-      setShowFilters(true);
-    }
-  }, [statusFromQuery]);
 
   /* ================= RESET PAGE WHEN FILTERS CHANGE ================= */
   useEffect(() => {
     setPage(1);
   }, [search, statusFilter, dateFrom, dateTo]);
 
-  /* ================= FETCH BOOKINGS ================= */
-  const fetchBookings = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      const result = await getAllBookings({
+  /* ================= REACT QUERY: FETCH BOOKINGS WITH CACHING ================= */
+  const {
+    data: bookingsResponse,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useQuery({
+    queryKey: [
+      "admin-bookings",
+      page,
+      limit,
+      search,
+      statusFilter,
+      dateFrom,
+      dateTo,
+    ],
+    queryFn: async () => {
+      return await getAllBookings({
         page,
         limit,
         search,
@@ -73,23 +75,15 @@ const Bookings = () => {
         dateFrom,
         dateTo,
       });
-
-      setBookings(result.data || []);
-      setTotalBookings(result.total || 0);
-      setTotalPages(result.totalPages || 1);
-    } catch (err) {
-      console.error("Failed to fetch bookings:", err);
-      setBookings([]);
-      setTotalBookings(0);
-      setTotalPages(1);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, limit, search, statusFilter, dateFrom, dateTo]);
-
-  useEffect(() => {
-    fetchBookings();
-  }, [fetchBookings]);
+    },
+    staleTime: 1000 * 60 * 2, // fresh for 2 minutes
+    gcTime: 1000 * 60 * 10, // keep cache for 10 minutes
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+  });
+const bookings = useMemo(() => bookingsResponse?.data ?? [], [bookingsResponse]);
+const totalBookings = bookingsResponse?.total ?? 0;
+const totalPages = bookingsResponse?.totalPages ?? 1;
 
   /* ================= AUTO OPEN TARGET BOOKING FROM QUERY ================= */
   useEffect(() => {
@@ -103,6 +97,19 @@ const Bookings = () => {
       setSelectedBooking(matchedBooking);
     }
   }, [bookingIdFromQuery, bookings]);
+
+  /* ================= KEEP MODAL BOOKING FRESH AFTER REFETCH ================= */
+  useEffect(() => {
+    if (!selectedBooking) return;
+
+    const updatedSelectedBooking = bookings.find(
+      (b) => String(b.id) === String(selectedBooking.id),
+    );
+
+    if (updatedSelectedBooking) {
+      setSelectedBooking(updatedSelectedBooking);
+    }
+  }, [bookings, selectedBooking]);
 
   /* ================= AUTO SCROLL TO HIGHLIGHTED ROW ================= */
   useEffect(() => {
@@ -127,7 +134,11 @@ const Bookings = () => {
       if (type === "reject") await rejectBooking(booking.id);
       if (type === "complete") await completeBooking(booking.id);
 
-      await fetchBookings();
+      await queryClient.invalidateQueries({
+        queryKey: ["admin-bookings"],
+      });
+
+      await refetch();
       setSelectedBooking(null);
     } catch (err) {
       console.error("Failed to execute booking action:", err);
@@ -191,7 +202,6 @@ const Bookings = () => {
         </button>
       </div>
 
-      {/* FILTERS DROPDOWN */}
       {showFilters && (
         <div className="filters-dropdown-card">
           <div className="booking-filters-grid">
@@ -264,11 +274,12 @@ const Bookings = () => {
         </div>
       )}
 
-      {/* TABLE */}
-      {loading ? (
+      {isLoading ? (
         <div className="loading">Loading...</div>
       ) : (
         <>
+          {isFetching && <div className="loading">Refreshing bookings...</div>}
+
           <div className="premium-table">
             <table>
               <thead>
@@ -350,7 +361,6 @@ const Bookings = () => {
         </>
       )}
 
-      {/* BOOKING DETAILS MODAL */}
       {selectedBooking && (
         <div className="modal-overlay" onClick={() => setSelectedBooking(null)}>
           <div className="organized-modal" onClick={(e) => e.stopPropagation()}>
@@ -534,7 +544,6 @@ const Bookings = () => {
         </div>
       )}
 
-      {/* PROOF MODAL */}
       {proofUrl && (
         <div className="modal-overlay" onClick={() => setProofUrl(null)}>
           <div className="proof-modal" onClick={(e) => e.stopPropagation()}>
@@ -548,7 +557,6 @@ const Bookings = () => {
         </div>
       )}
 
-      {/* CONFIRM MODAL */}
       {confirmAction && (
         <div
           className="modal-overlay"

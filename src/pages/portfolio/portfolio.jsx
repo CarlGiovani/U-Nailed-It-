@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import AdminLayout from "../../components/layout/adminLayout";
 
 import {
@@ -11,93 +12,98 @@ import {
 import "../../styles/portfolio.css";
 
 const ITEMS_PER_PAGE = 6;
+const PORTFOLIO_QUERY_KEY = ["admin-portfolio"];
 
 const Portfolio = () => {
-  const [portfolio, setPortfolio] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
   const [modal, setModal] = useState(null);
-  const [saving, setSaving] = useState(false);
   const [previewImages, setPreviewImages] = useState([]);
-
   const [currentPage, setCurrentPage] = useState(1);
-
   const [deleteItem, setDeleteItem] = useState(null);
-  const [deleting, setDeleting] = useState(false);
   const [preview, setPreview] = useState(null);
 
-  /* ================= FETCH ================= */
-  const fetchData = async () => {
-    try {
-      setLoading(true);
+  /* ================= CACHED FETCH ================= */
+  const { data: portfolio = [], isLoading } = useQuery({
+    queryKey: PORTFOLIO_QUERY_KEY,
+    queryFn: async () => {
       const data = await getAllPortfolio();
-      const list = data.data || data;
+      return data?.data || data || [];
+    },
+    staleTime: 1000 * 60 * 3,
+    gcTime: 1000 * 60 * 10,
+  });
 
-      setPortfolio(list);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const invalidatePortfolio = async () => {
+    await queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEY });
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  /* ================= MUTATIONS ================= */
+  const createPortfolioMutation = useMutation({
+    mutationFn: createPortfolio,
+    onSuccess: invalidatePortfolio,
+  });
+
+  const updatePortfolioMutation = useMutation({
+    mutationFn: ({ id, formData }) => updatePortfolio(id, formData),
+    onSuccess: invalidatePortfolio,
+  });
+
+  const deletePortfolioMutation = useMutation({
+    mutationFn: deletePortfolio,
+    onSuccess: invalidatePortfolio,
+  });
 
   /* ================= PAGINATION ================= */
-
-  const totalPages = Math.ceil(portfolio.length / ITEMS_PER_PAGE);
-
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const totalPages = Math.max(1, Math.ceil(portfolio.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
   const currentItems = portfolio.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const goToPage = (page) => {
-    setCurrentPage(page);
+    const clampedPage = Math.min(Math.max(page, 1), totalPages);
+    setCurrentPage(clampedPage);
   };
 
   /* ================= SAVE ================= */
   const handleSave = async () => {
+    if (!modal) return;
+
     try {
-      setSaving(true);
-
       const formData = new FormData();
-      formData.append("title", modal.title);
-      formData.append("description", modal.description);
+      formData.append("title", modal.title || "");
+      formData.append("description", modal.description || "");
 
-      if (modal.images) {
+      if (modal.images?.length) {
         modal.images.forEach((img) => {
           formData.append("images", img);
         });
       }
 
       if (modal.id) {
-        await updatePortfolio(modal.id, formData);
+        await updatePortfolioMutation.mutateAsync({
+          id: modal.id,
+          formData,
+        });
       } else {
-        await createPortfolio(formData);
+        await createPortfolioMutation.mutateAsync(formData);
       }
 
       closeModal();
-      fetchData();
     } catch (err) {
       console.error(err);
-    } finally {
-      setSaving(false);
     }
   };
 
   /* ================= DELETE ================= */
   const confirmDelete = async () => {
+    if (!deleteItem?.id) return;
+
     try {
-      setDeleting(true);
-
-      await deletePortfolio(deleteItem.id);
-
+      await deletePortfolioMutation.mutateAsync(deleteItem.id);
       setDeleteItem(null);
-      fetchData();
     } catch (err) {
       console.error(err);
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -106,8 +112,12 @@ const Portfolio = () => {
     setPreviewImages([]);
   };
 
-  /* ================= RENDER ================= */
+  const saving =
+    createPortfolioMutation.isPending || updatePortfolioMutation.isPending;
 
+  const deleting = deletePortfolioMutation.isPending;
+
+  /* ================= RENDER ================= */
   return (
     <AdminLayout>
       <div className="portfolio-page">
@@ -128,12 +138,11 @@ const Portfolio = () => {
           </button>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div>Loading...</div>
         ) : (
           <>
             {/* ================= GRID ================= */}
-
             <div className="portfolio-grid">
               {currentItems.map((item) => (
                 <div key={item.id} className="portfolio-card">
@@ -160,12 +169,13 @@ const Portfolio = () => {
                     <div className="portfolio-buttons">
                       <button
                         className="btn-secondary"
-                        onClick={() =>
+                        onClick={() => {
                           setModal({
                             ...item,
                             images: [],
-                          })
-                        }
+                          });
+                          setPreviewImages(item.images || []);
+                        }}
                       >
                         Edit
                       </button>
@@ -183,11 +193,10 @@ const Portfolio = () => {
             </div>
 
             {/* ================= PAGINATION ================= */}
-
             <div className="pagination">
               <button
-                disabled={currentPage === 1}
-                onClick={() => goToPage(currentPage - 1)}
+                disabled={safeCurrentPage === 1}
+                onClick={() => goToPage(safeCurrentPage - 1)}
               >
                 Prev
               </button>
@@ -198,7 +207,7 @@ const Portfolio = () => {
                 return (
                   <button
                     key={page}
-                    className={page === currentPage ? "active-page" : ""}
+                    className={page === safeCurrentPage ? "active-page" : ""}
                     onClick={() => goToPage(page)}
                   >
                     {page}
@@ -207,8 +216,8 @@ const Portfolio = () => {
               })}
 
               <button
-                disabled={currentPage === totalPages}
-                onClick={() => goToPage(currentPage + 1)}
+                disabled={safeCurrentPage === totalPages}
+                onClick={() => goToPage(safeCurrentPage + 1)}
               >
                 Next
               </button>
@@ -217,7 +226,6 @@ const Portfolio = () => {
         )}
 
         {/* ================= MODAL ================= */}
-
         {modal && (
           <div className="modal-overlay" onClick={closeModal}>
             <div className="premium-modal" onClick={(e) => e.stopPropagation()}>
@@ -242,7 +250,7 @@ const Portfolio = () => {
                 accept="image/*"
                 multiple
                 onChange={(e) => {
-                  const files = Array.from(e.target.files).slice(0, 3);
+                  const files = Array.from(e.target.files || []).slice(0, 3);
 
                   setModal({
                     ...modal,
@@ -275,7 +283,6 @@ const Portfolio = () => {
         )}
 
         {/* ================= DELETE MODAL ================= */}
-
         {deleteItem && (
           <div className="modal-overlay">
             <div
@@ -338,6 +345,7 @@ const Portfolio = () => {
             <img
               src={preview.images[preview.index]}
               className="preview-image"
+              alt="Portfolio preview"
             />
 
             <button

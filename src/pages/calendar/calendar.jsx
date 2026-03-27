@@ -1,15 +1,17 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import addWeeks from "date-fns/addWeeks";
 import format from "date-fns/format";
 import getDay from "date-fns/getDay";
 import enUS from "date-fns/locale/en-US";
 import parse from "date-fns/parse";
 import startOfWeek from "date-fns/startOfWeek";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Calendar, dateFnsLocalizer, Views } from "react-big-calendar";
 import toast, { Toaster } from "react-hot-toast";
 
 import supabase from "../../../config/supabaseClient.js";
 import AdminLayout from "../../components/layout/adminLayout";
+import { getAllBookings } from "../../services/BACKEND/adminBookingApi";
 import {
   blockDayGlobally,
   createSlotsBulk,
@@ -19,8 +21,6 @@ import {
   unblockDayGlobally,
   updateSlot,
 } from "../../services/BACKEND/adminCalendarApi";
-
-import { getAllBookings } from "../../services/BACKEND/adminBookingApi";
 import { getAllServicesAdmin } from "../../services/BACKEND/adminServiceApi";
 
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -87,21 +87,19 @@ const normalizeBookingDate = (value) => {
 };
 
 const AdminCalendar = () => {
-  const [services, setServices] = useState([]);
+  const queryClient = useQueryClient();
+
   const [selectedService, setSelectedService] = useState(null);
-  const [events, setEvents] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
-  const [slots, setSlots] = useState([]);
   const [isBlocked, setIsBlocked] = useState(false);
   const [showGenerator, setShowGenerator] = useState(false);
   const [timeInputs, setTimeInputs] = useState([""]);
   const [weeklyRecurring, setWeeklyRecurring] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showSlotModal, setShowSlotModal] = useState(false);
-  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editedTime, setEditedTime] = useState("");
@@ -117,6 +115,132 @@ const AdminCalendar = () => {
     variant: "primary",
     onConfirm: null,
   });
+
+  const SERVICES_QUERY_KEY = useMemo(() => ["admin-calendar-services"], []);
+
+  const BOOKINGS_QUERY_KEY = useMemo(() => ["admin-calendar-bookings"], []);
+
+  const MONTH_QUERY_KEY = useMemo(
+    () => [
+      "admin-calendar-month",
+      selectedService,
+      currentDate.getFullYear(),
+      currentDate.getMonth() + 1,
+    ],
+    [selectedService, currentDate],
+  );
+
+  const SLOTS_QUERY_KEY = useMemo(
+    () => ["admin-calendar-slots", selectedService, selectedDate],
+    [selectedService, selectedDate],
+  );
+
+  /* ================= QUERIES ================= */
+  const { data: services = [], isLoading: servicesLoading } = useQuery({
+    queryKey: SERVICES_QUERY_KEY,
+    queryFn: async () => {
+      const data = await getAllServicesAdmin();
+      return data?.data || data || [];
+    },
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+  });
+
+  useEffect(() => {
+    if (!selectedService && services.length > 0) {
+      setSelectedService(services[0].id);
+    }
+  }, [services, selectedService]);
+
+  const { data: bookings = [], isLoading: bookingsLoading } = useQuery({
+    queryKey: BOOKINGS_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getAllBookings({
+        page: 1,
+        limit: 1000,
+      });
+      return result?.data || [];
+    },
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: monthAvailability = [], isLoading: monthLoading } = useQuery({
+    queryKey: MONTH_QUERY_KEY,
+    queryFn: async () => {
+      if (!selectedService) return [];
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth() + 1;
+      const availability = await getMonthlyAvailability(
+        selectedService,
+        year,
+        month,
+      );
+      return availability || [];
+    },
+    enabled: !!selectedService,
+    staleTime: 1000 * 60,
+    gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: slots = [], isLoading: slotsLoading } = useQuery({
+    queryKey: SLOTS_QUERY_KEY,
+    queryFn: async () => {
+      if (!selectedService || !selectedDate) return [];
+
+      const data = await getAvailableSlots(selectedService, selectedDate);
+      const slotData = data || [];
+
+      return slotData
+        .map((slot) => ({
+          ...slot,
+          time: normalizeTime(slot.time),
+        }))
+        .sort((a, b) => a.time.localeCompare(b.time));
+    },
+    enabled: !!selectedService && !!selectedDate,
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+  });
+
+  /* ================= DERIVED ================= */
+  useEffect(() => {
+    if (slots.length === 0) {
+      setIsBlocked(false);
+      return;
+    }
+
+    const hasAvailable = slots.some((slot) => slot.is_available);
+    setIsBlocked(!hasAvailable);
+  }, [slots]);
+
+  const isPageLoading =
+    servicesLoading || bookingsLoading || monthLoading || loading;
+
+  const events = useMemo(() => {
+    return (monthAvailability || []).map((day) => {
+      const count = bookings.filter((booking) => {
+        const bookingDate = normalizeBookingDate(booking.booking_date);
+
+        return (
+          bookingDate === day.date &&
+          ACTIVE_BOOKING_STATUSES.includes(booking.status)
+        );
+      }).length;
+
+      return {
+        title: day.available
+          ? `Available (${count} booked)`
+          : `Blocked (${count} booked)`,
+        start: new Date(day.date),
+        end: new Date(day.date),
+        allDay: true,
+      };
+    });
+  }, [monthAvailability, bookings]);
 
   const openConfirmModal = ({
     title,
@@ -168,98 +292,34 @@ const AdminCalendar = () => {
     });
   };
 
-  /* ================= LOAD BOOKINGS ================= */
-  const loadBookings = useCallback(async () => {
-    try {
-      const result = await getAllBookings({
-        page: 1,
-        limit: 1000,
-      });
+  const refreshBookings = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
+  }, [queryClient, BOOKINGS_QUERY_KEY]);
 
-      setBookings(result?.data || []);
-    } catch (err) {
-      console.error("Error loading bookings:", err);
-      setBookings([]);
-    }
-  }, []);
+  const refreshMonth = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["admin-calendar-month"],
+    });
+  }, [queryClient]);
 
-  /* ================= LOAD SERVICES ================= */
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const data = await getAllServicesAdmin();
-        setServices(data || []);
-
-        if (data?.length) {
-          setSelectedService(data[0].id);
-        }
-      } catch (err) {
-        console.error("Error loading services:", err);
-        setServices([]);
-      }
-    };
-
-    fetchServices();
-  }, []);
-
-  /* ================= INITIAL BOOKINGS ================= */
-  useEffect(() => {
-    loadBookings();
-  }, [loadBookings]);
-
-  /* ================= GLOBAL BOOKING CHECK ================= */
-  const isTimeGloballyBooked = useCallback(
-    (dateStr, time) => {
-      if (!Array.isArray(bookings) || !dateStr || !time) return false;
-
-      const normalizedTargetTime = normalizeTime(time);
-
-      return bookings.some((booking) => {
-        const bookingDate = normalizeBookingDate(booking.booking_date);
-
-        return (
-          bookingDate === dateStr &&
-          normalizeTime(booking.booking_time) === normalizedTargetTime &&
-          ACTIVE_BOOKING_STATUSES.includes(booking.status)
-        );
-      });
-    },
-    [bookings],
-  );
-
-  /* ================= LOAD SLOTS ================= */
-  const loadSlots = useCallback(
-    async (dateStr) => {
+  const refreshSlots = useCallback(
+    async (dateStr = selectedDate) => {
       if (!selectedService || !dateStr) return;
 
-      try {
-        const data = await getAvailableSlots(selectedService, dateStr);
-        const slotData = data || [];
-
-        const normalizedSlots = slotData
-          .map((slot) => ({
-            ...slot,
-            time: normalizeTime(slot.time),
-          }))
-          .sort((a, b) => a.time.localeCompare(b.time));
-
-        setSlots(normalizedSlots);
-
-        if (normalizedSlots.length === 0) {
-          setIsBlocked(false);
-          return;
-        }
-
-        const hasAvailable = normalizedSlots.some((slot) => slot.is_available);
-        setIsBlocked(!hasAvailable);
-      } catch (err) {
-        console.error("Error loading slots:", err);
-        setSlots([]);
-        setIsBlocked(false);
-      }
+      await queryClient.invalidateQueries({
+        queryKey: ["admin-calendar-slots", selectedService, dateStr],
+      });
     },
-    [selectedService],
+    [queryClient, selectedService, selectedDate],
   );
+
+  const refreshCalendarData = async (dateStr = selectedDate) => {
+    await Promise.all([
+      refreshBookings(),
+      refreshMonth(),
+      refreshSlots(dateStr),
+    ]);
+  };
 
   /* ================= REALTIME ================= */
   useEffect(() => {
@@ -280,13 +340,15 @@ const AdminCalendar = () => {
 
           const rowServiceId = Number(row.service_id);
 
-          // refresh lang kung relevant sa selected service
-          if (rowServiceId === Number(selectedService) && selectedDate) {
-            await loadSlots(selectedDate);
+          if (rowServiceId === Number(selectedService)) {
+            await refreshMonth();
+
+            if (selectedDate) {
+              await refreshSlots(selectedDate);
+            }
           }
 
-          // refresh bookings para synced ang booked badges / month counters
-          await loadBookings();
+          await refreshBookings();
         },
       )
       .subscribe();
@@ -301,10 +363,11 @@ const AdminCalendar = () => {
           table: "bookings",
         },
         async () => {
-          await loadBookings();
+          await refreshBookings();
+          await refreshMonth();
 
           if (selectedDate) {
-            await loadSlots(selectedDate);
+            await refreshSlots(selectedDate);
           }
         },
       )
@@ -314,58 +377,33 @@ const AdminCalendar = () => {
       supabase.removeChannel(slotsChannel);
       supabase.removeChannel(bookingsChannel);
     };
-  }, [selectedService, selectedDate, loadSlots, loadBookings]);
+  }, [
+    selectedService,
+    selectedDate,
+    refreshBookings,
+    refreshMonth,
+    refreshSlots,
+  ]);
 
-  /* ================= LOAD MONTH ================= */
-  useEffect(() => {
-    if (!selectedService) return;
+  /* ================= GLOBAL BOOKING CHECK ================= */
+  const isTimeGloballyBooked = useCallback(
+    (dateStr, time) => {
+      if (!Array.isArray(bookings) || !dateStr || !time) return false;
 
-    const fetchMonth = async () => {
-      try {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth() + 1;
+      const normalizedTargetTime = normalizeTime(time);
 
-        const availability = await getMonthlyAvailability(
-          selectedService,
-          year,
-          month,
+      return bookings.some((booking) => {
+        const bookingDate = normalizeBookingDate(booking.booking_date);
+
+        return (
+          bookingDate === dateStr &&
+          normalizeTime(booking.booking_time) === normalizedTargetTime &&
+          ACTIVE_BOOKING_STATUSES.includes(booking.status)
         );
-
-        const mapped = (availability || []).map((day) => {
-          const count = bookings.filter((booking) => {
-            const bookingDate = normalizeBookingDate(booking.booking_date);
-
-            return (
-              bookingDate === day.date &&
-              ACTIVE_BOOKING_STATUSES.includes(booking.status)
-            );
-          }).length;
-
-          return {
-            title: day.available
-              ? `Available (${count} booked)`
-              : `Blocked (${count} booked)`,
-            start: new Date(day.date),
-            end: new Date(day.date),
-            allDay: true,
-          };
-        });
-
-        setEvents(mapped);
-      } catch (err) {
-        console.error("Error loading month availability:", err);
-        setEvents([]);
-      }
-    };
-
-    fetchMonth();
-  }, [currentDate, selectedService, bookings]);
-
-  /* ================= RELOAD SELECTED DATE SLOTS ================= */
-  useEffect(() => {
-    if (!selectedDate || !selectedService) return;
-    loadSlots(selectedDate);
-  }, [selectedDate, selectedService, loadSlots]);
+      });
+    },
+    [bookings],
+  );
 
   /* ================= DAY STYLE ================= */
   const dayPropGetter = (date) => {
@@ -402,7 +440,7 @@ const AdminCalendar = () => {
   };
 
   /* ================= SELECT DAY ================= */
-  const handleSelectSlot = ({ start, end, action }) => {
+  const handleSelectSlot = async ({ start, end, action }) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -431,7 +469,7 @@ const AdminCalendar = () => {
       end: adjustedEnd,
     });
 
-    loadSlots(startDate);
+    await refreshSlots(startDate);
 
     if (action === "select" && startDate !== endDate) {
       setTimeInputs([""]);
@@ -467,6 +505,27 @@ const AdminCalendar = () => {
     });
   };
 
+  /* ================= MUTATIONS ================= */
+  const updateSlotMutation = useMutation({
+    mutationFn: ({ id, payload }) => updateSlot(id, payload),
+  });
+
+  const deleteSlotMutation = useMutation({
+    mutationFn: deleteSlot,
+  });
+
+  const blockDayMutation = useMutation({
+    mutationFn: blockDayGlobally,
+  });
+
+  const unblockDayMutation = useMutation({
+    mutationFn: unblockDayGlobally,
+  });
+
+  const createSlotsBulkMutation = useMutation({
+    mutationFn: createSlotsBulk,
+  });
+
   /* ================= TOGGLE SLOT ================= */
   const toggleSlot = async (slot) => {
     if (isSlotBooked(slot)) {
@@ -480,11 +539,12 @@ const AdminCalendar = () => {
     try {
       setLoading(true);
 
-      await updateSlot(slot.id, {
-        is_available: !slot.is_available,
+      await updateSlotMutation.mutateAsync({
+        id: slot.id,
+        payload: { is_available: !slot.is_available },
       });
 
-      await Promise.all([loadSlots(selectedDate), loadBookings()]);
+      await refreshCalendarData(selectedDate);
       setShowSlotModal(false);
       toast.success("Slot updated.");
     } catch (err) {
@@ -516,8 +576,8 @@ const AdminCalendar = () => {
       onConfirm: async () => {
         try {
           setLoading(true);
-          await deleteSlot(selectedSlot.id);
-          await Promise.all([loadSlots(selectedDate), loadBookings()]);
+          await deleteSlotMutation.mutateAsync(selectedSlot.id);
+          await refreshCalendarData(selectedDate);
           setShowSlotModal(false);
           closeConfirmModal();
           toast.success("Slot deleted.");
@@ -544,8 +604,8 @@ const AdminCalendar = () => {
       onConfirm: async () => {
         try {
           setLoading(true);
-          await blockDayGlobally(selectedDate);
-          await Promise.all([loadSlots(selectedDate), loadBookings()]);
+          await blockDayMutation.mutateAsync(selectedDate);
+          await refreshCalendarData(selectedDate);
           closeConfirmModal();
           toast.success("Day blocked.");
         } catch (err) {
@@ -570,8 +630,8 @@ const AdminCalendar = () => {
       onConfirm: async () => {
         try {
           setLoading(true);
-          await unblockDayGlobally(selectedDate);
-          await Promise.all([loadSlots(selectedDate), loadBookings()]);
+          await unblockDayMutation.mutateAsync(selectedDate);
+          await refreshCalendarData(selectedDate);
           closeConfirmModal();
           toast.success("Day unblocked.");
         } catch (err) {
@@ -601,14 +661,14 @@ const AdminCalendar = () => {
     try {
       setLoading(true);
 
-      await createSlotsBulk({
+      await createSlotsBulkMutation.mutateAsync({
         service_id: selectedService,
         startDate: rangeStart,
         endDate: finalEnd,
         times,
       });
 
-      await Promise.all([loadSlots(rangeStart), loadBookings()]);
+      await refreshCalendarData(rangeStart);
       setShowGenerator(false);
       setTimeInputs([""]);
       closeConfirmModal();
@@ -734,7 +794,9 @@ const AdminCalendar = () => {
               </div>
             </div>
 
-            {loading && <div className="loading-spinner"></div>}
+            {(loading || slotsLoading || bookingsLoading) && (
+              <div className="loading-spinner"></div>
+            )}
 
             <div className="slot-grid">
               {slots.map((slot) => {
@@ -850,13 +912,15 @@ const AdminCalendar = () => {
 
                     try {
                       setLoading(true);
-                      await updateSlot(selectedSlot.id, {
-                        time: normalizedEditedTime,
+
+                      await updateSlotMutation.mutateAsync({
+                        id: selectedSlot.id,
+                        payload: {
+                          time: normalizedEditedTime,
+                        },
                       });
-                      await Promise.all([
-                        loadSlots(selectedDate),
-                        loadBookings(),
-                      ]);
+
+                      await refreshCalendarData(selectedDate);
                       setEditMode(false);
                       setShowSlotModal(false);
                       toast.success("Slot updated!");
@@ -1033,6 +1097,10 @@ const AdminCalendar = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {isPageLoading && !selectedDate && (
+          <div className="calendar-loading">Loading calendar data...</div>
         )}
       </div>
     </AdminLayout>
