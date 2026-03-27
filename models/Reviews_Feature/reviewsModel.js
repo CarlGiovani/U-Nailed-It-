@@ -129,14 +129,17 @@ export const getApprovedReviews = async ({ page = 1, limit = 6 }) => {
    ADMIN: Get all reviews (paginated)
    - uses BOOKING SNAPSHOT fields
 ========================================== */
-export const getAllReviewsAdmin = async ({ page = 1, limit = 10 }) => {
+export const getAllReviewsAdmin = async ({
+  page = 1,
+  limit = 10,
+  search = "",
+  status = "all",
+}) => {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  const { data, error, count } = await supabase
-    .from("reviews")
-    .select(
-      `
+  let query = supabase.from("reviews").select(
+    `
       id,
       booking_id,
       rating,
@@ -144,7 +147,7 @@ export const getAllReviewsAdmin = async ({ page = 1, limit = 10 }) => {
       image_url,
       is_approved,
       created_at,
-      bookings(
+      bookings!inner(
         id,
         status,
         booking_date,
@@ -155,9 +158,21 @@ export const getAllReviewsAdmin = async ({ page = 1, limit = 10 }) => {
         customer_facebook_link,
         services(id, name)
       )
-      `,
-      { count: "exact" },
-    )
+    `,
+    { count: "exact" },
+  );
+
+  if (status === "approved") {
+    query = query.eq("is_approved", true);
+  } else if (status === "pending") {
+    query = query.eq("is_approved", false);
+  }
+
+  if (search) {
+    query = query.ilike("bookings.customer_name", `%${search}%`);
+  }
+
+  const { data, error, count } = await query
     .order("created_at", { ascending: false })
     .range(from, to);
 
