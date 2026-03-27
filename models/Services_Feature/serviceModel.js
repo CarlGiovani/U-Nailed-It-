@@ -58,39 +58,39 @@ export const getServiceById = async (id) => {
 // ADMIN : Admin service fetch
 // ADMIN: get all services (including inactive)
 export const getAllServicesAdmin = async () => {
-  const { data, error } = await supabase
+  const { data: services, error: servicesError } = await supabase
     .from("services")
     .select(
       `
-      id,
-      name,
-      description,
-      duration,
-      image_url,
-      is_active,
-      created_at,
-      updated_at,
-      service_categories (
-        id,
-        name,
-        is_active,
-        service_variants (
-          id,
-          body_part,
-          size,
-          price,
-          downpayment,
-          is_active
-        )
+      *,
+      service_categories(
+        *,
+        service_variants(*)
       )
     `,
     )
-    .order("name", { ascending: true });
+    .order("created_at", { ascending: false });
 
-  if (error) throw new Error(error.message);
-  return data;
+  if (servicesError) throw new Error(servicesError.message);
+
+  const { data: activeBookings, error: bookingsError } = await supabase
+    .from("bookings")
+    .select("service_id")
+    .in("status", ["pending_payment", "pending_approval", "approved"]);
+
+  if (bookingsError) throw new Error(bookingsError.message);
+
+  const bookedServiceIds = new Set(
+    (activeBookings || []).map((booking) => booking.service_id).filter(Boolean),
+  );
+
+  const enrichedServices = (services || []).map((service) => ({
+    ...service,
+    hasBookings: bookedServiceIds.has(service.id),
+  }));
+
+  return enrichedServices;
 };
-
 // ADMIN:  CREATE new service
 
 const uploadServiceImage = async (file) => {
