@@ -1,3 +1,4 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -89,6 +90,7 @@ const formatCountdown = (ms) => {
 
 const Booking = ({ services: servicesProp = [] }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Step management
   const [step, setStep] = useState(1);
@@ -772,18 +774,26 @@ const Booking = ({ services: servicesProp = [] }) => {
   // ===============================
   // MONTHLY AVAILABILITY
   // ===============================
-  const fetchMonthlyAvailability = useCallback(async () => {
-    if (!formData.service_id) return;
+  const availabilityYear = currentMonth.getFullYear();
+  const availabilityMonth = currentMonth.getMonth() + 1;
 
-    setFetchingAvailability(true);
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth() + 1;
+  const {
+    data: monthlyAvailabilityData,
+    isFetching: monthlyAvailabilityFetching,
+  } = useQuery({
+    queryKey: [
+      "monthlyAvailability",
+      formData.service_id,
+      availabilityYear,
+      availabilityMonth,
+    ],
+    queryFn: async () => {
+      if (!formData.service_id) return {};
 
-    try {
       const availabilityData = await getMonthlyAvailability(
         formData.service_id,
-        year,
-        month,
+        availabilityYear,
+        availabilityMonth,
       );
 
       const availabilityMap = {};
@@ -791,23 +801,47 @@ const Booking = ({ services: servicesProp = [] }) => {
         availabilityMap[item.date] = item.available;
       });
 
-      setMonthlyAvailability(availabilityMap);
-    } catch (error) {
-      console.error("Error fetching monthly availability:", error);
-      setMonthlyAvailability({});
-    } finally {
-      setFetchingAvailability(false);
-    }
-  }, [formData.service_id, currentMonth]);
+      return availabilityMap;
+    },
+    enabled: !!formData.service_id,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+  });
 
   useEffect(() => {
+    setFetchingAvailability((prev) =>
+      prev === monthlyAvailabilityFetching ? prev : monthlyAvailabilityFetching,
+    );
+
     if (formData.service_id) {
-      fetchMonthlyAvailability();
+      const nextAvailability = monthlyAvailabilityData ?? {};
+
+      setMonthlyAvailability((prev) => {
+        const prevKeys = Object.keys(prev);
+        const nextKeys = Object.keys(nextAvailability);
+
+        if (prevKeys.length !== nextKeys.length) return nextAvailability;
+
+        for (const key of nextKeys) {
+          if (prev[key] !== nextAvailability[key]) {
+            return nextAvailability;
+          }
+        }
+
+        return prev;
+      });
     } else {
-      setMonthlyAvailability({});
-      setCalendarDates([]);
+      setMonthlyAvailability((prev) =>
+        Object.keys(prev).length === 0 ? prev : {},
+      );
+
+      setCalendarDates((prev) => (prev.length === 0 ? prev : []));
     }
-  }, [formData.service_id, currentMonth, fetchMonthlyAvailability]);
+  }, [
+    formData.service_id,
+    monthlyAvailabilityData,
+    monthlyAvailabilityFetching,
+  ]);
 
   // ===============================
   // GENERATE CALENDAR
@@ -886,26 +920,75 @@ const Booking = ({ services: servicesProp = [] }) => {
   // ===============================
   // FETCH AVAILABLE SLOTS BY DATE
   // ===============================
-  const fetchAvailableSlots = useCallback(async () => {
-    if (!formData.service_id || !selectedDate) return;
+  const { data: availableSlotsData, isFetching: availableSlotsFetching } =
+    useQuery({
+      queryKey: ["availableSlots", formData.service_id, selectedDate],
+      queryFn: async () => {
+        if (!formData.service_id || !selectedDate) return [];
+        return await getAvailableSlots(formData.service_id, selectedDate);
+      },
+      enabled: !!formData.service_id && !!selectedDate,
+      staleTime: 1000 * 30,
+      gcTime: 1000 * 60 * 5,
+    });
 
-    setFetchingSlots(true);
-    try {
-      const slots = await getAvailableSlots(formData.service_id, selectedDate);
-      setAvailableSlots(slots);
-    } catch (error) {
-      console.error("Error fetching slots:", error);
-      setAvailableSlots([]);
-    } finally {
-      setFetchingSlots(false);
+  useEffect(() => {
+    setFetchingSlots((prev) =>
+      prev === availableSlotsFetching ? prev : availableSlotsFetching,
+    );
+
+    if (formData.service_id && selectedDate) {
+      const nextSlots = availableSlotsData ?? [];
+
+      setAvailableSlots((prev) => {
+        if (prev.length !== nextSlots.length) return nextSlots;
+
+        for (let i = 0; i < nextSlots.length; i++) {
+          const prevSlot = prev[i];
+          const nextSlot = nextSlots[i];
+
+          if (
+            prevSlot?.id !== nextSlot?.id ||
+            prevSlot?.time !== nextSlot?.time ||
+            prevSlot?.is_available !== nextSlot?.is_available
+          ) {
+            return nextSlots;
+          }
+        }
+
+        return prev;
+      });
+    } else {
+      setAvailableSlots((prev) => (prev.length === 0 ? prev : []));
     }
-  }, [formData.service_id, selectedDate]);
-
+  }, [
+    formData.service_id,
+    selectedDate,
+    availableSlotsData,
+    availableSlotsFetching,
+  ]);
   // ===============================
   // REALTIME SYNC
   // ===============================
   useEffect(() => {
     if (!formData.service_id) return;
+
+    const invalidateAvailability = async () => {
+      await queryClient.invalidateQueries({
+        queryKey: [
+          "monthlyAvailability",
+          formData.service_id,
+          currentMonth.getFullYear(),
+          currentMonth.getMonth() + 1,
+        ],
+      });
+
+      if (selectedDate) {
+        await queryClient.invalidateQueries({
+          queryKey: ["availableSlots", formData.service_id, selectedDate],
+        });
+      }
+    };
 
     const slotsChannel = supabase
       .channel(`public-booking-slots-${formData.service_id}`)
@@ -923,11 +1006,7 @@ const Booking = ({ services: servicesProp = [] }) => {
           const rowServiceId = Number(row.service_id);
           if (rowServiceId !== Number(formData.service_id)) return;
 
-          await fetchMonthlyAvailability();
-
-          if (selectedDate) {
-            await fetchAvailableSlots();
-          }
+          await invalidateAvailability();
         },
       )
       .subscribe();
@@ -942,11 +1021,7 @@ const Booking = ({ services: servicesProp = [] }) => {
           table: "bookings",
         },
         async () => {
-          await fetchMonthlyAvailability();
-
-          if (selectedDate) {
-            await fetchAvailableSlots();
-          }
+          await invalidateAvailability();
 
           if (bookingId) {
             try {
@@ -1015,19 +1090,12 @@ const Booking = ({ services: servicesProp = [] }) => {
     formData.service_id,
     selectedDate,
     bookingId,
-    fetchMonthlyAvailability,
-    fetchAvailableSlots,
     step,
     hardRestart,
+    clearActiveFlow,
+    queryClient,
+    currentMonth,
   ]);
-
-  useEffect(() => {
-    if (formData.service_id && selectedDate) {
-      fetchAvailableSlots();
-    } else {
-      setAvailableSlots([]);
-    }
-  }, [formData.service_id, selectedDate, fetchAvailableSlots]);
 
   // ===============================
   // COUNTDOWN
