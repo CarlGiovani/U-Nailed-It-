@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "../../components/layout/adminLayout";
 import {
   approveReview,
@@ -9,9 +14,6 @@ import "../../styles/reviews.css";
 
 // ADMIN REV
 const AdminReviews = () => {
-  const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(true);
-
   const [selectedReview, setSelectedReview] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
 
@@ -21,79 +23,84 @@ const AdminReviews = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
 
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const limit = 10;
+  const queryClient = useQueryClient();
 
-  /* ================= FETCH REVIEWS ================= */
-  const fetchReviews = useCallback(async (pageToLoad = 1) => {
-    try {
-      const result = await getAllReviewsAdmin(pageToLoad, limit);
+  /* ================= CACHED + BACKEND FILTERED INFINITE REVIEWS ================= */
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
+    useInfiniteQuery({
+      queryKey: ["admin-reviews", limit, search, statusFilter],
+      queryFn: async ({ pageParam = 1 }) => {
+        const result = await getAllReviewsAdmin(
+          pageParam,
+          limit,
+          search,
+          statusFilter,
+        );
 
-      if (pageToLoad === 1) {
-        setReviews(result.data || []);
-      } else {
-        setReviews((prev) => [...prev, ...(result.data || [])]);
-      }
+        return {
+          data: result.data || [],
+          totalPages: result.totalPages || 1,
+          currentPage: pageParam,
+        };
+      },
+      getNextPageParam: (lastPage) => {
+        return lastPage.currentPage < lastPage.totalPages
+          ? lastPage.currentPage + 1
+          : undefined;
+      },
+      staleTime: 1000 * 60 * 3,
+      gcTime: 1000 * 60 * 10,
+      initialPageParam: 1,
+    });
 
-      setHasMore(pageToLoad < (result.totalPages || 1));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const reviews = useMemo(() => {
+    return data?.pages?.flatMap((page) => page.data) ?? [];
+  }, [data]);
 
-  const loadMoreReviews = useCallback(async () => {
-    if (!hasMore || loading) return;
-
-    const nextPage = page + 1;
-    setPage(nextPage);
-    await fetchReviews(nextPage);
-  }, [hasMore, loading, page, fetchReviews]);
-
-  useEffect(() => {
-    fetchReviews(1);
-  }, [fetchReviews]);
-
+  /* ================= INFINITE SCROLL ================= */
   useEffect(() => {
     const handleScroll = () => {
       const bottom =
         window.innerHeight + window.scrollY >=
         document.documentElement.scrollHeight - 200;
 
-      if (bottom && hasMore && !loading && !actionLoading) {
-        loadMoreReviews();
+      if (
+        bottom &&
+        hasNextPage &&
+        !isLoading &&
+        !isFetchingNextPage &&
+        !actionLoading
+      ) {
+        fetchNextPage();
       }
     };
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [hasMore, loading, actionLoading, loadMoreReviews]);
+  }, [
+    hasNextPage,
+    isLoading,
+    isFetchingNextPage,
+    actionLoading,
+    fetchNextPage,
+  ]);
 
-  useEffect(() => {
-    setPage(1);
-    setHasMore(true);
-    fetchReviews(1);
-  }, [search, statusFilter, fetchReviews]);
-
-  /* ================= FILTER ================= */
-  const filteredReviews = reviews.filter((r) => {
-    const name = r.booking?.customer_name || "";
-
-    const matchSearch = name.toLowerCase().includes(search.toLowerCase());
-
-    const matchStatus =
-      statusFilter === "all"
-        ? true
-        : statusFilter === "approved"
-          ? r.is_approved
-          : !r.is_approved;
-
-    return matchSearch && matchStatus;
+  /* ================= ACTIONS ================= */
+  const approveMutation = useMutation({
+    mutationFn: approveReview,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
+    },
   });
 
-  /* ================= ACTION ================= */
+  const rejectMutation = useMutation({
+    mutationFn: rejectReview,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
+    },
+  });
+
   const executeAction = async () => {
     if (!confirmAction) return;
 
@@ -103,16 +110,13 @@ const AdminReviews = () => {
       const { type, review } = confirmAction;
 
       if (type === "approve") {
-        await approveReview(review.id);
+        await approveMutation.mutateAsync(review.id);
       }
 
       if (type === "reject") {
-        await rejectReview(review.id);
+        await rejectMutation.mutateAsync(review.id);
       }
 
-      setPage(1);
-      setHasMore(true);
-      await fetchReviews(1);
       setSelectedReview(null);
     } catch (err) {
       console.error(err);
@@ -155,7 +159,7 @@ const AdminReviews = () => {
         </select>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="loading">Loading...</div>
       ) : (
         <div className="premium-table">
@@ -171,8 +175,8 @@ const AdminReviews = () => {
             </thead>
 
             <tbody>
-              {filteredReviews.length > 0 ? (
-                filteredReviews.map((r) => (
+              {reviews.length > 0 ? (
+                reviews.map((r) => (
                   <tr key={r.id}>
                     <td>{r.id}</td>
 
@@ -200,14 +204,18 @@ const AdminReviews = () => {
         </div>
       )}
 
-      {hasMore && !loading && (
+      {hasNextPage && !isLoading && (
         <div className="lazy-loading">
           <span className="spinner"></span>
-          Loading more reviews...
+          {isFetchingNextPage
+            ? "Loading more reviews..."
+            : "Scroll for more reviews..."}
         </div>
       )}
 
-      {!hasMore && <div className="lazy-end">No more reviews</div>}
+      {!hasNextPage && !isLoading && (
+        <div className="lazy-end">No more reviews</div>
+      )}
 
       {selectedReview && (
         <div className="modal-overlay" onClick={() => setSelectedReview(null)}>

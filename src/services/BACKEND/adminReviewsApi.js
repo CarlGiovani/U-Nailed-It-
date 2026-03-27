@@ -31,10 +31,21 @@ export const getApprovedReviews = async (page = 1, limit = 6) => {
 ================================= */
 
 // GET ALL REVIEWS (ADMIN)
-export const getAllReviewsAdmin = async (page = 1, limit = 10) => {
+export const getAllReviewsAdmin = async (
+  page = 1,
+  limit = 10,
+  search = "",
+  status = "all",
+) => {
   const res = await api.get("/reviews/admin", {
-    params: { page, limit },
+    params: {
+      page,
+      limit,
+      search,
+      status,
+    },
   });
+
   return res.data;
 };
 
