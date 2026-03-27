@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import AdminLayout from "../../components/layout/adminLayout";
 
 import {
@@ -13,68 +14,123 @@ import {
   updateVariant,
 } from "../../services/BACKEND/adminServiceApi";
 
-import { getAllBookings } from "../../services/BACKEND/adminBookingApi";
-
 import "../../styles/services.css";
 
+
+
 const Services = () => {
-  const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [togglingId, setTogglingId] = useState(null);
 
-  /* ================= FETCH ================= */
-  const fetchData = async () => {
-    try {
-      setLoading(true);
+  const queryClient = useQueryClient();
 
-      const [servicesRes, bookingsRes] = await Promise.all([
-        getAllServicesAdmin(),
-        getAllBookings(),
-      ]);
+  /* ================= CACHED FETCH ================= */
+  const { data: services = [], isLoading } = useQuery({
+    queryKey: ["admin-services"],
+    queryFn: async () => {
+      const servicesRes = await getAllServicesAdmin();
+      return servicesRes?.data || servicesRes || [];
+    },
+    staleTime: 1000 * 60 * 3,
+    gcTime: 1000 * 60 * 10,
+  });
 
-      const servicesData = servicesRes.data || servicesRes;
-      const bookingsData = bookingsRes.data || bookingsRes;
+  const servicesById = useMemo(() => {
+    return new Map(services.map((service) => [service.id, service]));
+  }, [services]);
 
-      const servicesWithBookingFlag = servicesData.map((service) => {
-        const ACTIVE_STATUSES = [
-          "pending_payment",
-          "pending_approval",
-          "approved",
-        ];
-        const hasBookings = bookingsData.some(
-          (b) => b.service_id === service.id && ACTIVE_STATUSES.includes(b.status),
-        );
-
-        return {
-          ...service,
-          hasBookings,
-        };
-      });
-
-      setServices(servicesWithBookingFlag);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const invalidateServices = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["admin-services"] });
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const createServiceMutation = useMutation({
+    mutationFn: createService,
+    onSuccess: invalidateServices,
+  });
+
+  const updateServiceMutation = useMutation({
+    mutationFn: ({ id, formData }) => updateService(id, formData),
+    onSuccess: invalidateServices,
+  });
+
+  const createCategoryMutation = useMutation({
+    mutationFn: createCategory,
+    onSuccess: invalidateServices,
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ id, payload }) => updateCategory(id, payload),
+    onSuccess: invalidateServices,
+  });
+
+  const createVariantMutation = useMutation({
+    mutationFn: createVariant,
+    onSuccess: invalidateServices,
+  });
+
+  const updateVariantMutation = useMutation({
+    mutationFn: ({ id, payload }) => updateVariant(id, payload),
+    onSuccess: invalidateServices,
+  });
+
+  const deactivateServiceMutation = useMutation({
+    mutationFn: deleteService,
+    onSuccess: invalidateServices,
+  });
+
+  const reactivateServiceMutation = useMutation({
+    mutationFn: reactivateService,
+    onSuccess: invalidateServices,
+  });
+
+  const closeModal = () => {
+    setModal(null);
+    setPreviewImage(null);
+  };
+
+  const openCreateServiceModal = () => {
+    setPreviewImage(null);
+    setModal({
+      type: "service",
+      name: "",
+      description: "",
+      duration: "",
+      image: null,
+    });
+  };
+
+  const openEditServiceModal = (service) => {
+    setPreviewImage(null);
+    setModal({
+      ...service,
+      type: "service",
+      image: null,
+    });
+  };
+
+  const openManageModal = (service) => {
+    const freshService = servicesById.get(service.id) || service;
+
+    setPreviewImage(null);
+    setModal({
+      type: "manage",
+      service: freshService,
+    });
+  };
 
   /* ================= SERVICE SAVE ================= */
   const handleServiceSave = async () => {
+    if (!modal) return;
+
     try {
       setSaving(true);
 
       const formData = new FormData();
-
-      formData.append("name", modal.name);
-      formData.append("description", modal.description);
-      formData.append("duration", modal.duration);
+      formData.append("name", modal.name || "");
+      formData.append("description", modal.description || "");
+      formData.append("duration", modal.duration || "");
 
       if (modal.image) {
         formData.append("file", modal.image);
@@ -85,13 +141,16 @@ const Services = () => {
           alert("Cannot edit service with existing bookings.");
           return;
         }
-        await updateService(modal.id, formData);
+
+        await updateServiceMutation.mutateAsync({
+          id: modal.id,
+          formData,
+        });
       } else {
-        await createService(formData);
+        await createServiceMutation.mutateAsync(formData);
       }
 
       closeModal();
-      fetchData();
     } catch (err) {
       console.error(err);
     } finally {
@@ -101,20 +160,24 @@ const Services = () => {
 
   /* ================= CATEGORY SAVE ================= */
   const handleCategorySave = async () => {
+    if (!modal) return;
+
     try {
       setSaving(true);
 
       if (modal.id) {
-        await updateCategory(modal.id, { name: modal.name });
+        await updateCategoryMutation.mutateAsync({
+          id: modal.id,
+          payload: { name: modal.name },
+        });
       } else {
-        await createCategory({
+        await createCategoryMutation.mutateAsync({
           service_id: modal.service_id,
           name: modal.name,
         });
       }
 
       closeModal();
-      fetchData();
     } catch (err) {
       console.error(err);
     } finally {
@@ -124,6 +187,8 @@ const Services = () => {
 
   /* ================= VARIANT SAVE ================= */
   const handleVariantSave = async () => {
+    if (!modal) return;
+
     try {
       setSaving(true);
 
@@ -135,16 +200,16 @@ const Services = () => {
         downpayment: Number(modal.downpayment || 0),
       };
 
-      console.log("Payload:", payload);
-
       if (modal.id) {
-        await updateVariant(modal.id, payload);
+        await updateVariantMutation.mutateAsync({
+          id: modal.id,
+          payload,
+        });
       } else {
-        await createVariant(payload);
+        await createVariantMutation.mutateAsync(payload);
       }
 
       closeModal();
-      fetchData();
     } catch (err) {
       console.error(err);
     } finally {
@@ -160,22 +225,28 @@ const Services = () => {
         return;
       }
 
-      if (service.is_active) {
-        await deleteService(service.id);
-      } else {
-        await reactivateService(service.id);
-      }
+      setTogglingId(service.id);
 
-      fetchData();
+      if (service.is_active) {
+        await deactivateServiceMutation.mutateAsync(service.id);
+      } else {
+        await reactivateServiceMutation.mutateAsync(service.id);
+      }
     } catch (err) {
       console.error(err);
+    } finally {
+      setTogglingId(null);
     }
   };
 
-  const closeModal = () => {
-    setModal(null);
-    setPreviewImage(null);
-  };
+  const isAnyMutationPending =
+    saving ||
+    createServiceMutation.isPending ||
+    updateServiceMutation.isPending ||
+    createCategoryMutation.isPending ||
+    updateCategoryMutation.isPending ||
+    createVariantMutation.isPending ||
+    updateVariantMutation.isPending;
 
   /* ================= RENDER ================= */
   return (
@@ -184,23 +255,12 @@ const Services = () => {
         <div className="services-header">
           <h1>Services Management</h1>
 
-          <button
-            className="btn-primary"
-            onClick={() =>
-              setModal({
-                type: "service",
-                name: "",
-                description: "",
-                duration: "",
-                image: null,
-              })
-            }
-          >
+          <button className="btn-primary" onClick={openCreateServiceModal}>
             + Add Service
           </button>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div>Loading...</div>
         ) : (
           <div className="services-list">
@@ -233,39 +293,32 @@ const Services = () => {
                     <button
                       className="btn-secondary"
                       disabled={service.hasBookings}
-                      onClick={() =>
-                        setModal({
-                          ...service,
-                          type: "service",
-                          image: null,
-                        })
-                      }
+                      onClick={() => openEditServiceModal(service)}
                     >
                       Edit
                     </button>
 
                     <button
                       className="btn-secondary"
-                      onClick={() =>
-                        setModal({
-                          type: "manage",
-                          service,
-                        })
-                      }
+                      onClick={() => openManageModal(service)}
                     >
                       Manage
                     </button>
 
                     <button
                       className="btn-danger"
-                      disabled={service.hasBookings}
+                      disabled={
+                        service.hasBookings || togglingId === service.id
+                      }
                       onClick={() => handleToggleService(service)}
                     >
                       {service.hasBookings
                         ? "Locked"
-                        : service.is_active
-                          ? "Deactivate"
-                          : "Activate"}
+                        : togglingId === service.id
+                          ? "Saving..."
+                          : service.is_active
+                            ? "Deactivate"
+                            : "Activate"}
                     </button>
                   </div>
                 </div>
@@ -311,7 +364,7 @@ const Services = () => {
                     type="file"
                     accept="image/*"
                     onChange={(e) => {
-                      const file = e.target.files[0];
+                      const file = e.target.files?.[0];
                       if (file) {
                         setModal({ ...modal, image: file });
                         setPreviewImage(URL.createObjectURL(file));
@@ -325,8 +378,11 @@ const Services = () => {
                     </div>
                   )}
 
-                  <button onClick={handleServiceSave} disabled={saving}>
-                    {saving
+                  <button
+                    onClick={handleServiceSave}
+                    disabled={isAnyMutationPending}
+                  >
+                    {isAnyMutationPending
                       ? "Saving..."
                       : modal.id
                         ? "Update Service"
@@ -335,7 +391,7 @@ const Services = () => {
                 </>
               )}
 
-              {/* MANAGE – IMPROVED LAYOUT */}
+              {/* MANAGE */}
               {modal.type === "manage" && (
                 <>
                   <div className="manage-header">
@@ -446,8 +502,11 @@ const Services = () => {
                     }
                   />
 
-                  <button onClick={handleCategorySave} disabled={saving}>
-                    {saving ? "Saving..." : "Save"}
+                  <button
+                    onClick={handleCategorySave}
+                    disabled={isAnyMutationPending}
+                  >
+                    {isAnyMutationPending ? "Saving..." : "Save"}
                   </button>
                 </>
               )}
@@ -492,8 +551,11 @@ const Services = () => {
                     }
                   />
 
-                  <button onClick={handleVariantSave} disabled={saving}>
-                    {saving ? "Saving..." : "Save"}
+                  <button
+                    onClick={handleVariantSave}
+                    disabled={isAnyMutationPending}
+                  >
+                    {isAnyMutationPending ? "Saving..." : "Save"}
                   </button>
                 </>
               )}
