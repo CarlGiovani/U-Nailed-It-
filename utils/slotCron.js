@@ -10,13 +10,19 @@ export const scheduleSlotCleanup = () => {
   // DAILY CLEANUP (MIDNIGHT)
   // =========================
   cron.schedule("0 0 * * *", async () => {
-    if (isCleanupRunning) return;
+    if (isCleanupRunning) {
+      console.log("[CRON CLEANUP] Skipped: previous cleanup is still running.");
+      return;
+    }
+
     isCleanupRunning = true;
 
     const now = new Date();
     const todayStr = formatLocalDate(now);
 
-    console.log(`[CRON CLEANUP] Running. Today: ${todayStr}`);
+    console.log(
+      `[CRON CLEANUP] Started | Date: ${todayStr} | Time: ${now.toLocaleTimeString()}`,
+    );
 
     try {
       const { data: pastSlots, error: pastError } = await supabase
@@ -26,10 +32,16 @@ export const scheduleSlotCleanup = () => {
 
       if (pastError) throw pastError;
 
+      const totalPastSlots = pastSlots?.length || 0;
       let deletedCount = 0;
+      let keptCount = 0;
 
-      for (const slot of pastSlots) {
-        const { data: booking } = await supabase
+      console.log(
+        `[CRON CLEANUP] Found ${totalPastSlots} past slot(s) to check.`,
+      );
+
+      for (const slot of pastSlots || []) {
+        const { data: booking, error: bookingError } = await supabase
           .from("bookings")
           .select("id")
           .eq("booking_date", slot.date)
@@ -37,16 +49,27 @@ export const scheduleSlotCleanup = () => {
           .in("status", ["pending_approval", "approved", "completed"])
           .maybeSingle();
 
+        if (bookingError) throw bookingError;
+
         if (!booking) {
-          await supabase.from("calendar_slots").delete().eq("id", slot.id);
+          const { error: deleteError } = await supabase
+            .from("calendar_slots")
+            .delete()
+            .eq("id", slot.id);
+
+          if (deleteError) throw deleteError;
 
           deletedCount++;
+        } else {
+          keptCount++;
         }
       }
 
-      console.log(`[CRON CLEANUP] Deleted slots: ${deletedCount}`);
+      console.log(
+        `[CRON CLEANUP] Finished | Checked: ${totalPastSlots} | Deleted: ${deletedCount} | Kept: ${keptCount}`,
+      );
     } catch (err) {
-      console.error("[CRON CLEANUP ERROR]", err);
+      console.error(`[CRON CLEANUP ERROR] ${err.message || err}`);
     } finally {
       isCleanupRunning = false;
     }
@@ -56,7 +79,11 @@ export const scheduleSlotCleanup = () => {
   // BLOCK PAST TIMES (EVERY 5 MINUTES)
   // =========================
   cron.schedule("*/5 * * * *", async () => {
-    if (isBlockRunning) return;
+    if (isBlockRunning) {
+      console.log("[CRON BLOCK] Skipped: previous block job is still running.");
+      return;
+    }
+
     isBlockRunning = true;
 
     const now = new Date();
@@ -64,7 +91,7 @@ export const scheduleSlotCleanup = () => {
     const currentTime = now.toTimeString().slice(0, 5);
 
     console.log(
-      `[CRON BLOCK] Running. Today: ${todayStr}, Time: ${currentTime}`,
+      `[CRON BLOCK] Started | Date: ${todayStr} | Current Time: ${currentTime}`,
     );
 
     try {
@@ -73,14 +100,24 @@ export const scheduleSlotCleanup = () => {
         .update({ is_available: false })
         .eq("date", todayStr)
         .lt("time", currentTime)
-        .eq("is_available", true) 
-        .select();
+        .eq("is_available", true)
+        .select("id, time");
 
       if (todayError) throw todayError;
 
-      console.log(`[CRON BLOCK] Newly blocked slots: ${todayData.length}`);
+      const blockedCount = todayData?.length || 0;
+
+      console.log(
+        `[CRON BLOCK] Finished | Newly blocked slot(s): ${blockedCount}`,
+      );
+
+      if (blockedCount > 0) {
+        console.log(
+          `[CRON BLOCK] Blocked times: ${todayData.map((slot) => slot.time).join(", ")}`,
+        );
+      }
     } catch (err) {
-      console.error("[CRON BLOCK ERROR]", err);
+      console.error(`[CRON BLOCK ERROR] ${err.message || err}`);
     } finally {
       isBlockRunning = false;
     }
