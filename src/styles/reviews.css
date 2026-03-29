@@ -40,10 +40,13 @@ body {
 ============================= */
 
 .review-status {
+  display: inline-flex;
+  align-items: center;
   padding: 6px 10px;
   border-radius: 10px;
   font-size: 12px;
   font-weight: 600;
+  width: fit-content;
 }
 
 .review-status.approved {
@@ -57,30 +60,100 @@ body {
 }
 
 /* =============================
+   MODAL OVERLAY
+============================= */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  z-index: 999;
+  overflow-y: auto;
+}
+
+/* =============================
    REVIEW MODAL
 ============================= */
 
 .review-modal {
   background: white;
   border-radius: 18px;
-  padding: 30px;
-  width: 650px;
-  max-width: 90%;
+  padding: 24px;
+  width: min(650px, 100%);
+  max-width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.modal-header h2 {
+  margin: 0 0 10px;
+  font-size: 28px;
+  color: #c58b1d;
+  line-height: 1.2;
+}
+
+.modal-close {
+  border: none;
+  background: #f3f3f3;
+  color: #666;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.modal-close:hover {
+  background: #e6e6e6;
 }
 
 .review-content {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 25px;
-  margin-top: 25px;
+  gap: 20px;
+  margin-top: 10px;
+  align-items: start;
 }
 
 .info-card {
   background: #fff;
   border-radius: 16px;
-  padding: 20px;
+  padding: 18px;
   border: 1px solid #f5c6d6;
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.info-card h3 {
+  margin-top: 0;
+  margin-bottom: 14px;
+  color: #c58b1d;
+  font-size: 18px;
+}
+
+.info-card p {
+  margin: 0 0 10px;
+  color: #555;
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .review-stars {
@@ -90,28 +163,108 @@ body {
 
 .review-comment {
   font-style: italic;
+  color: #555;
+  line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .review-image {
-  margin-top: 10px;
+  margin-top: 12px;
   width: 100%;
+  max-width: 100%;
   border-radius: 12px;
+  display: block;
+  object-fit: cover;
 }
+
+/* =============================
+   MODAL ACTIONS
+============================= */
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.btn-approve,
+.btn-reject,
+.btn-close {
+  border: none;
+  padding: 12px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 120px;
+  transition: 0.2s;
+}
+
+.btn-approve {
+  background: #1b8a4b;
+  color: white;
+}
+
+.btn-approve:hover {
+  background: #166a3a;
+}
+
+.btn-reject {
+  background: #c0392b;
+  color: white;
+}
+
+.btn-reject:hover {
+  background: #a93226;
+}
+
+.btn-close {
+  background: #ececec;
+  color: #333;
+}
+
+.btn-close:hover {
+  background: #dcdcdc;
+}
+
+.btn-approve:disabled,
+.btn-reject:disabled,
+.btn-close:disabled,
+.confirm-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* =============================
+   CONFIRM MODAL
+============================= */
 
 .confirm-modal {
   background: white;
   padding: 28px;
   border-radius: 16px;
   text-align: center;
-  width: 320px;
-  max-width: 90%;
+  width: min(320px, 100%);
+  max-width: 100%;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
 }
+
+.confirm-title {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
 .confirm-actions {
   display: flex;
   justify-content: center;
   gap: 12px;
   margin-top: 20px;
+  flex-wrap: wrap;
 }
 
 .confirm-btn {
@@ -121,6 +274,7 @@ body {
   font-size: 14px;
   cursor: pointer;
   transition: 0.2s;
+  min-width: 100px;
 }
 
 .confirm-btn-yes {
@@ -140,23 +294,10 @@ body {
 .confirm-btn-cancel:hover {
   background: #d2d2d2;
 }
+
 /* =============================
-   BUTTONS
+   IMAGE PREVIEW
 ============================= */
-
-.btn-approve {
-  background: #1b8a4b;
-  color: white;
-  padding: 10px 16px;
-  border-radius: 10px;
-}
-
-.btn-reject {
-  background: #c0392b;
-  color: white;
-  padding: 10px 16px;
-  border-radius: 10px;
-}
 
 .clickable-image {
   cursor: zoom-in;
@@ -172,18 +313,26 @@ body {
   padding: 20px;
   border-radius: 18px;
   text-align: center;
-  max-width: 90%;
-
+  max-width: min(700px, 95vw);
+  max-height: 90vh;
+  overflow: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 16px;
+  box-sizing: border-box;
 }
 
 .image-preview-modal img {
   max-width: 100%;
   max-height: 70vh;
   border-radius: 12px;
+  display: block;
 }
+
+/* =============================
+   LOADING
+============================= */
 
 .spinner {
   width: 16px;
@@ -214,4 +363,65 @@ body {
   text-align: center;
   padding: 20px;
   color: #999;
+}
+
+/* =============================
+   MOBILE FIXES
+============================= */
+
+@media (max-width: 768px) {
+  .review-modal {
+    padding: 18px;
+    width: 100%;
+    border-radius: 16px;
+  }
+
+  .modal-header h2 {
+    font-size: 22px;
+  }
+
+  .review-content {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .btn-approve,
+  .btn-reject,
+  .btn-close {
+    width: 100%;
+  }
+
+  .review-filters input,
+  .review-filters select {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 12px;
+  }
+
+  .review-modal {
+    padding: 16px;
+  }
+
+  .info-card {
+    padding: 14px;
+  }
+
+  .modal-header {
+    gap: 10px;
+  }
+
+  .modal-close {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
 }
