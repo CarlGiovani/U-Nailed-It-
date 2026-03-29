@@ -211,6 +211,8 @@ const Booking = ({ services: servicesProp = [] }) => {
     duration: 0,
   });
 
+  const [reviewPanelCollapsed, setReviewPanelCollapsed] = useState(true);
+
   // ===============================
   // CLEANUP
   // ===============================
@@ -565,7 +567,9 @@ const Booking = ({ services: servicesProp = [] }) => {
 
     if (formData.service_variant_id && !formData.service_category_id) {
       const foundCat = service.service_categories?.find((c) =>
-        c.service_variants?.some((v) => sameId(v.id, formData.service_variant_id)),
+        c.service_variants?.some((v) =>
+          sameId(v.id, formData.service_variant_id),
+        ),
       );
 
       if (foundCat) {
@@ -1082,7 +1086,8 @@ const Booking = ({ services: servicesProp = [] }) => {
 
     if (targetStep === 1) {
       if (!formData.service_id) errors.push("Please select a service.");
-      if (!formData.service_category_id) errors.push("Please select a category.");
+      if (!formData.service_category_id)
+        errors.push("Please select a category.");
       if (!formData.service_variant_id) errors.push("Please select a variant.");
     }
 
@@ -1222,10 +1227,7 @@ const Booking = ({ services: servicesProp = [] }) => {
         null;
 
       const signed =
-        result.signedUrl ||
-        result.signed_url ||
-        result.proof_url ||
-        null;
+        result.signedUrl || result.signed_url || result.proof_url || null;
 
       if (!intent) {
         showAlert(
@@ -1292,7 +1294,12 @@ const Booking = ({ services: servicesProp = [] }) => {
 
   const handleConfirmWithUpload = async () => {
     if (!bookingId) {
-      showAlert("Error", "Missing booking ID. Please restart booking.", null, "danger");
+      showAlert(
+        "Error",
+        "Missing booking ID. Please restart booking.",
+        null,
+        "danger",
+      );
       return;
     }
 
@@ -1354,7 +1361,12 @@ const Booking = ({ services: servicesProp = [] }) => {
 
   const handleFinalConfirmation = async (intentOverride = null) => {
     if (!bookingId) {
-      showAlert("Error", "Missing booking ID. Please restart booking.", null, "danger");
+      showAlert(
+        "Error",
+        "Missing booking ID. Please restart booking.",
+        null,
+        "danger",
+      );
       return;
     }
 
@@ -1641,10 +1653,17 @@ const Booking = ({ services: servicesProp = [] }) => {
         className="modal-overlay"
         onClick={() => setModal((prev) => ({ ...prev, open: false }))}
       >
-        <div className={`modal-card modal-${modal.tone}`} onClick={(e) => e.stopPropagation()}>
+        <div
+          className={`modal-card modal-${modal.tone}`}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="modal-card-header">
             <div className="modal-card-icon">
-              {modal.tone === "danger" ? "⛔" : modal.tone === "success" ? "✓" : "⚠️"}
+              {modal.tone === "danger"
+                ? "⛔"
+                : modal.tone === "success"
+                  ? "✓"
+                  : "⚠️"}
             </div>
 
             <div>
@@ -1841,7 +1860,9 @@ const Booking = ({ services: servicesProp = [] }) => {
 
               <div className="step-label">{item.label}</div>
 
-              {item.number < steps.length && <div className="step-connector"></div>}
+              {item.number < steps.length && (
+                <div className="step-connector"></div>
+              )}
             </div>
           ))}
         </div>
@@ -1858,7 +1879,9 @@ const Booking = ({ services: servicesProp = [] }) => {
         <div className="premium-step">
           <div className="step-header">
             <h1 className="step-title">Select Service</h1>
-            <p className="step-subtitle">Choose the service you want to book.</p>
+            <p className="step-subtitle">
+              Choose the service you want to book.
+            </p>
           </div>
 
           <div className="loading-state">
@@ -1874,7 +1897,9 @@ const Booking = ({ services: servicesProp = [] }) => {
         <div className="premium-step">
           <div className="step-header">
             <h1 className="step-title">Select Service</h1>
-            <p className="step-subtitle">Choose the service you want to book.</p>
+            <p className="step-subtitle">
+              Choose the service you want to book.
+            </p>
           </div>
 
           <div className="error-state">
@@ -1891,7 +1916,9 @@ const Booking = ({ services: servicesProp = [] }) => {
         <div className="premium-step">
           <div className="step-header">
             <h1 className="step-title">Select Service</h1>
-            <p className="step-subtitle">Choose the service you want to book.</p>
+            <p className="step-subtitle">
+              Choose the service you want to book.
+            </p>
           </div>
 
           {services.length === 0 ? (
@@ -1951,7 +1978,9 @@ const Booking = ({ services: servicesProp = [] }) => {
                         <span className="meta-icon">🏷️</span>
                         <span>
                           {service.service_categories?.length || 0} categor
-                          {service.service_categories?.length !== 1 ? "ies" : "y"}
+                          {service.service_categories?.length !== 1
+                            ? "ies"
+                            : "y"}
                         </span>
                       </div>
                     </div>
@@ -2030,13 +2059,17 @@ const Booking = ({ services: servicesProp = [] }) => {
                       <span>
                         {formatCurrency(
                           Math.min(
-                            ...(category.service_variants?.map((v) => v.price) || [0]),
+                            ...(category.service_variants?.map(
+                              (v) => v.price,
+                            ) || [0]),
                           ),
                         )}{" "}
                         -{" "}
                         {formatCurrency(
                           Math.max(
-                            ...(category.service_variants?.map((v) => v.price) || [0]),
+                            ...(category.service_variants?.map(
+                              (v) => v.price,
+                            ) || [0]),
                           ),
                         )}
                       </span>
@@ -2198,7 +2231,9 @@ const Booking = ({ services: servicesProp = [] }) => {
         <div className="selected-service-summary premium compact-summary">
           <div className="summary-header">
             <h4>Selected Service</h4>
-            <div className="price-tag">{formatCurrency(formData.total_price)}</div>
+            <div className="price-tag">
+              {formatCurrency(formData.total_price)}
+            </div>
           </div>
 
           <div className="summary-details">
@@ -2234,7 +2269,8 @@ const Booking = ({ services: servicesProp = [] }) => {
 
                 <div className="calendar-title">
                   <h3>
-                    {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+                    {monthNames[currentMonth.getMonth()]}{" "}
+                    {currentMonth.getFullYear()}
                   </h3>
                   <button className="today-btn premium" onClick={goToToday}>
                     Today
@@ -2282,14 +2318,18 @@ const Booking = ({ services: servicesProp = [] }) => {
                           !dateObj.isBlocked && handleDateSelect(dateObj.date)
                         }
                         title={
-                          dateObj.isBlocked ? "Not available" : "Click to select"
+                          dateObj.isBlocked
+                            ? "Not available"
+                            : "Click to select"
                         }
                       >
                         <div className="day-content premium">
                           <span className="day-number">
                             {dateObj.date.getDate()}
                           </span>
-                          {isToday && <span className="today-label">Today</span>}
+                          {isToday && (
+                            <span className="today-label">Today</span>
+                          )}
                         </div>
 
                         {!dateObj.isCurrentMonth && (
@@ -2394,7 +2434,9 @@ const Booking = ({ services: servicesProp = [] }) => {
                             ) : slot.isSelected ? (
                               <span className="status-selected">Selected</span>
                             ) : (
-                              <span className="status-available">Available</span>
+                              <span className="status-available">
+                                Available
+                              </span>
                             )}
                           </span>
                         </button>
@@ -2481,7 +2523,8 @@ const Booking = ({ services: servicesProp = [] }) => {
         <div>
           <h1 className="step-title">Your Information</h1>
           <p className="step-subtitle">
-            Fill in your details and review everything before proceeding to payment.
+            Fill in your details and review everything before proceeding to
+            payment.
           </p>
         </div>
       </div>
@@ -2543,7 +2586,8 @@ const Booking = ({ services: servicesProp = [] }) => {
 
             <div className="form-group premium">
               <label className="form-label">
-                Facebook Profile Link <span className="optional">(Optional)</span>
+                Facebook Profile Link{" "}
+                <span className="optional">(Optional)</span>
               </label>
               <input
                 type="url"
@@ -2571,50 +2615,75 @@ const Booking = ({ services: servicesProp = [] }) => {
           </div>
         </div>
 
-        <div className="review-panel compact">
-          <div className="review-panel-header">
-            <h4>Review Summary</h4>
-            <span className="review-chip">Editable</span>
-          </div>
-
-          <div className="review-accordion">
-            {reviewSections.map((section) => (
-              <div key={section.key} className="review-accordion-item">
-                <button
-                  type="button"
-                  className="review-accordion-trigger"
-                  onClick={() => toggleReviewSection(section.key)}
-                >
-                  <div className="review-trigger-main">
-                    <strong>{section.title}</strong>
-                    <span>{section.summary}</span>
-                  </div>
-                  <span className="review-trigger-icon">
-                    {collapsedReview[section.key] ? "+" : "−"}
-                  </span>
-                </button>
-
-                {!collapsedReview[section.key] && (
-                  <div className="review-accordion-content">
-                    {section.content}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="info-notice premium compact">
-            <div className="notice-header">
-              <span className="notice-icon">📋</span>
-              <h5>Before you proceed</h5>
+        <div
+          className={`review-panel compact ${reviewPanelCollapsed ? "collapsed" : "expanded"}`}
+        >
+          <button
+            type="button"
+            className="review-panel-toggle"
+            onClick={() => setReviewPanelCollapsed((prev) => !prev)}
+          >
+            <div className="review-panel-toggle-main">
+              <h4>Review Summary</h4>
+              <p>
+                {selectedService?.name || "No service selected"} •{" "}
+                {formData.booking_date || "No date"} •{" "}
+                {formatDisplayTime(formData.booking_time)}
+              </p>
             </div>
 
-            <ul className="notice-list">
-              <li>This is your last editable step.</li>
-              <li>Proceeding to payment will create your booking.</li>
-              <li>You will have 30 minutes to upload proof of payment.</li>
-            </ul>
-          </div>
+            <div className="review-panel-toggle-side">
+              <span className="review-chip">Editable</span>
+              <span
+                className={`review-panel-arrow ${reviewPanelCollapsed ? "" : "open"}`}
+              >
+                ▾
+              </span>
+            </div>
+          </button>
+
+          {!reviewPanelCollapsed && (
+            <>
+              <div className="review-accordion">
+                {reviewSections.map((section) => (
+                  <div key={section.key} className="review-accordion-item">
+                    <button
+                      type="button"
+                      className="review-accordion-trigger"
+                      onClick={() => toggleReviewSection(section.key)}
+                    >
+                      <div className="review-trigger-main">
+                        <strong>{section.title}</strong>
+                        <span>{section.summary}</span>
+                      </div>
+                      <span className="review-trigger-icon">
+                        {collapsedReview[section.key] ? "+" : "−"}
+                      </span>
+                    </button>
+
+                    {!collapsedReview[section.key] && (
+                      <div className="review-accordion-content">
+                        {section.content}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="info-notice premium compact">
+                <div className="notice-header">
+                  <span className="notice-icon">📋</span>
+                  <h5>Before you proceed</h5>
+                </div>
+
+                <ul className="notice-list">
+                  <li>This is your last editable step.</li>
+                  <li>Proceeding to payment will create your booking.</li>
+                  <li>You will have 30 minutes to upload proof of payment.</li>
+                </ul>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -2694,7 +2763,8 @@ const Booking = ({ services: servicesProp = [] }) => {
             </div>
 
             <p className="status-message">
-              Upload payment proof within <strong>{expiryLabel}</strong> to secure your slot.
+              Upload payment proof within <strong>{expiryLabel}</strong> to
+              secure your slot.
             </p>
           </div>
         </div>
@@ -2705,7 +2775,8 @@ const Booking = ({ services: servicesProp = [] }) => {
             <div className="flow-lock-content">
               <strong>Booking details are locked</strong>
               <p>
-                Service, schedule, and customer details can no longer be edited after booking creation.
+                Service, schedule, and customer details can no longer be edited
+                after booking creation.
               </p>
             </div>
           </div>
@@ -2947,7 +3018,8 @@ const Booking = ({ services: servicesProp = [] }) => {
         <div className="important-note premium">
           <div className="note-icon">⚠️</div>
           <div className="note-content">
-            Your slot is <span className="warning-text">not fully secured</span> until you confirm the booking after uploading proof.
+            Your slot is <span className="warning-text">not fully secured</span>{" "}
+            until you confirm the booking after uploading proof.
           </div>
         </div>
 
