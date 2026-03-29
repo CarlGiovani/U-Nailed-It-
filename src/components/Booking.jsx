@@ -1413,13 +1413,6 @@ const Booking = ({ services: servicesProp = [] }) => {
 
       setStep(5);
       clearActiveFlow();
-
-      showAlert(
-        "Booking Submitted",
-        "Your booking has been submitted successfully and is now awaiting approval.",
-        null,
-        "success",
-      );
     } catch (error) {
       console.error("Confirm error:", error);
       const msg = error.response?.data?.error || error.message;
