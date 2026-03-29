@@ -14,7 +14,9 @@ import {
 import supabase from "../config/supabaseClient.js";
 import "../styles/booking-system.css";
 
-// DATE FORMATTER (YYYY-MM-DD)
+// ===============================
+// DATE HELPERS
+// ===============================
 const formatLocalDate = (date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -22,17 +24,31 @@ const formatLocalDate = (date) => {
   return `${year}-${month}-${day}`;
 };
 
-// SAFE DATE PARSING - FIXES TIMEZONE ISSUES
 const parseLocalDate = (dateStr) => {
   if (!dateStr) return null;
-  return new Date(dateStr + "T00:00:00");
+  return new Date(`${dateStr}T00:00:00`);
 };
 
-// HELPER
 const sameId = (a, b) => Number(a) === Number(b);
 
+const formatDisplayTime = (timeStr) => {
+  if (!timeStr) return "N/A";
+  try {
+    const [hours, minutes] = timeStr.split(":");
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+    return `${displayHour}:${minutes.padStart(2, "0")} ${ampm}`;
+  } catch {
+    return timeStr;
+  }
+};
+
+const formatCurrency = (value) =>
+  `₱${Number(value || 0).toLocaleString("en-PH")}`;
+
 // ===============================
-// RESUME BOOKING (localStorage)
+// LOCAL STORAGE RESUME
 // ===============================
 const LS_KEYS = {
   bookingId: "active_booking_id",
@@ -52,16 +68,17 @@ const saveActiveBooking = ({ bookingId, expiresAt }) => {
 
 const saveActivePayment = ({ intentId, signedUrl }) => {
   if (intentId) localStorage.setItem(LS_KEYS.paymentIntentId, String(intentId));
-  if (signedUrl)
+  if (signedUrl) {
     localStorage.setItem(LS_KEYS.paymentSignedUrl, String(signedUrl));
+  }
 };
 
 const clearActiveFlow = () => {
-  Object.values(LS_KEYS).forEach((k) => localStorage.removeItem(k));
+  Object.values(LS_KEYS).forEach((key) => localStorage.removeItem(key));
 };
 
 // ===============================
-// TIME HELPERS - BULLETPROOF
+// TIME HELPERS
 // ===============================
 const toMs = (isoOrNull) => {
   if (!isoOrNull) return null;
@@ -70,7 +87,7 @@ const toMs = (isoOrNull) => {
 
   if (typeof isoOrNull === "string") {
     const num = Number(isoOrNull);
-    if (!isNaN(num) && String(num) === isoOrNull.trim()) return num;
+    if (!Number.isNaN(num) && String(num) === isoOrNull.trim()) return num;
 
     const date = new Date(isoOrNull);
     const ms = date.getTime();
@@ -88,14 +105,16 @@ const formatCountdown = (ms) => {
   return `${mm}:${ss}`;
 };
 
+// ===============================
+// MAIN COMPONENT
+// ===============================
 const Booking = ({ services: servicesProp = [] }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Step management
+  // 1 = Service, 2 = Schedule, 3 = Details + Review, 4 = Payment, 5 = Done
   const [step, setStep] = useState(1);
 
-  // transformed services from parent prop
   const services = useMemo(() => {
     return (servicesProp || []).map((service) => ({
       id: service.id,
@@ -125,19 +144,14 @@ const Booking = ({ services: servicesProp = [] }) => {
     }));
   }, [servicesProp]);
 
-  // Data states
   const [availableSlots, setAvailableSlots] = useState([]);
   const [selectedDate, setSelectedDate] = useState("");
 
-  // Booking flow states
   const [bookingId, setBookingId] = useState(null);
   const [paymentIntentId, setPaymentIntentId] = useState(null);
   const [paymentSignedUrl, setPaymentSignedUrl] = useState(null);
-
-  // Review/Confirmed booking data
   const [bookingPreview, setBookingPreview] = useState(null);
 
-  // UI states
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fetchingServices, setFetchingServices] = useState(true);
@@ -145,80 +159,38 @@ const Booking = ({ services: servicesProp = [] }) => {
   const [fetchingAvailability, setFetchingAvailability] = useState(false);
   const [fetchingSlots, setFetchingSlots] = useState(false);
   const [paymentProofUploaded, setPaymentProofUploaded] = useState(false);
+
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [calendarDates, setCalendarDates] = useState([]);
   const [monthlyAvailability, setMonthlyAvailability] = useState({});
 
-  // selection objects
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState(null);
 
-  // errors
   const [confirmationError, setConfirmationError] = useState(null);
 
-  // Resume booking modal
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [resumeBookingData, setResumeBookingData] = useState(null);
   const [resuming, setResuming] = useState(false);
 
-  // payment image preview
   const [proofPreviewUrl, setProofPreviewUrl] = useState(null);
   const [selectedProofFile, setSelectedProofFile] = useState(null);
 
-  // cleanup preview url
-  useEffect(() => {
-    return () => {
-      if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
-    };
-  }, [proofPreviewUrl]);
+  const [collapsedReview, setCollapsedReview] = useState({
+    service: false,
+    schedule: false,
+    customer: false,
+    notes: false,
+  });
 
-  // service availability state from parent
-  useEffect(() => {
-    if (servicesProp?.length > 0) {
-      setFetchingServices(false);
-      setServicesError(null);
-    } else {
-      setFetchingServices(true);
-    }
-  }, [servicesProp]);
-
-  // modal state
   const [modal, setModal] = useState({
     open: false,
     title: "",
     message: "",
+    tone: "default",
     actions: [],
   });
 
-  // lock body scroll when any modal is open
-  useEffect(() => {
-    const hasOpenModal = modal.open || showResumePrompt;
-
-    if (!hasOpenModal) return;
-
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = originalOverflow;
-    };
-  }, [modal.open, showResumePrompt]);
-
-  // close generic modal on Escape
-  // close generic modal on Escape
-  useEffect(() => {
-    if (!modal.open) return;
-
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") {
-        setModal((prev) => ({ ...prev, open: false }));
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [modal.open]);
-  // countdown
   const [timeLeftMs, setTimeLeftMs] = useState(null);
   const [isExpiredLocal, setIsExpiredLocal] = useState(false);
   const expiryHandledRef = useRef(false);
@@ -240,268 +212,75 @@ const Booking = ({ services: servicesProp = [] }) => {
   });
 
   // ===============================
-  // MODAL UTILITIES
-  // ===============================
-  const showAlert = useCallback((title, message, onConfirm = null) => {
-    setModal({
-      open: true,
-      title,
-      message,
-      actions: [
-        {
-          label: "OK",
-          variant: "btn-primary",
-          onClick: () => {
-            setModal((m) => ({ ...m, open: false }));
-            if (onConfirm && typeof onConfirm === "function") {
-              onConfirm();
-            }
-          },
-        },
-      ],
-    });
-  }, []);
-
-  // ===============================
-  // STEP GUARD
+  // CLEANUP
   // ===============================
   useEffect(() => {
-    if (resuming) return;
+    return () => {
+      if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
+    };
+  }, [proofPreviewUrl]);
 
-    if (step === 4 && !bookingId) {
-      console.warn("Invalid step 4: No bookingId, redirecting to step 1");
-      setStep(1);
-      return;
+  useEffect(() => {
+    if (servicesProp?.length > 0) {
+      setFetchingServices(false);
+      setServicesError(null);
+    } else {
+      setFetchingServices(true);
     }
+  }, [servicesProp]);
 
-    if (step === 5 && !bookingId) {
-      console.warn("Invalid step 5: No bookingId, redirecting to step 4");
-      setStep(4);
-      return;
-    }
+  useEffect(() => {
+    const hasOpenModal = modal.open || showResumePrompt;
+    if (!hasOpenModal) return;
 
-    if (step === 6 && !bookingPreview) {
-      console.warn("Invalid step 6: No bookingPreview, redirecting to step 1");
-      setStep(1);
-      return;
-    }
-  }, [step, bookingId, bookingPreview, resuming]);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
-  // ===============================
-  // MAIN MODAL COMPONENT
-  // ===============================
-  const Modal = () => {
-    if (!modal.open) return null;
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [modal.open, showResumePrompt]);
 
-    return (
-      <div
-        className="modal-overlay"
-        onClick={() => {
-          if (!modal.actions?.length) setModal((m) => ({ ...m, open: false }));
-        }}
-      >
-        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-card-header">
-            <div className="modal-card-icon">⚠️</div>
+  useEffect(() => {
+    if (!modal.open) return;
 
-            <div>
-              <h3 className="modal-card-title">{modal.title}</h3>
-              <div className="modal-card-message">{modal.message}</div>
-            </div>
-          </div>
-
-          <div className="modal-card-actions">
-            {(modal.actions || []).map((a, idx) => (
-              <button
-                type="button"
-                key={idx}
-                className={`btn ${a.variant || "btn-primary"} premium`}
-                onClick={a.onClick}
-              >
-                {a.label}
-              </button>
-            ))}
-
-            {!modal.actions?.length && (
-              <button
-                type="button"
-                className="btn btn-primary premium"
-                onClick={() => setModal((m) => ({ ...m, open: false }))}
-              >
-                OK
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ===============================
-  // RESUME BOOKING MODAL
-  // ===============================
-  const ResumeModal = () => {
-    if (!showResumePrompt || !resumeBookingData) return null;
-
-    const { booking, serviceInfo } = resumeBookingData;
-
-    const formatDate = (dateStr) => {
-      if (!dateStr) return "N/A";
-
-      try {
-        const date = parseLocalDate(dateStr);
-        return date.toLocaleDateString("en-PH", {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        });
-      } catch {
-        return dateStr;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setModal((prev) => ({ ...prev, open: false }));
       }
     };
 
-    const formatTime = (timeStr) => {
-      if (!timeStr) return "N/A";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [modal.open]);
 
-      try {
-        const [hours, minutes] = timeStr.split(":");
-        const hour = parseInt(hours, 10);
-        const ampm = hour >= 12 ? "PM" : "AM";
-        const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-
-        return `${displayHour}:${minutes.padStart(2, "0")} ${ampm}`;
-      } catch {
-        return timeStr;
-      }
-    };
-
-    const serviceName =
-      serviceInfo?.name ||
-      booking.service?.name ||
-      `Service #${booking.service_id}`;
-
-    const categoryName =
-      serviceInfo?.category?.name || `Category #${booking.service_category_id}`;
-
-    const variantName =
-      serviceInfo?.variant?.body_part ||
-      `Variant #${booking.service_variant_id}`;
-
-    const handleStartNew = () => {
-      setShowResumePrompt(false);
-      hardRestart();
-    };
-
-    const handleResume = () => {
-      setShowResumePrompt(false);
-      handleResumeBooking();
-    };
-
-    return (
-      <div
-        className="resume-modal-overlay"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="resume-booking-title"
-      >
-        <div className="resume-modal-card" onClick={(e) => e.stopPropagation()}>
-          <div className="resume-modal-header">
-            <div className="resume-modal-icon">⏳</div>
-
-            <div className="resume-modal-heading">
-              <h3 id="resume-booking-title">Resume Booking?</h3>
-              <p>You already have a pending booking in progress.</p>
-            </div>
-          </div>
-
-          <div className="resume-modal-summary">
-            <div className="resume-modal-grid">
-              <div className="resume-info-item">
-                <span className="resume-info-label">Service</span>
-                <span className="resume-info-value">{serviceName}</span>
-              </div>
-
-              <div className="resume-info-item">
-                <span className="resume-info-label">Category</span>
-                <span className="resume-info-value">{categoryName}</span>
-              </div>
-
-              <div className="resume-info-item">
-                <span className="resume-info-label">Variant</span>
-                <span className="resume-info-value">{variantName}</span>
-              </div>
-
-              <div className="resume-info-item">
-                <span className="resume-info-label">Date</span>
-                <span className="resume-info-value">
-                  {formatDate(booking.booking_date)}
-                </span>
-              </div>
-
-              <div className="resume-info-item">
-                <span className="resume-info-label">Time</span>
-                <span className="resume-info-value">
-                  {formatTime(booking.booking_time)}
-                </span>
-              </div>
-
-              <div className="resume-info-item">
-                <span className="resume-info-label">Downpayment</span>
-                <span className="resume-info-value">
-                  ₱{Number(booking.downpayment || 0).toLocaleString()}
-                </span>
-              </div>
-
-              <div className="resume-info-item resume-info-item-full">
-                <span className="resume-info-label">Status</span>
-                <span className="resume-status-badge">
-                  {booking.status?.replace("_", " ") || "pending payment"}
-                </span>
-              </div>
-            </div>
-
-            <div className="resume-urgency-box">
-              <span className="resume-urgency-icon">⏰</span>
-              <div>
-                <strong>30-minute payment window</strong>
-                <p>Upload your payment proof to secure this slot.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="resume-modal-copy">
-            <p className="resume-modal-question">
-              Would you like to continue with this booking or start a new one?
-            </p>
-            <p className="resume-modal-subcopy">
-              Your progress has already been saved.
-            </p>
-          </div>
-
-          <div className="resume-modal-actions">
-            <button
-              type="button"
-              className="btn btn-outline premium resume-btn-secondary"
-              onClick={handleStartNew}
-            >
-              Start New Booking
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-primary premium resume-btn-primary"
-              onClick={handleResume}
-            >
-              Resume Booking
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
   // ===============================
-  // RESET FUNCTIONS
+  // MODAL HELPERS
+  // ===============================
+  const showAlert = useCallback(
+    (title, message, onConfirm = null, tone = "default") => {
+      setModal({
+        open: true,
+        title,
+        message,
+        tone,
+        actions: [
+          {
+            label: "OK",
+            variant: "btn-primary",
+            onClick: () => {
+              setModal((prev) => ({ ...prev, open: false }));
+              if (typeof onConfirm === "function") onConfirm();
+            },
+          },
+        ],
+      });
+    },
+    [],
+  );
+
+  // ===============================
+  // RESET FLOW
   // ===============================
   const resetBookingFlow = useCallback(() => {
     setBookingId(null);
@@ -527,6 +306,14 @@ const Booking = ({ services: servicesProp = [] }) => {
     setSelectedCategory(null);
     setSelectedVariant(null);
     setResumeBookingData(null);
+    setSelectedProofFile(null);
+    setProofPreviewUrl(null);
+    setCollapsedReview({
+      service: false,
+      schedule: false,
+      customer: false,
+      notes: false,
+    });
 
     setFormData({
       service_id: "",
@@ -546,7 +333,42 @@ const Booking = ({ services: servicesProp = [] }) => {
   }, [resetBookingFlow]);
 
   // ===============================
-  // RESUME ON PAGE LOAD
+  // STEP GUARD
+  // ===============================
+  useEffect(() => {
+    if (resuming) return;
+
+    if (step === 4 && !bookingId && isExpiredLocal) {
+      setStep(1);
+      return;
+    }
+
+    if (step === 5 && !bookingPreview) {
+      setStep(1);
+    }
+  }, [step, bookingId, bookingPreview, isExpiredLocal, resuming]);
+
+  const isLockedAfterBookingCreated = !!bookingId && step >= 4;
+
+  const goBackToEditableStep = useCallback(
+    (targetStep) => {
+      if (isLockedAfterBookingCreated) {
+        showAlert(
+          "Editing Locked",
+          "This booking has already been created. Earlier editable steps are locked to avoid mismatch in service, schedule, and payment data.",
+          null,
+          "warning",
+        );
+        return;
+      }
+
+      setStep(targetStep);
+    },
+    [isLockedAfterBookingCreated, showAlert],
+  );
+
+  // ===============================
+  // RESUME BOOKING
   // ===============================
   const checkAndResumeBooking = useCallback(async () => {
     const savedBookingId = localStorage.getItem(LS_KEYS.bookingId);
@@ -580,7 +402,7 @@ const Booking = ({ services: servicesProp = [] }) => {
           const service = services.find((s) => Number(s.id) === serviceId);
 
           if (service) {
-            let category =
+            const category =
               (varId != null
                 ? service.service_categories?.find((c) =>
                     c.service_variants?.some((v) => Number(v.id) === varId),
@@ -592,7 +414,7 @@ const Booking = ({ services: servicesProp = [] }) => {
                   )
                 : null);
 
-            let variant =
+            const variant =
               (category && varId != null
                 ? category.service_variants?.find((v) => Number(v.id) === varId)
                 : null) ||
@@ -612,11 +434,12 @@ const Booking = ({ services: servicesProp = [] }) => {
           }
         }
       } catch (e) {
-        console.warn("Could not fetch service details for resume:", e);
+        console.warn("Could not resolve resume service info:", e);
       }
 
       setResumeBookingData({ booking, serviceInfo });
       setBookingId(booking.id);
+      setBookingPreview(booking);
 
       const backendPaymentIntentId =
         booking.payment?.payment_intent_id || booking.payment_intent_id;
@@ -624,17 +447,16 @@ const Booking = ({ services: servicesProp = [] }) => {
       const savedIntentId = localStorage.getItem(LS_KEYS.paymentIntentId);
       const savedSigned = localStorage.getItem(LS_KEYS.paymentSignedUrl);
 
+      const hasProofBackend =
+        !!booking.payment?.proof_url ||
+        !!booking.payment?.payment_proof_url ||
+        !!booking.payment?.signed_url ||
+        !!booking.payment?.signedUrl;
+
       const hasProofFromStorage = !!savedSigned;
 
       if (backendPaymentIntentId) {
         setPaymentIntentId(backendPaymentIntentId);
-
-        const hasProofBackend =
-          !!booking.payment?.proof_url ||
-          !!booking.payment?.payment_proof_url ||
-          !!booking.payment?.signed_url ||
-          !!booking.payment?.signedUrl;
-
         setPaymentProofUploaded(hasProofBackend || hasProofFromStorage);
       } else if (savedIntentId) {
         setPaymentIntentId(savedIntentId);
@@ -642,8 +464,6 @@ const Booking = ({ services: servicesProp = [] }) => {
       }
 
       if (savedSigned) setPaymentSignedUrl(savedSigned);
-
-      setBookingPreview(booking);
 
       setFormData((prev) => ({
         ...prev,
@@ -678,9 +498,10 @@ const Booking = ({ services: servicesProp = [] }) => {
         setShowResumePrompt(true);
       } else if (
         booking.status === "pending_approval" ||
-        booking.status === "approved"
+        booking.status === "approved" ||
+        booking.status === "completed"
       ) {
-        setStep(6);
+        setStep(5);
       }
     } catch (error) {
       console.error("Resume booking failed:", error);
@@ -696,9 +517,6 @@ const Booking = ({ services: servicesProp = [] }) => {
     }
   }, [services, checkAndResumeBooking]);
 
-  // ===============================
-  // RESUME BOOKING FUNCTION
-  // ===============================
   const handleResumeBooking = useCallback(() => {
     if (!bookingPreview) return;
 
@@ -717,8 +535,12 @@ const Booking = ({ services: servicesProp = [] }) => {
       return;
     }
 
-    if (status === "pending_approval" || status === "approved") {
-      setStep(6);
+    if (
+      status === "pending_approval" ||
+      status === "approved" ||
+      status === "completed"
+    ) {
+      setStep(5);
       return;
     }
 
@@ -726,43 +548,43 @@ const Booking = ({ services: servicesProp = [] }) => {
   }, [bookingPreview, paymentSignedUrl]);
 
   // ===============================
-  // AUTO-MAP CATEGORY FROM VARIANT
+  // AUTO MAP CATEGORY / VARIANT
   // ===============================
   useEffect(() => {
-    if (!services.length) return;
-    if (!formData.service_id) return;
+    if (!services.length || !formData.service_id) return;
 
-    const service = services.find((s) => s.id === formData.service_id);
+    const service = services.find((s) => sameId(s.id, formData.service_id));
     if (!service) return;
 
     if (formData.service_category_id) {
-      const cat = service.service_categories?.find(
-        (c) => c.id === formData.service_category_id,
+      const cat = service.service_categories?.find((c) =>
+        sameId(c.id, formData.service_category_id),
       );
       if (cat) setSelectedCategory(cat);
     }
 
     if (formData.service_variant_id && !formData.service_category_id) {
-      const variantId = formData.service_variant_id;
-
       const foundCat = service.service_categories?.find((c) =>
-        c.service_variants?.some((v) => v.id === variantId),
+        c.service_variants?.some((v) => sameId(v.id, formData.service_variant_id)),
       );
 
       if (foundCat) {
         setSelectedCategory(foundCat);
-        setFormData((prev) => ({ ...prev, service_category_id: foundCat.id }));
+        setFormData((prev) => ({
+          ...prev,
+          service_category_id: foundCat.id,
+        }));
       }
     }
 
     if (formData.service_category_id && formData.service_variant_id) {
-      const cat = service.service_categories?.find(
-        (c) => c.id === formData.service_category_id,
+      const cat = service.service_categories?.find((c) =>
+        sameId(c.id, formData.service_category_id),
       );
-      const v = cat?.service_variants?.find(
-        (x) => x.id === formData.service_variant_id,
+      const variant = cat?.service_variants?.find((v) =>
+        sameId(v.id, formData.service_variant_id),
       );
-      if (v) setSelectedVariant(v);
+      if (variant) setSelectedVariant(variant);
     }
   }, [
     services,
@@ -772,7 +594,7 @@ const Booking = ({ services: servicesProp = [] }) => {
   ]);
 
   // ===============================
-  // MONTHLY AVAILABILITY
+  // AVAILABILITY
   // ===============================
   const availabilityYear = currentMonth.getFullYear();
   const availabilityMonth = currentMonth.getMonth() + 1;
@@ -796,12 +618,12 @@ const Booking = ({ services: servicesProp = [] }) => {
         availabilityMonth,
       );
 
-      const availabilityMap = {};
+      const map = {};
       availabilityData.forEach((item) => {
-        availabilityMap[item.date] = item.available;
+        map[item.date] = item.available;
       });
 
-      return availabilityMap;
+      return map;
     },
     enabled: !!formData.service_id,
     staleTime: 1000 * 60 * 5,
@@ -814,28 +636,10 @@ const Booking = ({ services: servicesProp = [] }) => {
     );
 
     if (formData.service_id) {
-      const nextAvailability = monthlyAvailabilityData ?? {};
-
-      setMonthlyAvailability((prev) => {
-        const prevKeys = Object.keys(prev);
-        const nextKeys = Object.keys(nextAvailability);
-
-        if (prevKeys.length !== nextKeys.length) return nextAvailability;
-
-        for (const key of nextKeys) {
-          if (prev[key] !== nextAvailability[key]) {
-            return nextAvailability;
-          }
-        }
-
-        return prev;
-      });
+      setMonthlyAvailability(monthlyAvailabilityData ?? {});
     } else {
-      setMonthlyAvailability((prev) =>
-        Object.keys(prev).length === 0 ? prev : {},
-      );
-
-      setCalendarDates((prev) => (prev.length === 0 ? prev : []));
+      setMonthlyAvailability({});
+      setCalendarDates([]);
     }
   }, [
     formData.service_id,
@@ -843,9 +647,6 @@ const Booking = ({ services: servicesProp = [] }) => {
     monthlyAvailabilityFetching,
   ]);
 
-  // ===============================
-  // GENERATE CALENDAR
-  // ===============================
   const generateCalendar = useCallback(() => {
     if (!formData.service_id) return;
 
@@ -862,6 +663,7 @@ const Booking = ({ services: servicesProp = [] }) => {
     today.setHours(0, 0, 0, 0);
 
     const prevMonthLastDay = new Date(year, month, 0).getDate();
+
     for (let i = startDay - 1; i >= 0; i--) {
       const date = new Date(year, month - 1, prevMonthLastDay - i);
       const dateStr = formatLocalDate(date);
@@ -896,6 +698,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
     const totalCells = 42;
     const remainingCells = Math.max(0, totalCells - dates.length);
+
     for (let i = 1; i <= remainingCells; i++) {
       const date = new Date(year, month + 1, i);
       const dateStr = formatLocalDate(date);
@@ -917,9 +720,6 @@ const Booking = ({ services: servicesProp = [] }) => {
     if (formData.service_id) generateCalendar();
   }, [formData.service_id, generateCalendar]);
 
-  // ===============================
-  // FETCH AVAILABLE SLOTS BY DATE
-  // ===============================
   const { data: availableSlotsData, isFetching: availableSlotsFetching } =
     useQuery({
       queryKey: ["availableSlots", formData.service_id, selectedDate],
@@ -938,28 +738,9 @@ const Booking = ({ services: servicesProp = [] }) => {
     );
 
     if (formData.service_id && selectedDate) {
-      const nextSlots = availableSlotsData ?? [];
-
-      setAvailableSlots((prev) => {
-        if (prev.length !== nextSlots.length) return nextSlots;
-
-        for (let i = 0; i < nextSlots.length; i++) {
-          const prevSlot = prev[i];
-          const nextSlot = nextSlots[i];
-
-          if (
-            prevSlot?.id !== nextSlot?.id ||
-            prevSlot?.time !== nextSlot?.time ||
-            prevSlot?.is_available !== nextSlot?.is_available
-          ) {
-            return nextSlots;
-          }
-        }
-
-        return prev;
-      });
+      setAvailableSlots(availableSlotsData ?? []);
     } else {
-      setAvailableSlots((prev) => (prev.length === 0 ? prev : []));
+      setAvailableSlots([]);
     }
   }, [
     formData.service_id,
@@ -967,8 +748,9 @@ const Booking = ({ services: servicesProp = [] }) => {
     availableSlotsData,
     availableSlotsFetching,
   ]);
+
   // ===============================
-  // REALTIME SYNC
+  // REALTIME
   // ===============================
   useEffect(() => {
     if (!formData.service_id) return;
@@ -1028,15 +810,16 @@ const Booking = ({ services: servicesProp = [] }) => {
               const latest = await getBookingById(bookingId);
               setBookingPreview(latest);
 
-              if (latest.status === "expired" && (step === 4 || step === 5)) {
+              if (latest.status === "expired" && step === 4) {
                 setIsExpiredLocal(true);
               }
 
               if (
                 latest.status === "pending_approval" ||
-                latest.status === "approved"
+                latest.status === "approved" ||
+                latest.status === "completed"
               ) {
-                setStep(6);
+                setStep(5);
               }
 
               if (
@@ -1046,10 +829,7 @@ const Booking = ({ services: servicesProp = [] }) => {
               ) {
                 clearActiveFlow();
 
-                if (
-                  latest.status !== "completed" &&
-                  (step === 4 || step === 5)
-                ) {
+                if (latest.status !== "completed" && step === 4) {
                   setModal({
                     open: true,
                     title: "Booking No Longer Active",
@@ -1061,12 +841,13 @@ const Booking = ({ services: servicesProp = [] }) => {
                           : latest.status === "rejected"
                             ? "This booking was rejected."
                             : "This booking is no longer active.",
+                    tone: "warning",
                     actions: [
                       {
                         label: "OK",
                         variant: "btn-primary",
                         onClick: () => {
-                          setModal((m) => ({ ...m, open: false }));
+                          setModal((prev) => ({ ...prev, open: false }));
                           hardRestart();
                         },
                       },
@@ -1114,10 +895,11 @@ const Booking = ({ services: servicesProp = [] }) => {
       const now = Date.now();
       const left = expMs - now;
       setTimeLeftMs(left);
+
       const expired = left <= 0;
       setIsExpiredLocal(expired);
 
-      if (expired && !expiryHandledRef.current && (step === 4 || step === 5)) {
+      if (expired && !expiryHandledRef.current && step === 4) {
         expiryHandledRef.current = true;
 
         setModal({
@@ -1125,12 +907,13 @@ const Booking = ({ services: servicesProp = [] }) => {
           title: "Booking Expired",
           message:
             "Your 30-minute payment window has ended. Please start a new booking.",
+          tone: "danger",
           actions: [
             {
               label: "Start New Booking",
               variant: "btn-primary",
               onClick: () => {
-                setModal((m) => ({ ...m, open: false }));
+                setModal((prev) => ({ ...prev, open: false }));
                 hardRestart();
               },
             },
@@ -1174,7 +957,7 @@ const Booking = ({ services: servicesProp = [] }) => {
   };
 
   // ===============================
-  // HANDLE SERVICE / CATEGORY / VARIANT
+  // SELECT HANDLERS
   // ===============================
   const handleServiceSelect = (service) => {
     resetBookingFlow();
@@ -1201,6 +984,7 @@ const Booking = ({ services: servicesProp = [] }) => {
   const handleCategorySelect = (category) => {
     setSelectedCategory(category);
     setSelectedVariant(null);
+
     setFormData((prev) => ({
       ...prev,
       service_category_id: category.id,
@@ -1212,18 +996,17 @@ const Booking = ({ services: servicesProp = [] }) => {
 
   const handleVariantSelect = (variant) => {
     setSelectedVariant(variant);
+
     setFormData((prev) => ({
       ...prev,
       service_variant_id: variant.id,
       total_price: variant.price,
       downpayment: variant.downpayment,
     }));
+
     setStep(2);
   };
 
-  // ===============================
-  // DATE & TIME
-  // ===============================
   const handleDateSelect = (date) => {
     if (!date) return;
     const dateStr = formatLocalDate(date);
@@ -1251,29 +1034,39 @@ const Booking = ({ services: servicesProp = [] }) => {
   };
 
   // ===============================
-  // TIME SLOT DISPLAY
+  // SELECTED OBJECTS
   // ===============================
+  const selectedService = useMemo(
+    () => services.find((s) => sameId(s.id, formData.service_id)),
+    [services, formData.service_id],
+  );
+
+  const selectedCategoryObj = useMemo(() => {
+    return selectedService?.service_categories?.find((c) =>
+      sameId(c.id, formData.service_category_id),
+    );
+  }, [selectedService, formData.service_category_id]);
+
+  const selectedVariantObj = useMemo(() => {
+    return selectedCategoryObj?.service_variants?.find((v) =>
+      sameId(v.id, formData.service_variant_id),
+    );
+  }, [selectedCategoryObj, formData.service_variant_id]);
+
+  const getAvailableDatesCount = () =>
+    Object.values(monthlyAvailability).filter((v) => v === true).length;
+
   const generateTimeSlots = () => {
     if (!availableSlots.length) return [];
 
     return availableSlots
-      .map((slot) => {
-        const time = slot.time;
-        const hour = parseInt(time.split(":")[0], 10);
-        const minute = time.split(":")[1];
-
-        const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-        const ampm = hour >= 12 ? "PM" : "AM";
-        const displayTime = `${displayHour}:${minute} ${ampm}`;
-
-        return {
-          value: time,
-          display: displayTime,
-          available: slot.is_available,
-          isSelected: formData.booking_time === time,
-          slotId: slot.id,
-        };
-      })
+      .map((slot) => ({
+        value: slot.time,
+        display: formatDisplayTime(slot.time),
+        available: slot.is_available,
+        isSelected: formData.booking_time === slot.time,
+        slotId: slot.id,
+      }))
       .sort((a, b) => {
         const [hA, mA] = a.value.split(":").map(Number);
         const [hB, mB] = b.value.split(":").map(Number);
@@ -1284,41 +1077,48 @@ const Booking = ({ services: servicesProp = [] }) => {
   // ===============================
   // VALIDATION
   // ===============================
-  const validateForm = () => {
+  const validateForm = (targetStep = step) => {
     const errors = [];
 
-    if (step === 1) {
-      if (!formData.service_id) errors.push("Please select a service");
-      if (!formData.service_category_id)
-        errors.push("Please select a category");
-      if (!formData.service_variant_id) errors.push("Please select a variant");
+    if (targetStep === 1) {
+      if (!formData.service_id) errors.push("Please select a service.");
+      if (!formData.service_category_id) errors.push("Please select a category.");
+      if (!formData.service_variant_id) errors.push("Please select a variant.");
     }
 
-    if (step === 2) {
-      if (!formData.booking_date) errors.push("Please select a date");
-      if (!formData.booking_time) errors.push("Please select a time slot");
+    if (targetStep === 2) {
+      if (!formData.booking_date) errors.push("Please select a date.");
+      if (!formData.booking_time) errors.push("Please select a time slot.");
     }
 
-    if (step === 3) {
-      if (!formData.full_name.trim()) errors.push("Full name is required");
-      if (!formData.email.trim()) errors.push("Email is required");
-      if (!formData.phone.trim()) errors.push("Phone number is required");
-      if (!formData.email.includes("@"))
-        errors.push("Please enter a valid email address");
+    if (targetStep === 3) {
+      if (!formData.full_name.trim()) errors.push("Full name is required.");
+      if (!formData.email.trim()) errors.push("Email is required.");
+      if (!formData.phone.trim()) errors.push("Phone number is required.");
+      if (formData.email && !formData.email.includes("@")) {
+        errors.push("Please enter a valid email address.");
+      }
     }
 
     if (errors.length > 0) {
-      showAlert("Validation Error", errors.join("\n"));
+      showAlert("Validation Error", errors.join("\n"), null, "warning");
       return false;
     }
+
     return true;
   };
 
   // ===============================
-  // STEP 3: CREATE BOOKING
+  // STEP 3 => STEP 4
+  // CREATE BOOKING ONLY HERE
   // ===============================
-  const handleCreateBooking = async () => {
-    if (!validateForm()) return;
+  const handleProceedToPayment = async () => {
+    if (!validateForm(3)) return;
+
+    if (bookingId) {
+      setStep(4);
+      return;
+    }
 
     setLoading(true);
     try {
@@ -1340,25 +1140,24 @@ const Booking = ({ services: servicesProp = [] }) => {
       const result = await createBooking(payload);
 
       setBookingId(result.id);
-      saveActiveBooking({ bookingId: result.id, expiresAt: result.expires_at });
-
       setBookingPreview(result);
+      saveActiveBooking({ bookingId: result.id, expiresAt: result.expires_at });
       setStep(4);
-
-      showAlert(
-        "Booking Created",
-        "Please review your details before payment.",
-      );
     } catch (error) {
-      console.error("Booking error:", error);
-      showAlert("Error", error.response?.data?.error || error.message);
+      console.error("Booking creation error:", error);
+      showAlert(
+        "Unable to Continue",
+        error.response?.data?.error || error.message,
+        null,
+        "danger",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   // ===============================
-  // STEP 4: UPLOAD PAYMENT PROOF
+  // PAYMENT
   // ===============================
   const handlePaymentUpload = async (file, { silent = false } = {}) => {
     if (!file || !bookingId) return null;
@@ -1370,12 +1169,13 @@ const Booking = ({ services: servicesProp = [] }) => {
         title: "Booking Expired",
         message:
           "This booking is already expired. Please start a new booking to continue.",
+        tone: "danger",
         actions: [
           {
             label: "Start New Booking",
             variant: "btn-primary",
             onClick: () => {
-              setModal((m) => ({ ...m, open: false }));
+              setModal((prev) => ({ ...prev, open: false }));
               hardRestart();
             },
           },
@@ -1388,6 +1188,8 @@ const Booking = ({ services: servicesProp = [] }) => {
       showAlert(
         "Error",
         "Booking data not found. Please restart the booking process.",
+        null,
+        "danger",
       );
       return null;
     }
@@ -1423,26 +1225,26 @@ const Booking = ({ services: servicesProp = [] }) => {
         result.signedUrl ||
         result.signed_url ||
         result.proof_url ||
-        result.signedUrl ||
         null;
 
       if (!intent) {
         showAlert(
           "Upload Error",
           "Payment intent was not returned. Please try again.",
+          null,
+          "danger",
         );
         return null;
       }
 
       setPaymentIntentId(intent);
       setPaymentSignedUrl(signed);
+      setPaymentProofUploaded(true);
 
       saveActivePayment({
         intentId: intent,
         signedUrl: signed,
       });
-
-      setPaymentProofUploaded(true);
 
       setSelectedProofFile(null);
       setProofPreviewUrl(null);
@@ -1454,14 +1256,15 @@ const Booking = ({ services: servicesProp = [] }) => {
         const preview = await getBookingById(bookingId);
         setBookingPreview(preview);
       } catch (err) {
-        console.warn("Preview fetch failed:", err);
+        console.warn("Preview refresh failed:", err);
       }
 
       if (!silent) {
         showAlert(
           "Payment Proof Uploaded",
-          "Payment proof uploaded successfully! You can now confirm your booking.",
-          () => setStep(5),
+          "Payment proof uploaded successfully. You can now confirm your booking.",
+          null,
+          "success",
         );
       }
 
@@ -1480,7 +1283,7 @@ const Booking = ({ services: servicesProp = [] }) => {
         errorMessage += error.response?.data?.error || error.message;
       }
 
-      showAlert("Upload Error", errorMessage);
+      showAlert("Upload Error", errorMessage, null, "danger");
       return null;
     } finally {
       setUploading(false);
@@ -1489,7 +1292,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
   const handleConfirmWithUpload = async () => {
     if (!bookingId) {
-      showAlert("Error", "Missing booking ID. Please restart booking.");
+      showAlert("Error", "Missing booking ID. Please restart booking.", null, "danger");
       return;
     }
 
@@ -1499,12 +1302,13 @@ const Booking = ({ services: servicesProp = [] }) => {
         title: "Booking Expired",
         message:
           "Your payment window has ended. Please start a new booking to continue.",
+        tone: "danger",
         actions: [
           {
             label: "Start New Booking",
             variant: "btn-primary",
             onClick: () => {
-              setModal((m) => ({ ...m, open: false }));
+              setModal((prev) => ({ ...prev, open: false }));
               hardRestart();
             },
           },
@@ -1525,6 +1329,8 @@ const Booking = ({ services: servicesProp = [] }) => {
       showAlert(
         "Upload Required",
         "Please select a proof of payment file first.",
+        null,
+        "warning",
       );
       return;
     }
@@ -1546,19 +1352,16 @@ const Booking = ({ services: servicesProp = [] }) => {
     }
   };
 
-  // ===============================
-  // STEP 5: CONFIRM BOOKING
-  // ===============================
   const handleFinalConfirmation = async (intentOverride = null) => {
     if (!bookingId) {
-      showAlert("Error", "Missing booking ID. Please restart booking.");
+      showAlert("Error", "Missing booking ID. Please restart booking.", null, "danger");
       return;
     }
 
     const intentToUse = intentOverride || paymentIntentId;
 
     if (!intentToUse) {
-      showAlert("Error", "Please upload payment proof first.");
+      showAlert("Error", "Please upload payment proof first.", null, "warning");
       return;
     }
 
@@ -1568,12 +1371,13 @@ const Booking = ({ services: servicesProp = [] }) => {
         title: "Booking Expired",
         message:
           "Your payment window has ended. Please start a new booking to continue.",
+        tone: "danger",
         actions: [
           {
             label: "Start New Booking",
             variant: "btn-primary",
             onClick: () => {
-              setModal((m) => ({ ...m, open: false }));
+              setModal((prev) => ({ ...prev, open: false }));
               hardRestart();
             },
           },
@@ -1595,12 +1399,14 @@ const Booking = ({ services: servicesProp = [] }) => {
         console.warn("Fetch latest booking failed:", err);
       }
 
-      setStep(6);
+      setStep(5);
       clearActiveFlow();
 
       showAlert(
-        "Booking Confirmed",
-        "🎉 Your booking has been confirmed! Slot is now reserved.",
+        "Booking Submitted",
+        "Your booking has been submitted successfully and is now awaiting approval.",
+        null,
+        "success",
       );
     } catch (error) {
       console.error("Confirm error:", error);
@@ -1629,12 +1435,13 @@ const Booking = ({ services: servicesProp = [] }) => {
             title: "Payment Expired",
             message:
               "Your 30-minute payment window has ended. Please start a new booking.",
+            tone: "danger",
             actions: [
               {
                 label: "Start New Booking",
                 variant: "btn-primary",
                 onClick: () => {
-                  setModal((m) => ({ ...m, open: false }));
+                  setModal((prev) => ({ ...prev, open: false }));
                   hardRestart();
                 },
               },
@@ -1643,11 +1450,10 @@ const Booking = ({ services: servicesProp = [] }) => {
         } else if (String(msg).toLowerCase().includes("slot")) {
           errorType = "slot_taken";
           errorMessage =
-            "Slot is no longer available. Please choose another date/time.";
+            "That slot is no longer available. Please choose another date and time.";
           showRetry = false;
 
           resetBookingFlow();
-          clearActiveFlow();
 
           setFormData((prev) => ({
             ...prev,
@@ -1656,15 +1462,23 @@ const Booking = ({ services: servicesProp = [] }) => {
           }));
           setSelectedDate("");
           setAvailableSlots([]);
-
           setStep(2);
 
           setModal({
             open: true,
             title: "Slot No Longer Available",
             message:
-              "The selected time slot has been taken. Please choose another date and time. Note: You will need to re-upload payment proof after selecting new schedule.",
-            actions: [],
+              "The selected time slot has been taken. Please choose another date and time. You will need to upload payment proof again after selecting a new schedule.",
+            tone: "warning",
+            actions: [
+              {
+                label: "Choose Another Slot",
+                variant: "btn-primary",
+                onClick: () => {
+                  setModal((prev) => ({ ...prev, open: false }));
+                },
+              },
+            ],
           });
 
           return;
@@ -1698,68 +1512,345 @@ const Booking = ({ services: servicesProp = [] }) => {
   };
 
   // ===============================
-  // SELECTED OBJECTS
+  // UI HELPERS
   // ===============================
-  const selectedService = useMemo(
-    () => services.find((s) => sameId(s.id, formData.service_id)),
-    [services, formData.service_id],
-  );
+  const toggleReviewSection = (key) => {
+    setCollapsedReview((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
 
-  const selectedCategoryObj = useMemo(() => {
-    return selectedService?.service_categories?.find((c) =>
-      sameId(c.id, formData.service_category_id),
-    );
-  }, [selectedService, formData.service_category_id]);
-
-  const selectedVariantObj = useMemo(() => {
-    return selectedCategoryObj?.service_variants?.find((v) =>
-      sameId(v.id, formData.service_variant_id),
-    );
-  }, [selectedCategoryObj, formData.service_variant_id]);
-
-  const getAvailableDatesCount = () =>
-    Object.values(monthlyAvailability).filter((v) => v === true).length;
+  const reviewSections = [
+    {
+      key: "service",
+      title: "Service",
+      summary: `${selectedService?.name || "N/A"} • ${selectedCategoryObj?.name || "N/A"} • ${selectedVariantObj?.body_part || "N/A"}`,
+      content: (
+        <div className="review-grid-mini">
+          <div className="mini-row">
+            <span>Service</span>
+            <strong>{selectedService?.name || "N/A"}</strong>
+          </div>
+          <div className="mini-row">
+            <span>Category</span>
+            <strong>{selectedCategoryObj?.name || "N/A"}</strong>
+          </div>
+          <div className="mini-row">
+            <span>Variant</span>
+            <strong>
+              {selectedVariantObj?.body_part
+                ? `${selectedVariantObj.body_part} (${selectedVariantObj.size})`
+                : "N/A"}
+            </strong>
+          </div>
+          <div className="mini-row">
+            <span>Duration</span>
+            <strong>
+              {selectedService?.duration || 0} hour
+              {selectedService?.duration !== 1 ? "s" : ""}
+            </strong>
+          </div>
+          <div className="mini-row highlight">
+            <span>Total</span>
+            <strong>{formatCurrency(formData.total_price)}</strong>
+          </div>
+          <div className="mini-row highlight">
+            <span>Downpayment</span>
+            <strong>{formatCurrency(formData.downpayment)}</strong>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "schedule",
+      title: "Schedule",
+      summary: `${formData.booking_date || "No date"} • ${formatDisplayTime(formData.booking_time)}`,
+      content: (
+        <div className="review-grid-mini">
+          <div className="mini-row">
+            <span>Date</span>
+            <strong>
+              {formData.booking_date
+                ? parseLocalDate(formData.booking_date)?.toLocaleDateString(
+                    "en-PH",
+                    {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    },
+                  )
+                : "N/A"}
+            </strong>
+          </div>
+          <div className="mini-row">
+            <span>Time</span>
+            <strong>{formatDisplayTime(formData.booking_time)}</strong>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "customer",
+      title: "Your Information",
+      summary: `${formData.full_name || "No name"} • ${formData.email || "No email"}`,
+      content: (
+        <div className="review-grid-mini">
+          <div className="mini-row">
+            <span>Full Name</span>
+            <strong>{formData.full_name || "N/A"}</strong>
+          </div>
+          <div className="mini-row">
+            <span>Email</span>
+            <strong>{formData.email || "N/A"}</strong>
+          </div>
+          <div className="mini-row">
+            <span>Phone</span>
+            <strong>{formData.phone || "N/A"}</strong>
+          </div>
+          <div className="mini-row">
+            <span>Facebook</span>
+            <strong>{formData.facebook_link || "Not provided"}</strong>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "notes",
+      title: "Additional Notes",
+      summary: formData.notes?.trim()
+        ? formData.notes
+        : "No additional notes provided",
+      content: (
+        <div className="review-notes-box">
+          {formData.notes?.trim() || "No additional notes provided."}
+        </div>
+      ),
+    },
+  ];
 
   // ===============================
-  // PREMIUM PROGRESS BAR
+  // SHARED UI
   // ===============================
-  const PremiumProgressBar = () => (
-    <div className="premium-progress">
-      <div className="progress-steps">
-        {[
-          { number: 1, label: "Service", icon: "🎨" },
-          { number: 2, label: "Schedule", icon: "📅" },
-          { number: 3, label: "Details", icon: "👤" },
-          { number: 4, label: "Review", icon: "📋" },
-          { number: 5, label: "Payment", icon: "💳" },
-          { number: 6, label: "Done", icon: "✅" },
-        ].map((stepItem) => (
-          <div
-            key={stepItem.number}
-            className={`progress-step ${
-              step > stepItem.number ? "completed" : ""
-            } ${step === stepItem.number ? "active" : ""}`}
-          >
-            <div className="step-indicator">
-              {step > stepItem.number ? (
-                <span className="step-check">✓</span>
-              ) : (
-                <span className="step-icon">{stepItem.icon}</span>
-              )}
-              <span className="step-number">{stepItem.number}</span>
+  const Modal = () => {
+    if (!modal.open) return null;
+
+    return (
+      <div
+        className="modal-overlay"
+        onClick={() => setModal((prev) => ({ ...prev, open: false }))}
+      >
+        <div className={`modal-card modal-${modal.tone}`} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-card-header">
+            <div className="modal-card-icon">
+              {modal.tone === "danger" ? "⛔" : modal.tone === "success" ? "✓" : "⚠️"}
             </div>
 
-            <div className="step-label">{stepItem.label}</div>
-
-            {stepItem.number < 6 && <div className="step-connector"></div>}
+            <div>
+              <h3 className="modal-card-title">{modal.title}</h3>
+              <div className="modal-card-message">{modal.message}</div>
+            </div>
           </div>
-        ))}
+
+          <div className="modal-card-actions">
+            {(modal.actions || []).map((action, index) => (
+              <button
+                key={index}
+                type="button"
+                className={`btn ${action.variant || "btn-primary"} premium`}
+                onClick={action.onClick}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const ResumeModal = () => {
+    if (!showResumePrompt || !resumeBookingData) return null;
+
+    const { booking, serviceInfo } = resumeBookingData;
+
+    const serviceName =
+      serviceInfo?.name ||
+      booking.service?.name ||
+      `Service #${booking.service_id}`;
+
+    const categoryName =
+      serviceInfo?.category?.name || `Category #${booking.service_category_id}`;
+
+    const variantName =
+      serviceInfo?.variant?.body_part ||
+      `Variant #${booking.service_variant_id}`;
+
+    const handleStartNew = () => {
+      setShowResumePrompt(false);
+      hardRestart();
+    };
+
+    const handleResume = () => {
+      setShowResumePrompt(false);
+      handleResumeBooking();
+    };
+
+    return (
+      <div className="resume-modal-overlay" role="dialog" aria-modal="true">
+        <div className="resume-modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="resume-modal-header">
+            <div className="resume-modal-icon">⏳</div>
+
+            <div className="resume-modal-heading">
+              <h3>Resume Booking?</h3>
+              <p>You already have a pending booking in progress.</p>
+            </div>
+          </div>
+
+          <div className="resume-modal-summary compact">
+            <div className="resume-modal-grid">
+              <div className="resume-info-item">
+                <span className="resume-info-label">Service</span>
+                <span className="resume-info-value">{serviceName}</span>
+              </div>
+
+              <div className="resume-info-item">
+                <span className="resume-info-label">Category</span>
+                <span className="resume-info-value">{categoryName}</span>
+              </div>
+
+              <div className="resume-info-item">
+                <span className="resume-info-label">Variant</span>
+                <span className="resume-info-value">{variantName}</span>
+              </div>
+
+              <div className="resume-info-item">
+                <span className="resume-info-label">Date</span>
+                <span className="resume-info-value">
+                  {booking.booking_date
+                    ? parseLocalDate(booking.booking_date)?.toLocaleDateString(
+                        "en-PH",
+                        {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        },
+                      )
+                    : "N/A"}
+                </span>
+              </div>
+
+              <div className="resume-info-item">
+                <span className="resume-info-label">Time</span>
+                <span className="resume-info-value">
+                  {formatDisplayTime(booking.booking_time)}
+                </span>
+              </div>
+
+              <div className="resume-info-item">
+                <span className="resume-info-label">Downpayment</span>
+                <span className="resume-info-value">
+                  {formatCurrency(booking.downpayment)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="resume-urgency-box">
+            <span className="resume-urgency-icon">⏰</span>
+            <div>
+              <strong>30-minute payment window</strong>
+              <p>Upload your payment proof to secure this slot.</p>
+            </div>
+          </div>
+
+          <div className="resume-modal-actions">
+            <button
+              type="button"
+              className="btn btn-outline premium resume-btn-secondary"
+              onClick={handleStartNew}
+            >
+              Start New Booking
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-primary premium resume-btn-primary"
+              onClick={handleResume}
+            >
+              Resume Booking
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const PremiumProgressBar = () => {
+    const steps = [
+      { number: 1, label: "Service", icon: "🎨" },
+      { number: 2, label: "Schedule", icon: "📅" },
+      { number: 3, label: "Details", icon: "📝" },
+      { number: 4, label: "Payment", icon: "💳" },
+      { number: 5, label: "Done", icon: "✅" },
+    ];
+
+    const currentStep = steps.find((s) => s.number === step);
+
+    return (
+      <div className="premium-progress">
+        <div className="progress-topline">
+          <div className="progress-meta">
+            <span className="progress-kicker">Booking Progress</span>
+            <h3 className="progress-current">
+              Step {step} of {steps.length}: {currentStep?.label}
+            </h3>
+          </div>
+
+          <div className="progress-pill">
+            {Math.round((step / steps.length) * 100)}%
+          </div>
+        </div>
+
+        <div className="progress-track">
+          <div
+            className="progress-track-fill"
+            style={{ width: `${(step / steps.length) * 100}%` }}
+          />
+        </div>
+
+        <div className="progress-steps progress-steps-5">
+          {steps.map((item) => (
+            <div
+              key={item.number}
+              className={`progress-step ${
+                step > item.number ? "completed" : ""
+              } ${step === item.number ? "active" : ""}`}
+            >
+              <div className="step-indicator">
+                {step > item.number ? (
+                  <span className="step-check">✓</span>
+                ) : (
+                  <span className="step-icon">{item.icon}</span>
+                )}
+                <span className="step-number">{item.number}</span>
+              </div>
+
+              <div className="step-label">{item.label}</div>
+
+              {item.number < steps.length && <div className="step-connector"></div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   // ===============================
-  // STEP 1 UI - SERVICE SELECTION
+  // STEP 1
   // ===============================
   const renderServiceSelection = () => {
     if (fetchingServices) {
@@ -1767,8 +1858,9 @@ const Booking = ({ services: servicesProp = [] }) => {
         <div className="premium-step">
           <div className="step-header">
             <h1 className="step-title">Select Service</h1>
-            <p className="step-subtitle">Choose the service you want to book</p>
+            <p className="step-subtitle">Choose the service you want to book.</p>
           </div>
+
           <div className="loading-state">
             <div className="spinner premium"></div>
             <p className="loading-text">Loading services...</p>
@@ -1782,8 +1874,9 @@ const Booking = ({ services: servicesProp = [] }) => {
         <div className="premium-step">
           <div className="step-header">
             <h1 className="step-title">Select Service</h1>
-            <p className="step-subtitle">Choose the service you want to book</p>
+            <p className="step-subtitle">Choose the service you want to book.</p>
           </div>
+
           <div className="error-state">
             <div className="error-icon premium">⚠️</div>
             <h3 className="error-title">Failed to Load Services</h3>
@@ -1798,7 +1891,7 @@ const Booking = ({ services: servicesProp = [] }) => {
         <div className="premium-step">
           <div className="step-header">
             <h1 className="step-title">Select Service</h1>
-            <p className="step-subtitle">Choose the service you want to book</p>
+            <p className="step-subtitle">Choose the service you want to book.</p>
           </div>
 
           {services.length === 0 ? (
@@ -1812,9 +1905,10 @@ const Booking = ({ services: servicesProp = [] }) => {
           ) : (
             <div className="services-grid premium">
               {services.map((service) => (
-                <div
+                <button
                   key={service.id}
-                  className={`service-card premium ${
+                  type="button"
+                  className={`service-card premium service-card-button ${
                     formData.service_id === service.id ? "selected" : ""
                   }`}
                   onClick={() => handleServiceSelect(service)}
@@ -1833,14 +1927,17 @@ const Booking = ({ services: servicesProp = [] }) => {
                       <span className="select-label">Select Service</span>
                     </div>
                   </div>
+
                   <div className="service-content premium">
                     <div className="service-header">
                       <h3>{service.name}</h3>
                       <span className="service-badge premium">Available</span>
                     </div>
+
                     <p className="service-description premium">
                       {service.description}
                     </p>
+
                     <div className="service-meta premium">
                       <div className="meta-item">
                         <span className="meta-icon">⏱️</span>
@@ -1849,18 +1946,17 @@ const Booking = ({ services: servicesProp = [] }) => {
                           {service.duration !== 1 ? "s" : ""}
                         </span>
                       </div>
+
                       <div className="meta-item">
                         <span className="meta-icon">🏷️</span>
                         <span>
                           {service.service_categories?.length || 0} categor
-                          {service.service_categories?.length !== 1
-                            ? "ies"
-                            : "y"}
+                          {service.service_categories?.length !== 1 ? "ies" : "y"}
                         </span>
                       </div>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -1872,6 +1968,7 @@ const Booking = ({ services: servicesProp = [] }) => {
             >
               Cancel
             </button>
+
             <div className="step-info">
               <span className="info-text">
                 Showing {services.length} service
@@ -1897,25 +1994,28 @@ const Booking = ({ services: servicesProp = [] }) => {
             >
               <span className="back-icon">←</span> Back to Services
             </button>
+
             <div>
               <h1 className="step-title">Select Category</h1>
               <p className="step-subtitle">
-                Choose a category for <strong>{selectedService?.name}</strong>
+                Choose a category for <strong>{selectedService?.name}</strong>.
               </p>
             </div>
           </div>
 
           <div className="categories-container premium">
             {selectedService?.service_categories?.map((category) => (
-              <div
+              <button
                 key={category.id}
-                className={`category-card premium ${
+                type="button"
+                className={`category-card premium category-card-button ${
                   selectedCategory?.id === category.id ? "selected" : ""
                 }`}
                 onClick={() => handleCategorySelect(category)}
               >
                 <div className="category-content">
                   <h3>{category.name}</h3>
+
                   <div className="category-meta premium">
                     <div className="meta-item">
                       <span className="meta-icon">📦</span>
@@ -1924,29 +2024,30 @@ const Booking = ({ services: servicesProp = [] }) => {
                         {category.service_variants?.length !== 1 ? "s" : ""}
                       </span>
                     </div>
+
                     <div className="meta-item price-range">
                       <span className="meta-icon">💰</span>
                       <span>
-                        ₱
-                        {Math.min(
-                          ...(category.service_variants?.map(
-                            (v) => v.price,
-                          ) || [0]),
-                        ).toLocaleString()}{" "}
-                        - ₱
-                        {Math.max(
-                          ...(category.service_variants?.map(
-                            (v) => v.price,
-                          ) || [0]),
-                        ).toLocaleString()}
+                        {formatCurrency(
+                          Math.min(
+                            ...(category.service_variants?.map((v) => v.price) || [0]),
+                          ),
+                        )}{" "}
+                        -{" "}
+                        {formatCurrency(
+                          Math.max(
+                            ...(category.service_variants?.map((v) => v.price) || [0]),
+                          ),
+                        )}
                       </span>
                     </div>
                   </div>
                 </div>
+
                 <div className="category-action">
                   <span className="action-icon">→</span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -1961,15 +2062,6 @@ const Booking = ({ services: servicesProp = [] }) => {
             >
               Back to Services
             </button>
-            <div className="step-info">
-              <span className="info-text">
-                {selectedService?.service_categories?.length || 0} categor
-                {selectedService?.service_categories?.length !== 1
-                  ? "ies"
-                  : "y"}{" "}
-                available
-              </span>
-            </div>
           </div>
         </div>
       );
@@ -1989,20 +2081,22 @@ const Booking = ({ services: servicesProp = [] }) => {
             >
               <span className="back-icon">←</span> Back to Categories
             </button>
+
             <div>
               <h1 className="step-title">Select Variant</h1>
               <p className="step-subtitle">
                 Choose a specific variant for{" "}
-                <strong>{selectedCategory?.name}</strong>
+                <strong>{selectedCategory?.name}</strong>.
               </p>
             </div>
           </div>
 
           <div className="variants-container premium">
             {selectedCategory?.service_variants?.map((variant) => (
-              <div
+              <button
                 key={variant.id}
-                className={`variant-card premium ${
+                type="button"
+                className={`variant-card premium variant-card-button ${
                   selectedVariant?.id === variant.id ? "selected" : ""
                 }`}
                 onClick={() => handleVariantSelect(variant)}
@@ -2012,15 +2106,17 @@ const Booking = ({ services: servicesProp = [] }) => {
                     <h3>{variant.body_part}</h3>
                     <span className="variant-size">{variant.size}</span>
                   </div>
+
                   <div className="variant-details premium">
                     <div className="price-section">
                       <div className="price-main">
-                        ₱{variant.price.toLocaleString()}
+                        {formatCurrency(variant.price)}
                       </div>
                       <div className="price-sub">
-                        Downpayment: ₱{variant.downpayment.toLocaleString()}
+                        Downpayment: {formatCurrency(variant.downpayment)}
                       </div>
                     </div>
+
                     <div className="duration-badge">
                       <span className="duration-icon">⏱️</span>
                       <span>
@@ -2030,10 +2126,11 @@ const Booking = ({ services: servicesProp = [] }) => {
                     </div>
                   </div>
                 </div>
-                <button className="select-btn premium">
+
+                <span className="select-btn premium">
                   Select <span className="select-icon">→</span>
-                </button>
-              </div>
+                </span>
+              </button>
             ))}
           </div>
 
@@ -2048,15 +2145,6 @@ const Booking = ({ services: servicesProp = [] }) => {
             >
               Back to Categories
             </button>
-            <div className="step-info">
-              <span className="info-text">
-                {selectedCategory?.service_variants?.length || 0} variant
-                {selectedCategory?.service_variants?.length !== 1
-                  ? "s"
-                  : ""}{" "}
-                available
-              </span>
-            </div>
           </div>
         </div>
       );
@@ -2066,7 +2154,7 @@ const Booking = ({ services: servicesProp = [] }) => {
   };
 
   // ===============================
-  // STEP 2 UI - DATE TIME SELECTION
+  // STEP 2
   // ===============================
   const renderDateTimeSelection = () => {
     const timeSlots = generateTimeSlots();
@@ -2100,38 +2188,36 @@ const Booking = ({ services: servicesProp = [] }) => {
           >
             <span className="back-icon">←</span> Back to Variants
           </button>
+
           <div>
             <h1 className="step-title">Select Date & Time</h1>
-            <p className="step-subtitle">Choose your preferred schedule</p>
+            <p className="step-subtitle">Choose your preferred schedule.</p>
           </div>
         </div>
 
-        <div className="selected-service-summary premium">
+        <div className="selected-service-summary premium compact-summary">
           <div className="summary-header">
             <h4>Selected Service</h4>
-            <div className="price-tag">
-              ₱{formData.total_price.toLocaleString()}
-            </div>
+            <div className="price-tag">{formatCurrency(formData.total_price)}</div>
           </div>
+
           <div className="summary-details">
             <div className="detail-item">
-              <span className="detail-label">Service:</span>
+              <span className="detail-label">Service</span>
               <span className="detail-value">{selectedService?.name}</span>
             </div>
+
             <div className="detail-item">
-              <span className="detail-label">Category:</span>
-              <span className="detail-value">{selectedCategoryObj?.name}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Variant:</span>
+              <span className="detail-label">Variant</span>
               <span className="detail-value">
                 {selectedVariantObj?.body_part} ({selectedVariantObj?.size})
               </span>
             </div>
+
             <div className="detail-item">
-              <span className="detail-label">Downpayment:</span>
+              <span className="detail-label">Downpayment</span>
               <span className="detail-value highlight">
-                ₱{formData.downpayment.toLocaleString()}
+                {formatCurrency(formData.downpayment)}
               </span>
             </div>
           </div>
@@ -2141,22 +2227,21 @@ const Booking = ({ services: servicesProp = [] }) => {
           <div className="calendar-section premium">
             <div className="calendar-header premium">
               <div className="calendar-navigation">
-                <button className="nav-btn prev premium" onClick={prevMonth}>
+                <button className="nav-btn premium" onClick={prevMonth}>
                   <span className="nav-icon">←</span>
                   <span>Previous</span>
                 </button>
 
                 <div className="calendar-title">
                   <h3>
-                    {monthNames[currentMonth.getMonth()]}{" "}
-                    {currentMonth.getFullYear()}
+                    {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                   </h3>
                   <button className="today-btn premium" onClick={goToToday}>
                     Today
                   </button>
                 </div>
 
-                <button className="nav-btn next premium" onClick={nextMonth}>
+                <button className="nav-btn premium" onClick={nextMonth}>
                   <span>Next</span>
                   <span className="nav-icon">→</span>
                 </button>
@@ -2186,36 +2271,33 @@ const Booking = ({ services: servicesProp = [] }) => {
                     return (
                       <div
                         key={index}
-                        className={`calendar-day premium ${dateObj.isCurrentMonth ? "" : "other-month"} 
-                          ${dateObj.isPast ? "past" : ""} 
-                          ${dateObj.isBlocked ? "blocked" : "available"}
-                          ${dateObj.isSelected ? "selected" : ""}
-                          ${isToday ? "today" : ""}`}
+                        className={`calendar-day premium ${
+                          dateObj.isCurrentMonth ? "" : "other-month"
+                        } ${dateObj.isPast ? "past" : ""} ${
+                          dateObj.isBlocked ? "blocked" : "available"
+                        } ${dateObj.isSelected ? "selected" : ""} ${
+                          isToday ? "today" : ""
+                        }`}
                         onClick={() =>
                           !dateObj.isBlocked && handleDateSelect(dateObj.date)
                         }
                         title={
-                          dateObj.isBlocked
-                            ? "Not available"
-                            : "Click to select"
+                          dateObj.isBlocked ? "Not available" : "Click to select"
                         }
                       >
                         <div className="day-content premium">
                           <span className="day-number">
                             {dateObj.date.getDate()}
                           </span>
-                          {isToday && (
-                            <span className="today-label">Today</span>
-                          )}
-                          {dateObj.isSelected && (
-                            <div className="selected-indicator"></div>
-                          )}
+                          {isToday && <span className="today-label">Today</span>}
                         </div>
+
                         {!dateObj.isCurrentMonth && (
                           <div className="month-indicator">
                             {monthNames[dateObj.date.getMonth()].slice(0, 3)}
                           </div>
                         )}
+
                         {dateObj.isAvailable && !dateObj.isPast && (
                           <div className="availability-dot"></div>
                         )}
@@ -2239,6 +2321,7 @@ const Booking = ({ services: servicesProp = [] }) => {
                       <span>Booked</span>
                     </div>
                   </div>
+
                   <div className="availability-count">
                     {getAvailableDatesCount()} available date
                     {getAvailableDatesCount() !== 1 ? "s" : ""} this month
@@ -2251,11 +2334,12 @@ const Booking = ({ services: servicesProp = [] }) => {
           <div className="timeslots-section premium">
             <div className="timeslots-header">
               <h3>Available Time Slots</h3>
+
               {selectedDate ? (
                 <div className="selected-date premium">
                   <span className="date-icon">📅</span>
                   <span className="date-text">
-                    {parseLocalDate(selectedDate).toLocaleDateString("en-PH", {
+                    {parseLocalDate(selectedDate)?.toLocaleDateString("en-PH", {
                       weekday: "long",
                       month: "long",
                       day: "numeric",
@@ -2266,7 +2350,7 @@ const Booking = ({ services: servicesProp = [] }) => {
               ) : (
                 <div className="select-date-prompt">
                   <div className="prompt-icon">👆</div>
-                  <p>Select a date from the calendar</p>
+                  <p>Select a date from the calendar.</p>
                 </div>
               )}
             </div>
@@ -2282,7 +2366,7 @@ const Booking = ({ services: servicesProp = [] }) => {
                   <div className="no-slots premium">
                     <div className="no-slots-icon">📅</div>
                     <h4>No Available Slots</h4>
-                    <p>All time slots are booked for this date</p>
+                    <p>All time slots are booked for this date.</p>
                   </div>
                 ) : (
                   <>
@@ -2310,9 +2394,7 @@ const Booking = ({ services: servicesProp = [] }) => {
                             ) : slot.isSelected ? (
                               <span className="status-selected">Selected</span>
                             ) : (
-                              <span className="status-available">
-                                Available
-                              </span>
+                              <span className="status-available">Available</span>
                             )}
                           </span>
                         </button>
@@ -2321,14 +2403,15 @@ const Booking = ({ services: servicesProp = [] }) => {
 
                     <div className="timeslots-info premium">
                       <div className="info-row">
-                        <span className="info-label">Available slots:</span>
+                        <span className="info-label">Available slots</span>
                         <span className="info-value">
                           {timeSlots.filter((s) => s.available).length} of{" "}
                           {timeSlots.length}
                         </span>
                       </div>
+
                       <div className="info-row">
-                        <span className="info-label">Duration per slot:</span>
+                        <span className="info-label">Duration</span>
                         <span className="info-value">
                           {selectedService?.duration} hour
                           {selectedService?.duration !== 1 ? "s" : ""}
@@ -2343,10 +2426,10 @@ const Booking = ({ services: servicesProp = [] }) => {
                 <div className="empty-state premium">
                   <div className="empty-icon">⏰</div>
                   <h4>Select a Date First</h4>
-                  <p>Choose an available date to view time slots</p>
+                  <p>Choose an available date to view time slots.</p>
                   <div className="tip">
                     <span className="tip-icon">💡</span>
-                    <span>Green dots indicate available dates</span>
+                    <span>Green dots indicate available dates.</span>
                   </div>
                 </div>
               </div>
@@ -2366,12 +2449,16 @@ const Booking = ({ services: servicesProp = [] }) => {
           >
             Back to Variants
           </button>
+
           <button
             className="btn btn-primary premium"
-            onClick={() => setStep(3)}
+            onClick={() => {
+              if (!validateForm(2)) return;
+              setStep(3);
+            }}
             disabled={!formData.booking_date || !formData.booking_time}
           >
-            Continue to Information
+            Continue to Details
           </button>
         </div>
       </div>
@@ -2379,189 +2466,178 @@ const Booking = ({ services: servicesProp = [] }) => {
   };
 
   // ===============================
-  // STEP 3 UI - CUSTOMER INFO
+  // STEP 3
   // ===============================
-  const renderCustomerInfo = () => (
+  const renderDetailsAndReview = () => (
     <div className="premium-step">
-      <div className="step-header">
-        <h1 className="step-title">Your Information</h1>
-        <p className="step-subtitle">Please provide your contact details</p>
-      </div>
+      <div className="step-header with-back">
+        <button
+          className="back-btn premium"
+          onClick={() => goBackToEditableStep(2)}
+        >
+          <span className="back-icon">←</span> Back to Schedule
+        </button>
 
-      <div className="booking-summary-card premium">
-        <div className="summary-header">
-          <h4>Booking Summary</h4>
-          <div className="price-tag">
-            ₱{formData.total_price.toLocaleString()}
-          </div>
-        </div>
-        <div className="summary-grid premium">
-          <div className="summary-item">
-            <span className="item-label">Service:</span>
-            <span className="item-value">{selectedService?.name}</span>
-          </div>
-          <div className="summary-item">
-            <span className="item-label">Category:</span>
-            <span className="item-value">{selectedCategoryObj?.name}</span>
-          </div>
-          <div className="summary-item">
-            <span className="item-label">Variant:</span>
-            <span className="item-value">
-              {selectedVariantObj?.body_part} ({selectedVariantObj?.size})
-            </span>
-          </div>
-          <div className="summary-item">
-            <span className="item-label">Date:</span>
-            <span className="item-value">
-              {parseLocalDate(formData.booking_date)?.toLocaleDateString(
-                "en-PH",
-                {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                },
-              )}
-            </span>
-          </div>
-          <div className="summary-item">
-            <span className="item-label">Time:</span>
-            <span className="item-value">{formData.booking_time}</span>
-          </div>
-          <div className="summary-item highlight">
-            <span className="item-label">Downpayment:</span>
-            <span className="item-value">
-              ₱{formData.downpayment.toLocaleString()}
-            </span>
-          </div>
+        <div>
+          <h1 className="step-title">Your Information</h1>
+          <p className="step-subtitle">
+            Fill in your details and review everything before proceeding to payment.
+          </p>
         </div>
       </div>
 
-      <div className="customer-form premium">
-        <div className="form-section">
-          <h4>Contact Information</h4>
+      <div className="step-3-layout">
+        <div className="customer-form premium">
+          <div className="form-section">
+            <h4>Contact Information</h4>
 
-          <div className="form-group premium">
-            <label className="form-label">
-              Full Name <span className="required">*</span>
-            </label>
-            <input
-              type="text"
-              name="full_name"
-              value={formData.full_name}
-              onChange={handleInputChange}
-              className="form-input premium"
-              placeholder="Enter your full name"
-              required
-            />
-          </div>
-
-          <div className="form-row premium">
             <div className="form-group premium">
               <label className="form-label">
-                Email Address <span className="required">*</span>
+                Full Name <span className="required">*</span>
               </label>
               <input
-                type="email"
-                name="email"
-                value={formData.email}
+                type="text"
+                name="full_name"
+                value={formData.full_name}
                 onChange={handleInputChange}
                 className="form-input premium"
-                placeholder="your.email@example.com"
+                placeholder="Enter your full name"
                 required
               />
-              <div className="form-hint premium">
-                Booking confirmation will be sent here
+            </div>
+
+            <div className="form-row premium">
+              <div className="form-group premium">
+                <label className="form-label">
+                  Email Address <span className="required">*</span>
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="form-input premium"
+                  placeholder="your.email@example.com"
+                  required
+                />
+                <div className="form-hint premium">
+                  Booking confirmation will be sent here.
+                </div>
+              </div>
+
+              <div className="form-group premium">
+                <label className="form-label">
+                  Phone Number <span className="required">*</span>
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="form-input premium"
+                  placeholder="0912 345 6789"
+                  required
+                />
               </div>
             </div>
 
             <div className="form-group premium">
               <label className="form-label">
-                Phone Number <span className="required">*</span>
+                Facebook Profile Link <span className="optional">(Optional)</span>
               </label>
               <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
+                type="url"
+                name="facebook_link"
+                value={formData.facebook_link}
                 onChange={handleInputChange}
                 className="form-input premium"
-                placeholder="0912 345 6789"
-                required
+                placeholder="https://facebook.com/yourprofile"
+              />
+            </div>
+
+            <div className="form-group premium">
+              <label className="form-label">
+                Additional Notes <span className="optional">(Optional)</span>
+              </label>
+              <textarea
+                name="notes"
+                value={formData.notes}
+                onChange={handleInputChange}
+                className="form-textarea premium"
+                placeholder="Any special requests, instructions, or questions..."
+                rows="4"
               />
             </div>
           </div>
+        </div>
 
-          <div className="form-group premium">
-            <label className="form-label">
-              Facebook Profile Link <span className="optional">(Optional)</span>
-            </label>
-            <input
-              type="url"
-              name="facebook_link"
-              value={formData.facebook_link}
-              onChange={handleInputChange}
-              className="form-input premium"
-              placeholder="https://facebook.com/yourprofile"
-            />
-            <div className="form-hint premium">Helps us serve you better</div>
+        <div className="review-panel compact">
+          <div className="review-panel-header">
+            <h4>Review Summary</h4>
+            <span className="review-chip">Editable</span>
           </div>
 
-          <div className="form-group premium">
-            <label className="form-label">
-              Additional Notes <span className="optional">(Optional)</span>
-            </label>
-            <textarea
-              name="notes"
-              value={formData.notes}
-              onChange={handleInputChange}
-              className="form-textarea premium"
-              placeholder="Any special requests, instructions, or questions..."
-              rows="3"
-            />
+          <div className="review-accordion">
+            {reviewSections.map((section) => (
+              <div key={section.key} className="review-accordion-item">
+                <button
+                  type="button"
+                  className="review-accordion-trigger"
+                  onClick={() => toggleReviewSection(section.key)}
+                >
+                  <div className="review-trigger-main">
+                    <strong>{section.title}</strong>
+                    <span>{section.summary}</span>
+                  </div>
+                  <span className="review-trigger-icon">
+                    {collapsedReview[section.key] ? "+" : "−"}
+                  </span>
+                </button>
+
+                {!collapsedReview[section.key] && (
+                  <div className="review-accordion-content">
+                    {section.content}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="info-notice premium compact">
+            <div className="notice-header">
+              <span className="notice-icon">📋</span>
+              <h5>Before you proceed</h5>
+            </div>
+
+            <ul className="notice-list">
+              <li>This is your last editable step.</li>
+              <li>Proceeding to payment will create your booking.</li>
+              <li>You will have 30 minutes to upload proof of payment.</li>
+            </ul>
           </div>
         </div>
-      </div>
-
-      <div className="info-notice premium">
-        <div className="notice-header">
-          <span className="notice-icon">📋</span>
-          <h5>Important Information</h5>
-        </div>
-        <ul className="notice-list">
-          <li>
-            Booking will be created with status{" "}
-            <strong>"Pending Payment"</strong>
-          </li>
-          <li>
-            Slot is <strong>NOT reserved</strong> until payment proof is
-            uploaded
-          </li>
-          <li>
-            Upload payment proof within <strong>30 minutes</strong> to secure
-            your slot
-          </li>
-          <li>Slot availability will be verified after payment upload</li>
-        </ul>
       </div>
 
       <div className="step-footer premium">
         <button
           className="btn btn-secondary premium"
-          onClick={() => setStep(2)}
+          onClick={() => goBackToEditableStep(2)}
         >
           Back to Schedule
         </button>
+
         <button
           className="btn btn-primary premium"
-          onClick={handleCreateBooking}
+          onClick={handleProceedToPayment}
           disabled={loading}
         >
           {loading ? (
             <>
               <span className="spinner small"></span>
-              Creating Booking...
+              Preparing Payment...
             </>
           ) : (
-            "Create Booking & Proceed to Payment"
+            "Proceed to Payment"
           )}
         </button>
       </div>
@@ -2569,7 +2645,7 @@ const Booking = ({ services: servicesProp = [] }) => {
   );
 
   // ===============================
-  // STEP 5 UI - PAYMENT UPLOAD
+  // STEP 4
   // ===============================
   const renderPaymentInstructions = () => {
     const countdown = formatCountdown(timeLeftMs);
@@ -2580,17 +2656,30 @@ const Booking = ({ services: servicesProp = [] }) => {
         ? `${countdown} remaining`
         : "30 minutes";
 
+    const hasUploadedProof =
+      paymentProofUploaded ||
+      !!paymentSignedUrl ||
+      !!bookingPreview?.payment?.proof_url ||
+      !!bookingPreview?.payment?.payment_proof_url ||
+      !!bookingPreview?.payment?.signed_url ||
+      !!bookingPreview?.payment?.signedUrl;
+
     return (
       <div className="premium-step">
         <div className="step-header with-back">
-          <button className="back-btn premium" onClick={() => setStep(4)}>
-            <span className="back-icon">←</span> Back to Review
+          <button
+            className="back-btn premium"
+            onClick={() => setStep(3)}
+            disabled={isLockedAfterBookingCreated}
+            title="Details are now locked after booking creation"
+          >
+            <span className="back-icon">←</span> Back to Details
           </button>
 
           <div>
-            <h1 className="step-title">Payment Instructions</h1>
+            <h1 className="step-title">Payment</h1>
             <p className="step-subtitle">
-              Pay the downpayment to secure your appointment
+              Your booking is now created. Upload payment proof to continue.
             </p>
           </div>
         </div>
@@ -2603,12 +2692,24 @@ const Booking = ({ services: servicesProp = [] }) => {
               <span className="status-dot"></span>
               <span className="status-text">PENDING PAYMENT</span>
             </div>
+
             <p className="status-message">
-              ⏰ Upload payment proof within <strong>{expiryLabel}</strong> to
-              secure your slot
+              Upload payment proof within <strong>{expiryLabel}</strong> to secure your slot.
             </p>
           </div>
         </div>
+
+        {isLockedAfterBookingCreated && (
+          <div className="flow-lock-banner premium">
+            <div className="flow-lock-icon">🔒</div>
+            <div className="flow-lock-content">
+              <strong>Booking details are locked</strong>
+              <p>
+                Service, schedule, and customer details can no longer be edited after booking creation.
+              </p>
+            </div>
+          </div>
+        )}
 
         {isExpiredLocal && (
           <div className="error-state" style={{ marginTop: 12 }}>
@@ -2625,12 +2726,13 @@ const Booking = ({ services: servicesProp = [] }) => {
                   title: "Booking Expired",
                   message:
                     "Your 30-minute payment window ended. Start a new booking to continue.",
+                  tone: "danger",
                   actions: [
                     {
                       label: "Start New Booking",
                       variant: "btn-primary",
                       onClick: () => {
-                        setModal((m) => ({ ...m, open: false }));
+                        setModal((prev) => ({ ...prev, open: false }));
                         hardRestart();
                       },
                     },
@@ -2649,9 +2751,10 @@ const Booking = ({ services: servicesProp = [] }) => {
               <div className="qr-header">
                 <h4>Pay via GCash</h4>
                 <div className="payment-amount">
-                  ₱{formData.downpayment.toLocaleString()}
+                  {formatCurrency(formData.downpayment)}
                 </div>
               </div>
+
               <div className="qr-container">
                 <div className="qr-placeholder premium">
                   <div className="qr-mock">
@@ -2661,9 +2764,10 @@ const Booking = ({ services: servicesProp = [] }) => {
                       ))}
                     </div>
                   </div>
+
                   <div className="qr-hint">
                     <span className="hint-icon">💰</span>
-                    Send ₱{formData.downpayment.toLocaleString()} to:
+                    Send {formatCurrency(formData.downpayment)} to:
                     <br />
                     <strong>0912 345 6789</strong>
                     <br />
@@ -2675,27 +2779,32 @@ const Booking = ({ services: servicesProp = [] }) => {
 
             <div className="payment-details-card premium">
               <h4>Payment Details</h4>
+
               <div className="details-grid premium">
                 <div className="detail-row">
-                  <span className="detail-label">Booking ID:</span>
+                  <span className="detail-label">Booking ID</span>
                   <span className="detail-value code">#{bookingId}</span>
                 </div>
+
                 <div className="detail-row">
-                  <span className="detail-label">Reference:</span>
+                  <span className="detail-label">Reference</span>
                   <span className="detail-value code">BOOK-{bookingId}</span>
                 </div>
+
                 <div className="detail-row highlight">
-                  <span className="detail-label">Amount:</span>
+                  <span className="detail-label">Amount</span>
                   <span className="detail-value amount">
-                    ₱{formData.downpayment.toLocaleString()}
+                    {formatCurrency(formData.downpayment)}
                   </span>
                 </div>
+
                 <div className="detail-row">
-                  <span className="detail-label">GCash Number:</span>
+                  <span className="detail-label">GCash Number</span>
                   <span className="detail-value">0912 345 6789</span>
                 </div>
+
                 <div className="detail-row">
-                  <span className="detail-label">Expires:</span>
+                  <span className="detail-label">Expires</span>
                   <span className="detail-value warning">{expiryLabel}</span>
                 </div>
               </div>
@@ -2712,8 +2821,7 @@ const Booking = ({ services: servicesProp = [] }) => {
             <div className="upload-header">
               <h4>Upload Proof of Payment</h4>
               <p className="upload-subtitle">
-                <strong>Required:</strong> Upload payment proof to secure your
-                slot
+                Upload your screenshot or PDF receipt.
               </p>
             </div>
 
@@ -2732,33 +2840,34 @@ const Booking = ({ services: servicesProp = [] }) => {
                     setProofPreviewUrl(null);
                   }
                 }}
-                disabled={uploading || paymentProofUploaded || isExpiredLocal}
+                disabled={uploading || hasUploadedProof || isExpiredLocal}
                 className="upload-input"
               />
+
               <label
                 htmlFor="payment-proof"
-                className={`upload-dropzone premium ${paymentProofUploaded ? "uploaded" : ""}`}
+                className={`upload-dropzone premium ${
+                  hasUploadedProof ? "uploaded" : ""
+                }`}
               >
                 {uploading ? (
                   <div className="upload-state">
                     <div className="spinner"></div>
                     <p>Uploading...</p>
                   </div>
-                ) : paymentProofUploaded ? (
+                ) : hasUploadedProof ? (
                   <div className="upload-state success">
                     <span className="upload-icon">✓</span>
                     <div>
                       <p className="upload-title">Payment Proof Uploaded</p>
-                      <p className="upload-sub">
-                        Payment intent created successfully
-                      </p>
+                      <p className="upload-sub">Ready for confirmation</p>
                     </div>
                   </div>
                 ) : (
                   <div className="upload-state">
                     <span className="upload-icon">📎</span>
                     <div>
-                      <p className="upload-title">Click to upload screenshot</p>
+                      <p className="upload-title">Click to upload file</p>
                       <p className="upload-sub">PNG, JPG, or PDF (Max 5MB)</p>
                     </div>
                   </div>
@@ -2768,37 +2877,29 @@ const Booking = ({ services: servicesProp = [] }) => {
               {selectedProofFile &&
                 selectedProofFile.type === "application/pdf" && (
                   <div className="form-hint premium" style={{ marginTop: 10 }}>
-                    PDF selected — preview not available. You can still upload
-                    it.
+                    PDF selected — preview is not available.
                   </div>
                 )}
 
               {proofPreviewUrl && (
-                <div style={{ marginTop: 12 }}>
+                <div className="proof-preview-card">
                   <p className="form-hint premium">Preview:</p>
                   <img
                     src={proofPreviewUrl}
                     alt="Payment Proof Preview"
-                    style={{
-                      width: "100%",
-                      maxHeight: "250px",
-                      objectFit: "contain",
-                      borderRadius: "12px",
-                      border: "1px solid #ddd",
-                    }}
+                    className="proof-preview-image"
                   />
                 </div>
               )}
 
-              {selectedProofFile && !paymentProofUploaded && (
+              {selectedProofFile && !hasUploadedProof && (
                 <div className="form-hint premium" style={{ marginTop: 10 }}>
                   Selected: <strong>{selectedProofFile.name}</strong>
                 </div>
               )}
 
               <button
-                className="btn btn-outline premium"
-                style={{ marginTop: 12, width: "100%" }}
+                className="btn btn-outline premium upload-clear-btn"
                 onClick={() => {
                   setSelectedProofFile(null);
                   setProofPreviewUrl(null);
@@ -2815,7 +2916,7 @@ const Booking = ({ services: servicesProp = [] }) => {
             <div className="upload-tips premium">
               <h5>📸 Make sure your screenshot shows:</h5>
               <ul className="tips-list">
-                <li>Amount paid (₱{formData.downpayment.toLocaleString()})</li>
+                <li>Amount paid ({formatCurrency(formData.downpayment)})</li>
                 <li>Reference number (BOOK-{bookingId})</li>
                 <li>Date and time of payment</li>
                 <li>Recipient name or number</li>
@@ -2824,150 +2925,12 @@ const Booking = ({ services: servicesProp = [] }) => {
           </div>
         </div>
 
-        <div className="important-note premium">
-          <div className="note-icon">⚠️</div>
-          <div className="note-content">
-            <strong>Important:</strong> Your slot is{" "}
-            <span className="warning-text">NOT RESERVED</span> until you confirm
-            booking.
-          </div>
-        </div>
-
-        <div className="step-footer premium">
-          <button
-            className="btn btn-secondary premium"
-            onClick={() => setStep(4)}
-          >
-            Back to Review
-          </button>
-
-          <button
-            className="btn btn-primary premium"
-            onClick={handleConfirmWithUpload}
-            disabled={
-              loading ||
-              uploading ||
-              !bookingId ||
-              isExpiredLocal ||
-              (!(
-                paymentProofUploaded ||
-                paymentSignedUrl ||
-                bookingPreview?.payment?.proof_url ||
-                bookingPreview?.payment?.payment_proof_url ||
-                bookingPreview?.payment?.signed_url ||
-                bookingPreview?.payment?.signedUrl
-              ) &&
-                !selectedProofFile)
-            }
-          >
-            {loading || uploading ? (
-              <>
-                <span className="spinner small"></span>
-                Processing...
-              </>
-            ) : (
-              "Confirm Booking & Reserve Slot"
-            )}
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  // ===============================
-  // STEP 4 UI - REVIEW
-  // ===============================
-  const renderBookingPreview = () => {
-    const preview = bookingPreview;
-
-    return (
-      <div className="premium-step">
-        <div className="step-header with-back">
-          <button className="back-btn premium" onClick={() => setStep(3)}>
-            <span className="back-icon">←</span> Back to Information
-          </button>
-
-          <div>
-            <h1 className="step-title">Final Review</h1>
-            <p className="step-subtitle">
-              Verify all details before confirming your booking
-            </p>
-          </div>
-        </div>
-
-        <div className="status-banner warning premium">
-          <div className="status-content">
-            <div className="status-indicator">
-              <span className="status-dot"></span>
-              <span className="status-text">SLOT NOT YET RESERVED</span>
-            </div>
-            <p className="status-message">
-              ⚠️ Slot will be checked and reserved when you click "Confirm
-              Booking"
-            </p>
-          </div>
-        </div>
-
-        {isExpiredLocal && (
-          <div className="error-alert premium payment_expired">
-            <div className="alert-icon">⛔</div>
-            <div className="alert-content">
-              <h5>Booking Expired</h5>
-              <p>Your 30-minute window ended. Please start a new booking.</p>
-              <div className="alert-actions">
-                <button
-                  className="btn btn-small premium"
-                  onClick={() => {
-                    setModal({
-                      open: true,
-                      title: "Booking Expired",
-                      message: "Start a new booking to continue.",
-                      actions: [
-                        {
-                          label: "Start New Booking",
-                          variant: "btn-primary",
-                          onClick: () => {
-                            setModal((m) => ({ ...m, open: false }));
-                            hardRestart();
-                          },
-                        },
-                      ],
-                    });
-                  }}
-                >
-                  Start New Booking
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {confirmationError && (
           <div className={`error-alert premium ${confirmationError.type}`}>
             <div className="alert-icon">⚠️</div>
             <div className="alert-content">
               <h5>Confirmation Failed</h5>
               <p>{confirmationError.message}</p>
-
-              {confirmationError.type === "slot_taken" && (
-                <div className="alert-actions">
-                  <button
-                    className="btn btn-small premium"
-                    onClick={() => {
-                      setStep(2);
-                      setConfirmationError(null);
-                    }}
-                  >
-                    Choose Another Slot
-                  </button>
-                  <button
-                    className="btn btn-small btn-outline premium"
-                    onClick={hardRestart}
-                  >
-                    Start New Booking
-                  </button>
-                </div>
-              )}
 
               {confirmationError.retry && (
                 <button
@@ -2981,160 +2944,41 @@ const Booking = ({ services: servicesProp = [] }) => {
           </div>
         )}
 
-        <div className="review-container premium">
-          <div className="review-section">
-            <h4 className="section-title">Service Details</h4>
-            <div className="section-content">
-              <div className="detail-item">
-                <span className="detail-label">Service:</span>
-                <span className="detail-value">{selectedService?.name}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Category:</span>
-                <span className="detail-value">
-                  {selectedCategoryObj?.name}
-                </span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Variant:</span>
-                <span className="detail-value">
-                  {selectedVariantObj?.body_part} ({selectedVariantObj?.size})
-                </span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Duration:</span>
-                <span className="detail-value">
-                  {selectedService?.duration} hour
-                  {selectedService?.duration !== 1 ? "s" : ""}
-                </span>
-              </div>
-              <div className="detail-item highlight">
-                <span className="detail-label">Total Price:</span>
-                <span className="detail-value price">
-                  ₱{formData.total_price.toLocaleString()}
-                </span>
-              </div>
-            </div>
+        <div className="important-note premium">
+          <div className="note-icon">⚠️</div>
+          <div className="note-content">
+            Your slot is <span className="warning-text">not fully secured</span> until you confirm the booking after uploading proof.
           </div>
-
-          <div className="review-section">
-            <h4 className="section-title">Schedule</h4>
-            <div className="section-content">
-              <div className="detail-item">
-                <span className="detail-label">Date:</span>
-                <span className="detail-value">
-                  {parseLocalDate(formData.booking_date)?.toLocaleDateString(
-                    "en-PH",
-                    {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    },
-                  )}
-                </span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Time:</span>
-                <span className="detail-value">{formData.booking_time}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="review-section">
-            <h4 className="section-title">Your Information</h4>
-            <div className="section-content">
-              <div className="detail-item">
-                <span className="detail-label">Name:</span>
-                <span className="detail-value">{formData.full_name}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Email:</span>
-                <span className="detail-value">{formData.email}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Phone:</span>
-                <span className="detail-value">{formData.phone}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Facebook:</span>
-                <span className="detail-value">
-                  {formData.facebook_link || "Not provided"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="review-section">
-            <h4 className="section-title">Payment Status</h4>
-            <div className="section-content">
-              <div className="detail-item">
-                <span className="detail-label">Downpayment:</span>
-                <span className="detail-value success">Proof Uploaded ✓</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Payment Intent:</span>
-                <span className="detail-value code">
-                  {paymentIntentId?.substring(0, 12)}...
-                </span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Slot Status:</span>
-                <span className="detail-value warning">
-                  Pending Reservation
-                </span>
-              </div>
-
-              {preview?.status && (
-                <div className="detail-item">
-                  <span className="detail-label">Booking Status:</span>
-                  <span className="detail-value">{preview.status}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {formData.notes && (
-            <div className="review-section">
-              <h4 className="section-title">Additional Notes</h4>
-              <div className="section-content">
-                <p className="notes-text">{formData.notes}</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="policies-section premium">
-          <h4>📋 Important Policies</h4>
-          <ul className="policies-list">
-            <li>Slot availability will be checked when you confirm booking</li>
-            <li>
-              If slot is no longer available, you'll be notified immediately
-            </li>
-            <li>
-              Booking will be marked as "Pending Approval" until admin approval
-            </li>
-            <li>
-              Cancellations allowed within{" "}
-              <strong>24 hours after approval</strong>
-            </li>
-          </ul>
         </div>
 
         <div className="step-footer premium">
           <button
             className="btn btn-secondary premium"
-            onClick={() => setStep(3)}
+            disabled
+            title="Details are locked after booking creation"
           >
-            Back to Information
+            Back Locked
           </button>
 
           <button
             className="btn btn-primary premium"
-            onClick={() => setStep(5)}
-            disabled={isExpiredLocal || !bookingId}
+            onClick={handleConfirmWithUpload}
+            disabled={
+              loading ||
+              uploading ||
+              !bookingId ||
+              isExpiredLocal ||
+              (!hasUploadedProof && !selectedProofFile)
+            }
           >
-            Proceed to Payment
+            {loading || uploading ? (
+              <>
+                <span className="spinner small"></span>
+                Processing...
+              </>
+            ) : (
+              "Confirm Booking"
+            )}
           </button>
         </div>
       </div>
@@ -3142,7 +2986,7 @@ const Booking = ({ services: servicesProp = [] }) => {
   };
 
   // ===============================
-  // STEP 6 UI - CONFIRMATION
+  // STEP 5
   // ===============================
   const renderConfirmation = () => {
     const status = bookingPreview?.status || "pending_approval";
@@ -3187,7 +3031,7 @@ const Booking = ({ services: servicesProp = [] }) => {
         })
       : "N/A";
 
-    const timeText = formData.booking_time || "N/A";
+    const timeText = formatDisplayTime(formData.booking_time);
 
     return (
       <div className="premium-step confirmation-step">
@@ -3195,6 +3039,7 @@ const Booking = ({ services: servicesProp = [] }) => {
           <div className="confirmation-icon">
             <span className="icon-check">✓</span>
           </div>
+
           <h1 className="confirmation-title">{title}</h1>
           <p className="confirmation-subtitle">{subtitle}</p>
         </div>
@@ -3208,28 +3053,28 @@ const Booking = ({ services: servicesProp = [] }) => {
 
             <div className="card-content">
               <div className="detail-item">
-                <span className="detail-label">Status:</span>
+                <span className="detail-label">Status</span>
                 <span className={`detail-value status ${statusClass}`}>
                   {statusLabel}
                 </span>
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">Service:</span>
+                <span className="detail-label">Service</span>
                 <span className="detail-value">
                   {selectedService?.name || "N/A"}
                 </span>
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">Category:</span>
+                <span className="detail-label">Category</span>
                 <span className="detail-value">
                   {selectedCategoryObj?.name || "N/A"}
                 </span>
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">Variant:</span>
+                <span className="detail-label">Variant</span>
                 <span className="detail-value">
                   {selectedVariantObj?.body_part
                     ? `${selectedVariantObj.body_part} (${selectedVariantObj.size})`
@@ -3238,25 +3083,21 @@ const Booking = ({ services: servicesProp = [] }) => {
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">Date & Time:</span>
+                <span className="detail-label">Date & Time</span>
                 <span className="detail-value">
                   {dateText} at {timeText}
                 </span>
               </div>
 
-              <div
-                className={`detail-item ${statusClass === "success" ? "success" : ""}`}
-              >
-                <span className="detail-label">Payment:</span>
+              <div className="detail-item">
+                <span className="detail-label">Payment</span>
                 <span className={`detail-value status ${statusClass}`}>
                   {paymentText}
                 </span>
               </div>
 
-              <div
-                className={`detail-item ${statusClass === "success" ? "success" : ""}`}
-              >
-                <span className="detail-label">Slot Status:</span>
+              <div className="detail-item">
+                <span className="detail-label">Slot Status</span>
                 <span className={`detail-value status ${statusClass}`}>
                   {slotText}
                 </span>
@@ -3272,14 +3113,14 @@ const Booking = ({ services: servicesProp = [] }) => {
                   <li>Approved na ang booking mo ✅</li>
                   <li>Makaka-receive ka ng confirmation sa email</li>
                   <li>Pwede mong i-check status anytime gamit email</li>
-                  <li>Message/call us if may questions</li>
+                  <li>Message or call us if may questions</li>
                 </>
               ) : (
                 <>
                   <li>Veverify namin ang payment proof within 24 hours</li>
                   <li>Makaka-receive ka ng email once approved</li>
                   <li>Pwede mong i-check status anytime gamit email</li>
-                  <li>Message/call us if may questions</li>
+                  <li>Message or call us if may questions</li>
                 </>
               )}
             </ol>
@@ -3292,10 +3133,12 @@ const Booking = ({ services: servicesProp = [] }) => {
                 <span className="contact-icon">✉️</span>
                 <span>booking@yourbusiness.com</span>
               </div>
+
               <div className="contact-item">
                 <span className="contact-icon">📱</span>
                 <span>(02) 1234-5678</span>
               </div>
+
               <div className="contact-item">
                 <span className="contact-icon">👥</span>
                 <span>@yourbusinesspage</span>
@@ -3311,6 +3154,7 @@ const Booking = ({ services: servicesProp = [] }) => {
           >
             Back to Home
           </button>
+
           <button
             className="btn btn-outline premium"
             onClick={() =>
@@ -3336,7 +3180,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
       <div className="booking-header premium">
         <h1>Book an Appointment</h1>
-        <p>Complete the following steps to secure your appointment</p>
+        <p>Complete the steps below to secure your appointment.</p>
       </div>
 
       <PremiumProgressBar />
@@ -3344,10 +3188,9 @@ const Booking = ({ services: servicesProp = [] }) => {
       <div className="booking-content premium">
         {step === 1 && renderServiceSelection()}
         {step === 2 && renderDateTimeSelection()}
-        {step === 3 && renderCustomerInfo()}
-        {step === 4 && renderBookingPreview()}
-        {step === 5 && renderPaymentInstructions()}
-        {step === 6 && renderConfirmation()}
+        {step === 3 && renderDetailsAndReview()}
+        {step === 4 && renderPaymentInstructions()}
+        {step === 5 && renderConfirmation()}
       </div>
     </div>
   );
