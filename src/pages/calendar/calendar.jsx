@@ -751,17 +751,19 @@ const AdminCalendar = () => {
             </select>
           </div>
         </div>
-
         <div className="card calendar-card">
           <Calendar
+            className="admin-big-calendar"
             localizer={localizer}
             events={events}
             views={[Views.MONTH, Views.WEEK]}
             selectable
-            style={{ height: 650 }}
+            date={currentDate}
+            style={{ height: "100%" }}
             onSelectSlot={handleSelectSlot}
             onNavigate={(date) => setCurrentDate(date)}
             dayPropGetter={dayPropGetter}
+            longPressThreshold={10}
           />
         </div>
 
