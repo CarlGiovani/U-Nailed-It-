@@ -1058,3 +1058,25 @@
     grid-template-columns: 1fr;
   }
 }
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.82);
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.modal-busy {
+  opacity: 0.82;
+}
+
+.modal-busy .warning-text,
+.modal-busy h3,
+.modal-busy p,
+.modal-busy label {
+  transition: opacity 0.2s ease;
+}

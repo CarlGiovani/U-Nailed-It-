@@ -117,7 +117,6 @@ const AdminCalendar = () => {
   });
 
   const SERVICES_QUERY_KEY = useMemo(() => ["admin-calendar-services"], []);
-
   const BOOKINGS_QUERY_KEY = useMemo(() => ["admin-calendar-bookings"], []);
 
   const MONTH_QUERY_KEY = useMemo(
@@ -742,6 +741,7 @@ const AdminCalendar = () => {
             <select
               value={selectedService || ""}
               onChange={(e) => setSelectedService(Number(e.target.value))}
+              disabled={loading}
             >
               {services.map((service) => (
                 <option key={service.id} value={service.id}>
@@ -751,6 +751,7 @@ const AdminCalendar = () => {
             </select>
           </div>
         </div>
+
         <div className="card calendar-card">
           <Calendar
             className="admin-big-calendar"
@@ -784,14 +785,46 @@ const AdminCalendar = () => {
                     setTimeInputs([""]);
                     setShowGenerator(true);
                   }}
+                  disabled={loading}
                 >
-                  Create Slots
+                  {loading ? (
+                    <>
+                      <span className="btn-spinner"></span>
+                      Processing...
+                    </>
+                  ) : (
+                    "Create Slots"
+                  )}
                 </button>
-                <button className="btn-danger" onClick={handleBlockDay}>
-                  Bulk Block Day
+
+                <button
+                  className="btn-danger"
+                  onClick={handleBlockDay}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <span className="btn-spinner"></span>
+                      Processing...
+                    </>
+                  ) : (
+                    "Bulk Block Day"
+                  )}
                 </button>
-                <button className="btn-success" onClick={handleUnblockDay}>
-                  Bulk Unblock
+
+                <button
+                  className="btn-success"
+                  onClick={handleUnblockDay}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <span className="btn-spinner"></span>
+                      Processing...
+                    </>
+                  ) : (
+                    "Bulk Unblock"
+                  )}
                 </button>
               </div>
             </div>
@@ -814,7 +847,7 @@ const AdminCalendar = () => {
                       past ? "slot-past" : ""
                     }`}
                     onClick={() => {
-                      if (booked || past) return;
+                      if (booked || past || loading) return;
 
                       setEditMode(false);
                       setEditedTime("");
@@ -838,7 +871,7 @@ const AdminCalendar = () => {
 
         {showSlotModal && selectedSlot && (
           <div className="modal-overlay">
-            <div className="slot-modal">
+            <div className={`slot-modal ${loading ? "modal-busy" : ""}`}>
               <h3>
                 {editMode ? "Edit Slot" : formatTime12h(selectedSlot.time)}
               </h3>
@@ -860,6 +893,7 @@ const AdminCalendar = () => {
                   <input
                     type="time"
                     value={editedTime}
+                    disabled={loading}
                     onChange={(e) => {
                       const newTime = e.target.value;
                       setEditedTime(newTime);
@@ -882,7 +916,9 @@ const AdminCalendar = () => {
                 <button
                   className="btn-outline"
                   disabled={
-                    isSlotBooked(selectedSlot) || isPastTime(selectedSlot)
+                    isSlotBooked(selectedSlot) ||
+                    isPastTime(selectedSlot) ||
+                    loading
                   }
                   onClick={() => {
                     setEditedTime(selectedSlot.time);
@@ -896,7 +932,7 @@ const AdminCalendar = () => {
               {editMode && (
                 <button
                   className="btn-primary"
-                  disabled={!editedTime || !!editError}
+                  disabled={!editedTime || !!editError || loading}
                   onClick={async () => {
                     const normalizedEditedTime = normalizeTime(editedTime);
 
@@ -936,32 +972,56 @@ const AdminCalendar = () => {
                     }
                   }}
                 >
-                  Save Changes
+                  {loading ? (
+                    <>
+                      <span className="btn-spinner"></span>
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
                 </button>
               )}
 
               <button
                 className="btn-primary"
                 disabled={
-                  isSlotBooked(selectedSlot) || isPastTime(selectedSlot)
+                  isSlotBooked(selectedSlot) || isPastTime(selectedSlot) || loading
                 }
                 onClick={() => toggleSlot(selectedSlot)}
               >
-                {selectedSlot.is_available ? "Block Slot" : "Unblock Slot"}
+                {loading ? (
+                  <>
+                    <span className="btn-spinner"></span>
+                    Processing...
+                  </>
+                ) : selectedSlot.is_available ? (
+                  "Block Slot"
+                ) : (
+                  "Unblock Slot"
+                )}
               </button>
 
               <button
                 className="btn-danger"
                 disabled={
-                  isSlotBooked(selectedSlot) || isPastTime(selectedSlot)
+                  isSlotBooked(selectedSlot) || isPastTime(selectedSlot) || loading
                 }
                 onClick={handleDeleteSlot}
               >
-                Delete Slot
+                {loading ? (
+                  <>
+                    <span className="btn-spinner"></span>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Slot"
+                )}
               </button>
 
               <button
                 className="btn-outline"
+                disabled={loading}
                 onClick={() => {
                   setEditMode(false);
                   setEditedTime("");
@@ -977,7 +1037,7 @@ const AdminCalendar = () => {
 
         {showGenerator && (
           <div className="modal-overlay">
-            <div className="generator-modal">
+            <div className={`generator-modal ${loading ? "modal-busy" : ""}`}>
               <h3>Bulk Slot Generator</h3>
 
               <div className="range-preview">
@@ -998,6 +1058,7 @@ const AdminCalendar = () => {
                     <input
                       type="time"
                       value={time}
+                      disabled={loading}
                       onChange={(e) =>
                         handleTimeInputChange(index, e.target.value)
                       }
@@ -1011,6 +1072,7 @@ const AdminCalendar = () => {
                         onClick={() => removeTimeInput(index)}
                         aria-label={`Remove time ${index + 1}`}
                         title="Remove"
+                        disabled={loading}
                       >
                         ×
                       </button>
@@ -1024,6 +1086,7 @@ const AdminCalendar = () => {
                   type="button"
                   className="btn-outline"
                   onClick={addTimeInput}
+                  disabled={loading}
                 >
                   + Add Time
                 </button>
@@ -1032,6 +1095,7 @@ const AdminCalendar = () => {
                   type="button"
                   className="btn-outline"
                   onClick={autoGenerateTimes}
+                  disabled={loading}
                 >
                   Auto 9AM–6PM (30min)
                 </button>
@@ -1041,17 +1105,31 @@ const AdminCalendar = () => {
                 <input
                   type="checkbox"
                   checked={weeklyRecurring}
+                  disabled={loading}
                   onChange={() => setWeeklyRecurring(!weeklyRecurring)}
                 />
                 Weekly Recurring (4 weeks)
               </label>
 
               <div className="modal-actions">
-                <button className="btn-primary" onClick={handleGenerate}>
-                  Generate
+                <button
+                  className="btn-primary"
+                  onClick={handleGenerate}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <span className="btn-spinner"></span>
+                      Generating...
+                    </>
+                  ) : (
+                    "Generate"
+                  )}
                 </button>
+
                 <button
                   className="btn-outline"
+                  disabled={loading}
                   onClick={() => {
                     setShowGenerator(false);
                     setTimeInputs([""]);
@@ -1066,7 +1144,7 @@ const AdminCalendar = () => {
 
         {confirmModal.open && (
           <div className="modal-overlay">
-            <div className="confirm-modal">
+            <div className={`confirm-modal ${loading ? "modal-busy" : ""}`}>
               <h3>{confirmModal.title}</h3>
               <p className="confirm-message">{confirmModal.message}</p>
 
@@ -1094,7 +1172,14 @@ const AdminCalendar = () => {
                   }}
                   disabled={loading}
                 >
-                  {confirmModal.confirmText}
+                  {loading ? (
+                    <>
+                      <span className="btn-spinner"></span>
+                      Processing...
+                    </>
+                  ) : (
+                    confirmModal.confirmText
+                  )}
                 </button>
               </div>
             </div>
