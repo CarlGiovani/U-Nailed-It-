@@ -1,278 +1,512 @@
-/* ========================================
-   PAGE
-======================================== */
+/* =========================
+   POLICIES PAGE
+========================= */
 
 .policies-page {
-  padding: 30px;
+  width: 100%;
+  min-height: 100%;
+  padding: 28px;
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(212, 175, 55, 0.08),
+      transparent 28%
+    ),
+    linear-gradient(135deg, #f8f1f4 0%, #f7f2ec 35%, #f4ece4 68%, #efe6dc 100%);
+  border-radius: 28px;
 }
 
 .policies-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 25px;
+  gap: 16px;
+  margin-bottom: 26px;
+  flex-wrap: wrap;
 }
 
 .policies-header h1 {
-  font-size: 26px;
-  font-weight: 600;
+  margin: 0;
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #d4af37, #b88a1b 55%, #8c6a12);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
-/* ========================================
+/* =========================
+   BUTTONS
+========================= */
+
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.pagination button {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #d4af37, #b88a1b);
+  color: white;
+  border: none;
+  padding: 11px 18px;
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 14px 28px rgba(184, 138, 27, 0.22);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px rgba(184, 138, 27, 0.28);
+}
+
+.btn-secondary {
+  background: #fff;
+  color: #5b4b3f;
+  border: 1px solid #e7dccf;
+  padding: 9px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.btn-secondary:hover {
+  background: #faf6f1;
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  background: #fff1f0;
+  color: #d94b3d;
+  border: 1px solid rgba(217, 75, 61, 0.16);
+  padding: 9px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.btn-danger:hover {
+  background: #ffe7e4;
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* =========================
    GRID
-======================================== */
+========================= */
 
 .policies-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 22px;
+  align-items: stretch;
 }
 
-/* ========================================
+/* =========================
    POLICY CARD
-======================================== */
+========================= */
 
 .policy-card {
-  background: white;
-  border-radius: 12px;
-  padding: 18px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  transition: 0.2s;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(227, 218, 208, 0.9);
+  border-radius: 24px;
+  padding: 18px;
+  box-shadow:
+    0 14px 32px rgba(64, 40, 18, 0.06),
+    0 4px 10px rgba(64, 40, 18, 0.04);
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease;
+  backdrop-filter: blur(8px);
+}
+
+.policy-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: linear-gradient(90deg, #d4af37, #f0d88d, #b88a1b);
+  border-radius: 24px 24px 0 0;
 }
 
 .policy-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
+  box-shadow:
+    0 18px 40px rgba(64, 40, 18, 0.08),
+    0 6px 14px rgba(64, 40, 18, 0.06);
 }
 
 .policy-card-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .policy-card-header h3 {
-  font-size: 16px;
-  font-weight: 600;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #2f241c;
+  line-height: 1.35;
 }
+
+/* =========================
+   POLICY CONTENT
+========================= */
 
 .policy-card-content {
   font-size: 14px;
-  color: #555;
-  line-height: 1.5;
-
+  color: #6f6257;
+  line-height: 1.65;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-/* ========================================
+/* =========================
    STATUS
-======================================== */
+========================= */
+
+.status-active,
+.status-inactive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
 
 .status-active {
-  background: #e8f7ee;
-  color: #2e7d32;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 12px;
+  background: rgba(46, 204, 113, 0.12);
+  color: #1f9d55;
+  border: 1px solid rgba(46, 204, 113, 0.18);
 }
 
 .status-inactive {
-  background: #fdecea;
-  color: #d32f2f;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 12px;
+  background: rgba(231, 76, 60, 0.12);
+  color: #d64541;
+  border: 1px solid rgba(231, 76, 60, 0.18);
 }
 
-/* ========================================
+/* =========================
    ACTIONS
-======================================== */
+========================= */
 
 .policy-card-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   margin-top: auto;
+  flex-wrap: wrap;
 }
 
-/* ========================================
-   BUTTONS
-======================================== */
-
-.btn-primary {
-  background: #111;
-  color: white;
-  border: none;
-  padding: 10px 14px;
-  border-radius: 6px;
-  cursor: pointer;
+.policy-card-actions button {
+  flex: 1;
+  min-width: 90px;
 }
 
-.btn-secondary {
-  background: #eee;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.btn-danger {
-  background: #ff4d4f;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.btn-primary:hover {
-  background: black;
-}
-
-.btn-secondary:hover {
-  background: #ddd;
-}
-
-.btn-danger:hover {
-  background: #e63946;
-}
-
-/* ========================================
+/* =========================
    MODAL
-======================================== */
+========================= */
 
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.45);
+  inset: 0;
+  background: rgba(24, 18, 13, 0.5);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
+  padding: 20px;
 }
 
 .premium-modal {
-  background: white;
-  padding: 25px;
-  width: 420px;
-  border-radius: 10px;
+  width: min(520px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #fffdfb 0%, #fffaf6 100%);
+  padding: 24px;
+  border-radius: 26px;
+  border: 1px solid rgba(226, 214, 201, 0.9);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.22),
+    0 4px 16px rgba(0, 0, 0, 0.08);
+  animation: modalIn 0.22s ease;
+}
+
+.premium-modal h2,
+.premium-modal h3 {
+  margin: 0;
+  color: #2f241c;
 }
 
 .premium-modal input,
-.premium-modal textarea {
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid #ddd;
+.premium-modal textarea,
+.premium-modal select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid #e7ddd2;
+  background: #fff;
+  font-size: 14px;
+  color: #35291f;
+  box-sizing: border-box;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.premium-modal input:focus,
+.premium-modal textarea:focus,
+.premium-modal select:focus {
+  border-color: #d4af37;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.12);
 }
 
 .premium-modal textarea {
-  min-height: 100px;
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.6;
 }
+
+/* =========================
+   TOGGLE
+========================= */
 
 .policy-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
   font-size: 14px;
+  color: #5f5247;
+  font-weight: 500;
 }
 
 .policy-toggle input {
   width: 16px;
   height: 16px;
   cursor: pointer;
+  accent-color: #d4af37;
+  margin: 0;
 }
 
 .policy-toggle span {
   display: inline-block;
 }
 
+/* =========================
+   FORM ERROR
+========================= */
+
 .form-error {
   font-size: 12px;
-  color: #ff4d4f;
+  color: #d64541;
+  margin-top: -6px;
+  margin-bottom: 4px;
+  display: block;
+  font-weight: 500;
 }
 
-/* ========================================
+/* =========================
    DELETE MODAL
-======================================== */
+========================= */
 
 .delete-modal p {
-  color: #555;
+  color: #62564b;
   margin: 10px 0 20px;
+  line-height: 1.6;
 }
 
 .delete-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
-/* ========================================
+.delete-actions button {
+  padding: 10px 16px;
+}
+
+/* =========================
    PAGINATION
-======================================== */
+========================= */
 
 .pagination {
   display: flex;
   justify-content: center;
+  align-items: center;
   margin-top: 30px;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .pagination button {
-  padding: 8px 14px;
-  border: none;
-  background: #eee;
-  border-radius: 6px;
+  min-width: 42px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid #e7dccf;
+  background: #fff;
+  color: #5b4b3f;
+  border-radius: 12px;
   cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
 }
 
 .pagination button:hover {
-  background: #ddd;
+  background: #faf6f1;
+  border-color: #d8c8b7;
+  transform: translateY(-1px);
 }
 
 .active-page {
-  background: #111;
-  color: white;
+  background: linear-gradient(135deg, #d4af37, #b88a1b) !important;
+  color: white !important;
+  border-color: transparent !important;
+  box-shadow: 0 10px 20px rgba(184, 138, 27, 0.18);
 }
 
 .pagination button:disabled {
   opacity: 0.4;
 }
 
-/* ========================================
+/* =========================
+   ANIMATION
+========================= */
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* =========================
+   TABLET
+========================= */
+
+@media (max-width: 900px) {
+  .policies-page {
+    padding: 22px;
+  }
+
+  .policies-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+}
+
+/* =========================
    MOBILE
-======================================== */
+========================= */
 
 @media (max-width: 768px) {
   .policies-page {
-    padding: 20px 15px;
+    padding: 18px;
+    border-radius: 20px;
   }
 
   .policies-header {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    align-items: stretch;
   }
 
   .policies-header h1 {
-    font-size: 22px;
+    font-size: 24px;
+  }
+
+  .btn-primary {
+    width: 100%;
   }
 
   .policies-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .policy-card {
+    padding: 16px;
+  }
+
+  .policy-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .policy-card-actions {
+    flex-direction: column;
+  }
+
+  .policy-card-actions button {
+    width: 100%;
   }
 
   .premium-modal {
-    width: 95%;
+    width: 100%;
+    max-width: 100%;
+    padding: 20px;
+    border-radius: 22px;
+  }
+
+  .premium-modal input,
+  .premium-modal textarea,
+  .premium-modal select {
+    font-size: 16px;
+  }
+
+  .delete-actions {
+    justify-content: stretch;
+  }
+
+  .delete-actions button {
+    flex: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .pagination button {
+    min-width: 40px;
+    height: 40px;
   }
 }
