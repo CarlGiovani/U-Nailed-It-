@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "../../components/layout/adminLayout";
 
 import {
@@ -16,15 +16,31 @@ import {
 
 import "../../styles/services.css";
 
-
+const ITEMS_PER_PAGE = 3;
 
 const Services = () => {
   const [modal, setModal] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const queryClient = useQueryClient();
+
+  const normalizeDurationForInput = (value) => {
+    if (!value) return "";
+
+    if (/^\d{2}:\d{2}$/.test(value)) return value;
+
+    if (/^\d+$/.test(String(value))) {
+      const totalMinutes = Number(value);
+      const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+      const minutes = String(totalMinutes % 60).padStart(2, "0");
+      return `${hours}:${minutes}`;
+    }
+
+    return "";
+  };
 
   /* ================= CACHED FETCH ================= */
   const { data: services = [], isLoading } = useQuery({
@@ -96,16 +112,17 @@ const Services = () => {
       type: "service",
       name: "",
       description: "",
-      duration: "",
+      duration: "01:00",
       image: null,
     });
   };
 
   const openEditServiceModal = (service) => {
-    setPreviewImage(null);
+    setPreviewImage(service.image_url || null);
     setModal({
       ...service,
       type: "service",
+      duration: normalizeDurationForInput(service.duration),
       image: null,
     });
   };
@@ -118,6 +135,26 @@ const Services = () => {
       type: "manage",
       service: freshService,
     });
+  };
+
+  /* ================= PAGINATION ================= */
+  const totalPages = Math.max(1, Math.ceil(services.length / ITEMS_PER_PAGE));
+
+  const paginatedServices = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return services.slice(startIndex, endIndex);
+  }, [services, currentPage]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const goToPage = (page) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
   };
 
   /* ================= SERVICE SAVE ================= */
@@ -260,71 +297,124 @@ const Services = () => {
           </button>
         </div>
 
+        {!isLoading && services.length > 0 && (
+          <div className="services-meta">
+            <p>
+              Showing <strong>{paginatedServices.length}</strong> of{" "}
+              <strong>{services.length}</strong> services
+            </p>
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+          </div>
+        )}
+
         {isLoading ? (
           <div>Loading...</div>
+        ) : services.length === 0 ? (
+          <div className="empty-state">No services found yet.</div>
         ) : (
-          <div className="services-list">
-            {services.map((service) => (
-              <div key={service.id} className="service-card">
-                {service.image_url && (
-                  <div className="service-image-wrapper">
-                    <img
-                      src={service.image_url}
-                      alt={service.name}
-                      className="service-image"
-                    />
-                  </div>
-                )}
+          <>
+            <div className="services-list">
+              {paginatedServices.map((service) => (
+                <div key={service.id} className="service-card">
+                  {service.image_url && (
+                    <div className="service-image-wrapper">
+                      <img
+                        src={service.image_url}
+                        alt={service.name}
+                        className="service-image"
+                      />
+                    </div>
+                  )}
 
-                <div className="service-top">
-                  <div className="service-title">
-                    <h3>{service.name}</h3>
+                  <div className="service-top">
+                    <div className="service-title">
+                      <h3>{service.name}</h3>
 
-                    <span
-                      className={
-                        service.is_active ? "status-active" : "status-inactive"
-                      }
-                    >
-                      {service.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </div>
+                      <span
+                        className={
+                          service.is_active ? "status-active" : "status-inactive"
+                        }
+                      >
+                        {service.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </div>
 
-                  <div className="service-buttons">
-                    <button
-                      className="btn-secondary"
-                      disabled={service.hasBookings}
-                      onClick={() => openEditServiceModal(service)}
-                    >
-                      Edit
-                    </button>
+                    <div className="service-buttons">
+                      <button
+                        className="btn-secondary"
+                        disabled={service.hasBookings}
+                        onClick={() => openEditServiceModal(service)}
+                      >
+                        Edit
+                      </button>
 
-                    <button
-                      className="btn-secondary"
-                      onClick={() => openManageModal(service)}
-                    >
-                      Manage
-                    </button>
+                      <button
+                        className="btn-secondary"
+                        onClick={() => openManageModal(service)}
+                      >
+                        Manage
+                      </button>
 
-                    <button
-                      className="btn-danger"
-                      disabled={
-                        service.hasBookings || togglingId === service.id
-                      }
-                      onClick={() => handleToggleService(service)}
-                    >
-                      {service.hasBookings
-                        ? "Locked"
-                        : togglingId === service.id
-                          ? "Saving..."
-                          : service.is_active
-                            ? "Deactivate"
-                            : "Activate"}
-                    </button>
+                      <button
+                        className="btn-danger"
+                        disabled={
+                          service.hasBookings || togglingId === service.id
+                        }
+                        onClick={() => handleToggleService(service)}
+                      >
+                        {service.hasBookings
+                          ? "Locked"
+                          : togglingId === service.id
+                            ? "Saving..."
+                            : service.is_active
+                              ? "Deactivate"
+                              : "Activate"}
+                      </button>
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="pagination">
+                <button
+                  className="pagination-btn"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Prev
+                </button>
+
+                <div className="pagination-pages">
+                  {Array.from({ length: totalPages }, (_, index) => {
+                    const page = index + 1;
+                    return (
+                      <button
+                        key={page}
+                        className={`pagination-number ${
+                          currentPage === page ? "active" : ""
+                        }`}
+                        onClick={() => goToPage(page)}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  className="pagination-btn"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
 
         {/* ================= MODAL ================= */}
@@ -334,60 +424,78 @@ const Services = () => {
               {/* SERVICE */}
               {modal.type === "service" && (
                 <>
-                  <h2>Service</h2>
+                  <h2>{modal.id ? "Edit Service" : "Create Service"}</h2>
 
-                  <input
-                    placeholder="Service Name"
-                    value={modal.name}
-                    onChange={(e) =>
-                      setModal({ ...modal, name: e.target.value })
-                    }
-                  />
-
-                  <textarea
-                    placeholder="Description"
-                    value={modal.description}
-                    onChange={(e) =>
-                      setModal({ ...modal, description: e.target.value })
-                    }
-                  />
-
-                  <input
-                    placeholder="Duration"
-                    value={modal.duration}
-                    onChange={(e) =>
-                      setModal({ ...modal, duration: e.target.value })
-                    }
-                  />
-
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setModal({ ...modal, image: file });
-                        setPreviewImage(URL.createObjectURL(file));
-                      }
-                    }}
-                  />
-
-                  {previewImage && (
-                    <div className="image-preview">
-                      <img src={previewImage} alt="preview" />
+                  <div className="modal-form-grid">
+                    <div className="field-group">
+                      <label className="field-label">Service Name</label>
+                      <input
+                        placeholder="Enter service name"
+                        value={modal.name}
+                        onChange={(e) =>
+                          setModal({ ...modal, name: e.target.value })
+                        }
+                      />
                     </div>
-                  )}
 
-                  <button
-                    onClick={handleServiceSave}
-                    disabled={isAnyMutationPending}
-                  >
-                    {isAnyMutationPending
-                      ? "Saving..."
-                      : modal.id
-                        ? "Update Service"
-                        : "Create Service"}
-                  </button>
+                    <div className="field-group">
+                      <label className="field-label">Description</label>
+                      <textarea
+                        placeholder="Write a short description"
+                        value={modal.description}
+                        onChange={(e) =>
+                          setModal({ ...modal, description: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div className="field-row">
+                      <div className="field-group">
+                        <label className="field-label">Duration</label>
+                        <input
+                          type="time"
+                          step="900"
+                          value={modal.duration || "01:00"}
+                          onChange={(e) =>
+                            setModal({ ...modal, duration: e.target.value })
+                          }
+                        />
+                      </div>
+
+                      <div className="field-group">
+                        <label className="field-label">Upload Image</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setModal({ ...modal, image: file });
+                              setPreviewImage(URL.createObjectURL(file));
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {previewImage && (
+                      <div className="image-preview">
+                        <img src={previewImage} alt="preview" />
+                      </div>
+                    )}
+
+                    <button
+                      className="modal-submit-btn"
+                      onClick={handleServiceSave}
+                      disabled={isAnyMutationPending}
+                    >
+                      {isAnyMutationPending
+                        ? "Saving..."
+                        : modal.id
+                          ? "Update Service"
+                          : "Create Service"}
+                    </button>
+                  </div>
                 </>
               )}
 
@@ -494,20 +602,26 @@ const Services = () => {
                 <>
                   <h2>Category</h2>
 
-                  <input
-                    placeholder="Category Name"
-                    value={modal.name}
-                    onChange={(e) =>
-                      setModal({ ...modal, name: e.target.value })
-                    }
-                  />
+                  <div className="modal-form-grid">
+                    <div className="field-group">
+                      <label className="field-label">Category Name</label>
+                      <input
+                        placeholder="Category Name"
+                        value={modal.name}
+                        onChange={(e) =>
+                          setModal({ ...modal, name: e.target.value })
+                        }
+                      />
+                    </div>
 
-                  <button
-                    onClick={handleCategorySave}
-                    disabled={isAnyMutationPending}
-                  >
-                    {isAnyMutationPending ? "Saving..." : "Save"}
-                  </button>
+                    <button
+                      className="modal-submit-btn"
+                      onClick={handleCategorySave}
+                      disabled={isAnyMutationPending}
+                    >
+                      {isAnyMutationPending ? "Saving..." : "Save"}
+                    </button>
+                  </div>
                 </>
               )}
 
@@ -516,47 +630,66 @@ const Services = () => {
                 <>
                   <h2>Variant</h2>
 
-                  <input
-                    placeholder="Body Part"
-                    value={modal.body_part}
-                    onChange={(e) =>
-                      setModal({ ...modal, body_part: e.target.value })
-                    }
-                  />
+                  <div className="modal-form-grid">
+                    <div className="field-group">
+                      <label className="field-label">Body Part</label>
+                      <input
+                        placeholder="Body Part"
+                        value={modal.body_part}
+                        onChange={(e) =>
+                          setModal({ ...modal, body_part: e.target.value })
+                        }
+                      />
+                    </div>
 
-                  <input
-                    placeholder="Size"
-                    value={modal.size}
-                    onChange={(e) =>
-                      setModal({ ...modal, size: e.target.value })
-                    }
-                  />
+                    <div className="field-group">
+                      <label className="field-label">Size</label>
+                      <input
+                        placeholder="Size"
+                        value={modal.size}
+                        onChange={(e) =>
+                          setModal({ ...modal, size: e.target.value })
+                        }
+                      />
+                    </div>
 
-                  <input
-                    placeholder="Price"
-                    value={modal.price}
-                    onChange={(e) =>
-                      setModal({ ...modal, price: e.target.value })
-                    }
-                  />
+                    <div className="field-row">
+                      <div className="field-group">
+                        <label className="field-label">Price</label>
+                        <input
+                          type="number"
+                          placeholder="Price"
+                          value={modal.price}
+                          onChange={(e) =>
+                            setModal({ ...modal, price: e.target.value })
+                          }
+                        />
+                      </div>
 
-                  <input
-                    placeholder="Downpayment"
-                    value={modal.downpayment}
-                    onChange={(e) =>
-                      setModal({
-                        ...modal,
-                        downpayment: e.target.value,
-                      })
-                    }
-                  />
+                      <div className="field-group">
+                        <label className="field-label">Downpayment</label>
+                        <input
+                          type="number"
+                          placeholder="Downpayment"
+                          value={modal.downpayment}
+                          onChange={(e) =>
+                            setModal({
+                              ...modal,
+                              downpayment: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
 
-                  <button
-                    onClick={handleVariantSave}
-                    disabled={isAnyMutationPending}
-                  >
-                    {isAnyMutationPending ? "Saving..." : "Save"}
-                  </button>
+                    <button
+                      className="modal-submit-btn"
+                      onClick={handleVariantSave}
+                      disabled={isAnyMutationPending}
+                    >
+                      {isAnyMutationPending ? "Saving..." : "Save"}
+                    </button>
+                  </div>
                 </>
               )}
             </div>
