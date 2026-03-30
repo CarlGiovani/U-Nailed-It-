@@ -167,7 +167,13 @@ const Services = () => {
       const formData = new FormData();
       formData.append("name", modal.name || "");
       formData.append("description", modal.description || "");
-      formData.append("duration", modal.duration || "");
+      const formatDurationToInterval = (time) => {
+        if (!time) return "00:00:00";
+        const [h = "00", m = "00"] = time.split(":");
+        return `${h}:${m}:00`;
+      };
+
+      formData.append("duration", formatDurationToInterval(modal.duration));
 
       if (modal.image) {
         formData.append("file", modal.image);
@@ -334,7 +340,9 @@ const Services = () => {
 
                       <span
                         className={
-                          service.is_active ? "status-active" : "status-inactive"
+                          service.is_active
+                            ? "status-active"
+                            : "status-inactive"
                         }
                       >
                         {service.is_active ? "Active" : "Inactive"}
