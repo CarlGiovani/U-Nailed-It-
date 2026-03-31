@@ -49,6 +49,47 @@ const Bookings = () => {
 
   const highlightedRowRef = useRef(null);
 
+  // HELPER DATE AND TIME FORMATTERS
+  const formatDate = (date) => {
+    if (!date) return "-";
+
+    return new Date(date).toLocaleDateString("en-PH", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const formatTime = (time) => {
+    if (!time) return "-";
+
+    return new Date(`1970-01-01T${time}`).toLocaleTimeString("en-PH", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+  // MIX DATE AND TIME FORMATTER
+  const formatDateTime = (date) => {
+    if (!date) return "-";
+
+    const d = new Date(date);
+
+    const formattedDate = d.toLocaleDateString("en-PH", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const formattedTime = d.toLocaleTimeString("en-PH", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    return `${formattedDate} at ${formattedTime}`;
+  };
+
   /* ================= RESET PAGE WHEN FILTERS CHANGE ================= */
   useEffect(() => {
     setPage(1);
@@ -412,33 +453,29 @@ const Bookings = () => {
                       "-"}
                   </p>
                 </div>
-
                 <div className="info-card">
                   <h3>Booking Timeline</h3>
+
                   <p>
                     <strong>Created:</strong>{" "}
-                    {selectedBooking.created_at
-                      ? new Date(selectedBooking.created_at).toLocaleString()
-                      : "-"}
+                    {formatDateTime(selectedBooking.created_at)}
                   </p>
+
                   <p>
                     <strong>Approved:</strong>{" "}
-                    {selectedBooking.approved_at
-                      ? new Date(selectedBooking.approved_at).toLocaleString()
-                      : "-"}
+                    {formatDateTime(selectedBooking.approved_at)}
                   </p>
+
                   <p>
                     <strong>Completed:</strong>{" "}
-                    {selectedBooking.completed_at
-                      ? new Date(selectedBooking.completed_at).toLocaleString()
-                      : "-"}
+                    {formatDateTime(selectedBooking.completed_at)}
                   </p>
+
                   <p>
                     <strong>Cancelled:</strong>{" "}
-                    {selectedBooking.cancelled_at
-                      ? new Date(selectedBooking.cancelled_at).toLocaleString()
-                      : "-"}
+                    {formatDateTime(selectedBooking.cancelled_at)}
                   </p>
+
                   <p>
                     <strong>Cancellation Reason:</strong>{" "}
                     {selectedBooking.cancellation_reason || "-"}
@@ -468,27 +505,12 @@ const Bookings = () => {
                   </p>
                   <p>
                     <strong>Booking Date:</strong>{" "}
-                    {selectedBooking.booking_date
-                      ? new Date(
-                          selectedBooking.booking_date,
-                        ).toLocaleDateString("en-PH", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })
-                      : "-"}
+                    {formatDate(selectedBooking.booking_date)}
                   </p>
+
                   <p>
                     <strong>Appointment Time:</strong>{" "}
-                    {selectedBooking.booking_time
-                      ? new Date(
-                          `1970-01-01T${selectedBooking.booking_time}`,
-                        ).toLocaleTimeString("en-PH", {
-                          hour: "numeric",
-                          minute: "2-digit",
-                          hour12: true,
-                        })
-                      : "-"}
+                    {formatTime(selectedBooking.booking_time)}
                   </p>
                 </div>
 
@@ -519,7 +541,6 @@ const Bookings = () => {
                   )}
                 </div>
               </div>
-              
             </div>
 
             <div className="modal-actions">
