@@ -1,6 +1,10 @@
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import AdminLayout from "../../components/layout/adminLayout";
 import {
@@ -81,9 +85,12 @@ const Bookings = () => {
     placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,
   });
-const bookings = useMemo(() => bookingsResponse?.data ?? [], [bookingsResponse]);
-const totalBookings = bookingsResponse?.total ?? 0;
-const totalPages = bookingsResponse?.totalPages ?? 1;
+  const bookings = useMemo(
+    () => bookingsResponse?.data ?? [],
+    [bookingsResponse],
+  );
+  const totalBookings = bookingsResponse?.total ?? 0;
+  const totalPages = bookingsResponse?.totalPages ?? 1;
 
   /* ================= AUTO OPEN TARGET BOOKING FROM QUERY ================= */
   useEffect(() => {
@@ -459,6 +466,30 @@ const totalPages = bookingsResponse?.totalPages ?? 1;
                     <strong>Size:</strong>{" "}
                     {selectedBooking.service_variants?.size || "-"}
                   </p>
+                  <p>
+                    <strong>Booking Date:</strong>{" "}
+                    {selectedBooking.booking_date
+                      ? new Date(
+                          selectedBooking.booking_date,
+                        ).toLocaleDateString("en-PH", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                      : "-"}
+                  </p>
+                  <p>
+                    <strong>Appointment Time:</strong>{" "}
+                    {selectedBooking.booking_time
+                      ? new Date(
+                          `1970-01-01T${selectedBooking.booking_time}`,
+                        ).toLocaleTimeString("en-PH", {
+                          hour: "numeric",
+                          minute: "2-digit",
+                          hour12: true,
+                        })
+                      : "-"}
+                  </p>
                 </div>
 
                 <div className="info-card payment-card">
@@ -488,6 +519,7 @@ const totalPages = bookingsResponse?.totalPages ?? 1;
                   )}
                 </div>
               </div>
+              
             </div>
 
             <div className="modal-actions">
