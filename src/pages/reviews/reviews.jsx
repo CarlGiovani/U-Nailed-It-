@@ -26,6 +26,27 @@ const AdminReviews = () => {
   const limit = 10;
   const queryClient = useQueryClient();
 
+  // TIME NORMALIZATION HELPER
+  const formatDate = (date) => {
+    if (!date) return "-";
+
+    return new Date(date).toLocaleDateString("en-PH", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const formatTime = (time) => {
+    if (!time) return "-";
+
+    return new Date(`1970-01-01T${time}`).toLocaleTimeString("en-PH", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
   /* ================= CACHED + BACKEND FILTERED INFINITE REVIEWS ================= */
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useInfiniteQuery({
@@ -245,15 +266,13 @@ const AdminReviews = () => {
                 </p>
                 <p>
                   <strong>Date:</strong>{" "}
-                  {selectedReview.booking?.booking_date
-                    ? new Date(
-                        selectedReview.booking.booking_date,
-                      ).toLocaleDateString()
-                    : "N/A"}
+                  {formatDate(selectedReview.booking?.booking_date) ||
+                    "N/A"}
                 </p>
                 <p>
                   <strong>Time:</strong>{" "}
-                  {selectedReview.booking?.booking_time || "N/A"}
+                  {formatTime(selectedReview.booking?.booking_time) ||
+                    "N/A"}
                 </p>
                 <p>
                   <strong>Email:</strong>{" "}
