@@ -11,6 +11,7 @@ import {
   getAvailableSlots,
   getMonthlyAvailability,
 } from "../../backend/calendarApi.js";
+import { getActivePolicies } from "../../backend/policiesApi.js";
 import supabase from "../config/supabaseClient.js";
 import "../styles/booking-system.css";
 
@@ -23,14 +24,11 @@ const formatLocalDate = (date) => {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
-
 const parseLocalDate = (dateStr) => {
   if (!dateStr) return null;
   return new Date(`${dateStr}T00:00:00`);
 };
-
 const sameId = (a, b) => Number(a) === Number(b);
-
 const formatDisplayTime = (timeStr) => {
   if (!timeStr) return "N/A";
   try {
@@ -43,10 +41,9 @@ const formatDisplayTime = (timeStr) => {
     return timeStr;
   }
 };
-
+// CURRENCY FORMATTER HELPER
 const formatCurrency = (value) =>
   `₱${Number(value || 0).toLocaleString("en-PH")}`;
-
 // ===============================
 // LOCAL STORAGE RESUME
 // ===============================
@@ -76,7 +73,6 @@ const saveActivePayment = ({ intentId, signedUrl }) => {
 const clearActiveFlow = () => {
   Object.values(LS_KEYS).forEach((key) => localStorage.removeItem(key));
 };
-
 // ===============================
 // TIME HELPERS
 // ===============================
@@ -96,7 +92,6 @@ const toMs = (isoOrNull) => {
 
   return null;
 };
-
 const formatCountdown = (ms) => {
   if (ms == null) return null;
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -114,7 +109,6 @@ const Booking = ({ services: servicesProp = [] }) => {
 
   // 1 = Service, 2 = Schedule, 3 = Details + Review, 4 = Payment, 5 = Done
   const [step, setStep] = useState(1);
-
   const services = useMemo(() => {
     return (servicesProp || []).map((service) => ({
       id: service.id,
@@ -143,15 +137,12 @@ const Booking = ({ services: servicesProp = [] }) => {
         })) || [],
     }));
   }, [servicesProp]);
-
   const [availableSlots, setAvailableSlots] = useState([]);
   const [selectedDate, setSelectedDate] = useState("");
-
   const [bookingId, setBookingId] = useState(null);
   const [paymentIntentId, setPaymentIntentId] = useState(null);
   const [paymentSignedUrl, setPaymentSignedUrl] = useState(null);
   const [bookingPreview, setBookingPreview] = useState(null);
-
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fetchingServices, setFetchingServices] = useState(true);
@@ -159,30 +150,23 @@ const Booking = ({ services: servicesProp = [] }) => {
   const [fetchingAvailability, setFetchingAvailability] = useState(false);
   const [fetchingSlots, setFetchingSlots] = useState(false);
   const [paymentProofUploaded, setPaymentProofUploaded] = useState(false);
-
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [calendarDates, setCalendarDates] = useState([]);
   const [monthlyAvailability, setMonthlyAvailability] = useState({});
-
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState(null);
-
   const [confirmationError, setConfirmationError] = useState(null);
-
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [resumeBookingData, setResumeBookingData] = useState(null);
   const [resuming, setResuming] = useState(false);
-
   const [proofPreviewUrl, setProofPreviewUrl] = useState(null);
   const [selectedProofFile, setSelectedProofFile] = useState(null);
-
   const [collapsedReview, setCollapsedReview] = useState({
     service: false,
     schedule: false,
     customer: false,
     notes: false,
   });
-
   const [modal, setModal] = useState({
     open: false,
     title: "",
@@ -190,11 +174,9 @@ const Booking = ({ services: servicesProp = [] }) => {
     tone: "default",
     actions: [],
   });
-
   const [timeLeftMs, setTimeLeftMs] = useState(null);
   const [isExpiredLocal, setIsExpiredLocal] = useState(false);
   const expiryHandledRef = useRef(false);
-
   const [formData, setFormData] = useState({
     service_id: "",
     service_category_id: "",
@@ -210,8 +192,14 @@ const Booking = ({ services: servicesProp = [] }) => {
     downpayment: 0,
     duration: 0,
   });
-
   const [reviewPanelCollapsed, setReviewPanelCollapsed] = useState(true);
+
+  // for terms and conditions modal
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [hasOpenedTerms, setHasOpenedTerms] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [hasScrolledTermsToBottom, setHasScrolledTermsToBottom] =
+    useState(false);
 
   // ===============================
   // CLEANUP
@@ -232,7 +220,7 @@ const Booking = ({ services: servicesProp = [] }) => {
   }, [servicesProp]);
 
   useEffect(() => {
-    const hasOpenModal = modal.open || showResumePrompt;
+    const hasOpenModal = modal.open || showResumePrompt || showTermsModal;
     if (!hasOpenModal) return;
 
     const originalOverflow = document.body.style.overflow;
@@ -241,7 +229,7 @@ const Booking = ({ services: servicesProp = [] }) => {
     return () => {
       document.body.style.overflow = originalOverflow;
     };
-  }, [modal.open, showResumePrompt]);
+  }, [modal.open, showResumePrompt, showTermsModal]);
 
   useEffect(() => {
     if (!modal.open) return;
@@ -281,6 +269,25 @@ const Booking = ({ services: servicesProp = [] }) => {
     [],
   );
 
+  const openTermsModal = useCallback(() => {
+    setShowTermsModal(true);
+    setHasOpenedTerms(true);
+  }, []);
+
+  const closeTermsModal = useCallback(() => {
+    setShowTermsModal(false);
+  }, []);
+
+  const handleTermsScroll = useCallback((e) => {
+    const el = e.target;
+    const reachedBottom =
+      el.scrollTop + el.clientHeight >= el.scrollHeight - 12;
+
+    if (reachedBottom) {
+      setHasScrolledTermsToBottom(true);
+    }
+  }, []);
+
   // ===============================
   // RESET FLOW
   // ===============================
@@ -295,6 +302,11 @@ const Booking = ({ services: servicesProp = [] }) => {
     setTimeLeftMs(null);
     setIsExpiredLocal(false);
     expiryHandledRef.current = false;
+
+    setShowTermsModal(false);
+    setHasOpenedTerms(false);
+    setAcceptedTerms(false);
+    setHasScrolledTermsToBottom(false);
 
     clearActiveFlow();
   }, []);
@@ -596,6 +608,21 @@ const Booking = ({ services: servicesProp = [] }) => {
     formData.service_category_id,
     formData.service_variant_id,
   ]);
+
+  // ===============================
+  // POLICIES / TERMS
+  // ===============================
+  const {
+    data: policies = [],
+    isLoading: policiesLoading,
+    isError: policiesError,
+  } = useQuery({
+    queryKey: ["publicPolicies"],
+    queryFn: getActivePolicies,
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 15,
+    refetchOnWindowFocus: false,
+  });
 
   // ===============================
   // AVAILABILITY
@@ -1120,12 +1147,43 @@ const Booking = ({ services: servicesProp = [] }) => {
   const handleProceedToPayment = async () => {
     if (!validateForm(3)) return;
 
+    if (!hasOpenedTerms) {
+      showAlert(
+        "Terms & Conditions Required",
+        "Please open and review the Terms & Conditions before proceeding.",
+        null,
+        "warning",
+      );
+      return;
+    }
+
+    if (!hasScrolledTermsToBottom) {
+      showAlert(
+        "Please Review the Terms",
+        "Please scroll through the Terms & Conditions before proceeding.",
+        null,
+        "warning",
+      );
+      return;
+    }
+
+    if (!acceptedTerms) {
+      showAlert(
+        "Agreement Required",
+        "You must agree to the Terms & Conditions before proceeding.",
+        null,
+        "warning",
+      );
+      return;
+    }
+
     if (bookingId) {
       setStep(4);
       return;
     }
 
     setLoading(true);
+
     try {
       const payload = {
         service_id: formData.service_id,
@@ -1140,6 +1198,8 @@ const Booking = ({ services: servicesProp = [] }) => {
         email: formData.email,
         phone: formData.phone,
         facebook_link: formData.facebook_link,
+        accepted_terms: true,
+        accepted_terms_at: new Date().toISOString(),
       };
 
       const result = await createBooking(payload);
@@ -1794,6 +1854,95 @@ const Booking = ({ services: servicesProp = [] }) => {
               onClick={handleResume}
             >
               Resume Booking
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  const TermsModal = () => {
+    if (!showTermsModal) return null;
+
+    return (
+      <div
+        className="modal-overlay"
+        onClick={closeTermsModal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="terms-modal-title"
+      >
+        <div
+          className="modal-card terms-modal-card"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="terms-modal-header">
+            <div>
+              <h3 id="terms-modal-title" className="modal-card-title">
+                Terms & Conditions
+              </h3>
+              <p className="terms-modal-subtitle">
+                Please review the policies below before proceeding to payment.
+              </p>
+            </div>
+          </div>
+
+          {policiesLoading ? (
+            <div className="terms-loading-state">
+              <div className="spinner premium"></div>
+              <p>Loading policies...</p>
+            </div>
+          ) : policiesError ? (
+            <div className="terms-error-state">
+              <p>Unable to load policies right now.</p>
+            </div>
+          ) : policies.length === 0 ? (
+            <div className="terms-empty-state">
+              <p>No active policies available.</p>
+            </div>
+          ) : (
+            <>
+              <div className="terms-scroll-hint">
+                Please scroll to the bottom to enable the agreement checkbox.
+              </div>
+
+              <div className="terms-content" onScroll={handleTermsScroll}>
+                {policies.map((policy, index) => (
+                  <div key={policy.id || index} className="terms-policy-item">
+                    <h4 className="terms-policy-title">
+                      {policy.title || `Policy ${index + 1}`}
+                    </h4>
+
+                    <div className="terms-policy-body">
+                      {String(policy.content || policy.description || "")
+                        .split("\n")
+                        .filter(Boolean)
+                        .map((line, i) => (
+                          <p key={i}>{line}</p>
+                        ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div
+                className={`terms-bottom-status ${
+                  hasScrolledTermsToBottom ? "done" : ""
+                }`}
+              >
+                {hasScrolledTermsToBottom
+                  ? "✓ You have reached the end of the Terms & Conditions."
+                  : "Scroll to the bottom to continue."}
+              </div>
+            </>
+          )}
+
+          <div className="modal-card-actions">
+            <button
+              type="button"
+              className="btn btn-primary premium"
+              onClick={closeTermsModal}
+            >
+              Close
             </button>
           </div>
         </div>
@@ -2680,6 +2829,65 @@ const Booking = ({ services: servicesProp = [] }) => {
         </div>
       </div>
 
+      <div className="terms-consent-card premium">
+        <div className="terms-consent-header">
+          <div>
+            <h4>Terms & Conditions</h4>
+            <p>
+              You must open, review, and agree to the Terms & Conditions before
+              proceeding to payment.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-outline premium terms-view-btn"
+            onClick={openTermsModal}
+          >
+            {hasOpenedTerms ? "Review Terms Again" : "View Terms & Conditions"}
+          </button>
+        </div>
+
+        <div className="terms-consent-check">
+          <label className="terms-checkbox-row">
+            <input
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              disabled={!hasOpenedTerms || !hasScrolledTermsToBottom}
+            />
+            <span>I have read and agree to the Terms & Conditions.</span>
+          </label>
+        </div>
+
+        <div className="terms-status-list">
+          <div className={`terms-status-item ${hasOpenedTerms ? "done" : ""}`}>
+            <span className="terms-status-icon">
+              {hasOpenedTerms ? "✓" : "•"}
+            </span>
+            <span>Opened Terms & Conditions</span>
+          </div>
+
+          <div
+            className={`terms-status-item ${
+              hasScrolledTermsToBottom ? "done" : ""
+            }`}
+          >
+            <span className="terms-status-icon">
+              {hasScrolledTermsToBottom ? "✓" : "•"}
+            </span>
+            <span>Scrolled through the terms</span>
+          </div>
+
+          <div className={`terms-status-item ${acceptedTerms ? "done" : ""}`}>
+            <span className="terms-status-icon">
+              {acceptedTerms ? "✓" : "•"}
+            </span>
+            <span>Agreement checkbox checked</span>
+          </div>
+        </div>
+      </div>
+
       <div className="step-footer premium">
         <button
           className="btn btn-secondary premium"
@@ -2691,7 +2899,12 @@ const Booking = ({ services: servicesProp = [] }) => {
         <button
           className="btn btn-primary premium"
           onClick={handleProceedToPayment}
-          disabled={loading}
+          disabled={
+            loading ||
+            !hasOpenedTerms ||
+            !hasScrolledTermsToBottom ||
+            !acceptedTerms
+          }
         >
           {loading ? (
             <>
@@ -3242,6 +3455,7 @@ const Booking = ({ services: servicesProp = [] }) => {
     <div className="booking-system-premium" id="booking">
       <Modal />
       <ResumeModal />
+      <TermsModal />
 
       <div className="booking-header premium">
         <h1>Book an Appointment</h1>
