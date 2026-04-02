@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   confirmBooking,
@@ -1198,9 +1199,9 @@ const Booking = ({ services: servicesProp = [] }) => {
         email: formData.email,
         phone: formData.phone,
         facebook_link: formData.facebook_link,
-        accepted_terms: true,
-        accepted_terms_at: new Date().toISOString(),
       };
+
+      console.log("BOOKING PAYLOAD:", payload);
 
       const result = await createBooking(payload);
 
@@ -1210,17 +1211,30 @@ const Booking = ({ services: servicesProp = [] }) => {
       setStep(4);
     } catch (error) {
       console.error("Booking creation error:", error);
-      showAlert(
-        "Unable to Continue",
-        error.response?.data?.error || error.message,
-        null,
-        "danger",
-      );
+      console.log("FULL BACKEND ERROR:", error.response?.data);
+
+      const backendData = error.response?.data;
+
+      const formattedErrors = Array.isArray(backendData?.errors)
+        ? backendData.errors
+            .map((err) => {
+              if (typeof err === "string") return err;
+              return err.msg || err.message || JSON.stringify(err);
+            })
+            .join("\n")
+        : null;
+
+      const errorMessage =
+        backendData?.error ||
+        formattedErrors ||
+        error.message ||
+        "Something went wrong while creating your booking.";
+
+      showAlert("Unable to Continue", errorMessage, null, "danger");
     } finally {
       setLoading(false);
     }
   };
-
   // ===============================
   // PAYMENT
   // ===============================
@@ -1701,7 +1715,7 @@ const Booking = ({ services: servicesProp = [] }) => {
   const Modal = () => {
     if (!modal.open) return null;
 
-    return (
+    return createPortal(
       <div
         className="modal-overlay"
         onClick={() => setModal((prev) => ({ ...prev, open: false }))}
@@ -1738,7 +1752,8 @@ const Booking = ({ services: servicesProp = [] }) => {
             ))}
           </div>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   };
 
@@ -1769,7 +1784,7 @@ const Booking = ({ services: servicesProp = [] }) => {
       handleResumeBooking();
     };
 
-    return (
+    return createPortal(
       <div className="resume-modal-overlay" role="dialog" aria-modal="true">
         <div className="resume-modal-card" onClick={(e) => e.stopPropagation()}>
           <div className="resume-modal-header">
@@ -1857,13 +1872,14 @@ const Booking = ({ services: servicesProp = [] }) => {
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   };
   const TermsModal = () => {
     if (!showTermsModal) return null;
 
-    return (
+    return createPortal(
       <div
         className="modal-overlay"
         onClick={closeTermsModal}
@@ -1946,7 +1962,8 @@ const Booking = ({ services: servicesProp = [] }) => {
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   };
 
