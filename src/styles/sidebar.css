@@ -14,7 +14,7 @@
     #b8962e 100%
   );
   color: white;
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
@@ -37,8 +37,8 @@
   align-items: center;
   justify-content: space-between;
 
-  padding-bottom: 20px;
-  margin-bottom: 20px;
+  padding-bottom: 12px;
+  margin-bottom: 10px;
 
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
@@ -108,6 +108,7 @@ nav {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: -4px;
 }
 
 /* Navigation Link */
