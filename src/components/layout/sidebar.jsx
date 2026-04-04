@@ -4,6 +4,7 @@ import {
   FaBullhorn,
   FaCalendarAlt,
   FaClipboardList,
+  FaCog,
   FaFileAlt,
   FaImages,
   FaServicestack,
@@ -12,15 +13,15 @@ import {
   FaTachometerAlt,
 } from "react-icons/fa";
 import { NavLink, useNavigate } from "react-router-dom";
-import "../../styles/sidebar.css";
 import logo from "../../../../UNailedIt_Website/src/assets/images/logo.png";
+import "../../styles/sidebar.css";
+import { adminLogout } from "../../services/BACKEND/adminAuthApi";
 
 const Sidebar = ({ mobileOpen, setMobileOpen }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const navigate = useNavigate();
 
-  /* ================= SCREEN DETECT ================= */
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth <= 768;
@@ -38,14 +39,18 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, [setMobileOpen]);
 
-  /* ================= LOGOUT ================= */
-  const handleLogout = () => {
-    localStorage.removeItem("admin_session");
+  const handleLogout = async () => {
+    try {
+      await adminLogout();
+    } catch (error) {
+      console.error("Logout failed:", error); 
+    }finally{
+       localStorage.removeItem("admin_session");
     localStorage.removeItem("admin_user");
     navigate("/");
+    }
   };
 
-  /* ================= NAV ITEM ================= */
   const navItem = (to, icon, label) => (
     <NavLink
       to={to}
@@ -87,6 +92,7 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
             />
           )}
         </div>
+
         <nav>
           {navItem("/dashboard", <FaTachometerAlt />, "Dashboard")}
           {navItem("/calendar", <FaCalendarAlt />, "Calendar")}
@@ -96,6 +102,7 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
           {navItem("/portfolio", <FaImages />, "Portfolio")}
           {navItem("/announcements", <FaBullhorn />, "Announcements")}
           {navItem("/policies", <FaFileAlt />, "Policies")}
+          {navItem("/settings", <FaCog />, "Settings")}
         </nav>
 
         <div className="logout-btn" onClick={handleLogout}>

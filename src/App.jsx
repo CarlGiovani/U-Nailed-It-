@@ -1,23 +1,22 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import Announcements from "./pages/announcement/announcement.jsx";
 import AdminLogin from "./pages/auth/AdminLogin";
 import Bookings from "./pages/bookings/bookings.jsx";
-import Dashboard from "./pages/dashboard/Dashboard";
-import Services from "./pages/services/Services.jsx";
 import AdminCalendar from "./pages/calendar/calendar.jsx";
-import AdminProtectedRoute from "./routes/adminProtectedRoute.jsx";
+import Dashboard from "./pages/dashboard/Dashboard";
+import Policies from "./pages/policies/policies.jsx";
 import Portfolio from "./pages/portfolio/portfolio.jsx";
 import AdminReviews from "./pages/reviews/reviews.jsx";
-import Announcements from "./pages/announcement/announcement.jsx";
-import Policies from "./pages/policies/policies.jsx";
+import Services from "./pages/services/Services.jsx";
+import Settings from "./pages/settings/settings.jsx";
+import AdminProtectedRoute from "./routes/adminProtectedRoute.jsx";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* ================= PUBLIC ================= */}
         <Route path="/" element={<AdminLogin />} />
 
-        {/* ================= PROTECTED ROUTES ================= */}
         <Route
           path="/dashboard"
           element={
@@ -36,7 +35,7 @@ function App() {
           }
         />
 
-           <Route
+        <Route
           path="/reviews"
           element={
             <AdminProtectedRoute>
@@ -54,7 +53,7 @@ function App() {
           }
         />
 
-            <Route
+        <Route
           path="/policies"
           element={
             <AdminProtectedRoute>
@@ -63,7 +62,6 @@ function App() {
           }
         />
 
-        
         <Route
           path="/portfolio"
           element={
@@ -73,8 +71,7 @@ function App() {
           }
         />
 
-
-          <Route
+        <Route
           path="/announcements"
           element={
             <AdminProtectedRoute>
@@ -83,16 +80,23 @@ function App() {
           }
         />
 
-
+        <Route
+          path="/calendar"
+          element={
+            <AdminProtectedRoute>
+              <AdminCalendar />
+            </AdminProtectedRoute>
+          }
+        />
 
         <Route
-        path="/calendar"
-        element={
-          <AdminProtectedRoute>
-            <AdminCalendar />
-          </AdminProtectedRoute>
-        }
-      />    
+          path="/settings"
+          element={
+            <AdminProtectedRoute>
+              <Settings />
+            </AdminProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
