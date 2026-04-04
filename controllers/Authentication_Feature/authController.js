@@ -4,8 +4,8 @@ import {
   getAdminProfileById,
   sendPasswordResetEmail,
   signInAdmin,
-  upsertAdminProfile,
   updateAdminPasswordById,
+  upsertAdminProfile,
 } from "../../models/Admin_Auth_Feature/adminAuthModel.js";
 
 import {
@@ -15,6 +15,8 @@ import {
   forgotPasswordSchema,
   validate,
 } from "../../utils/validators/authValidation.js";
+
+import { createClient } from "@supabase/supabase-js";
 
 /* =========================
    CREATE ACCOUNT
@@ -127,12 +129,30 @@ export const adminLogin = async (req, res) => {
 ========================= */
 export const adminLogout = async (req, res) => {
   try {
-    const { error } = await req.supabase.auth.signOut();
+    const authHeader = req.headers.authorization;
 
-    if (error) {
-      return res.status(400).json({
-        error: error.message,
-      });
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+
+      if (token) {
+        const supabaseUserClient = createClient(
+          process.env.SUPABASE_URL,
+          process.env.SUPABASE_KEY,
+          {
+            global: {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+            auth: {
+              persistSession: false,
+              autoRefreshToken: false,
+            },
+          },
+        );
+
+        await supabaseUserClient.auth.signOut();
+      }
     }
 
     return res.status(200).json({
@@ -141,12 +161,11 @@ export const adminLogout = async (req, res) => {
   } catch (err) {
     console.error("Logout error:", err);
 
-    return res.status(500).json({
-      error: "Internal server error",
+    return res.status(200).json({
+      message: "Logged out successfully",
     });
   }
 };
-
 /* =========================
    FORGOT PASSWORD
 ========================= */
@@ -193,9 +212,7 @@ export const forgotPassword = async (req, res) => {
 /* =========================
    CHANGE PASSWORD
 ========================= */
-/* =========================
-   CHANGE PASSWORD
-========================= */
+
 export const changePassword = async (req, res) => {
   try {
     const errors = validate(changePasswordSchema, req.body);
