@@ -19,6 +19,7 @@ import {
 } from "../../services/BACKEND/adminNotificationApi";
 
 import supabase from "../../../config/supabaseClient.js";
+import { adminLogout } from "../../services/BACKEND/adminAuthApi.js";
 import "../../styles/topbar.css";
 
 const NOTIF_PER_PAGE = 6;
@@ -397,20 +398,23 @@ const Topbar = ({ setMobileOpen }) => {
   };
 
   /* ================= LOGOUT ================= */
-  const handleLogout = () => {
-    queryClient.removeQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
 
-    setNotifOpen(false);
-    setProfileOpen(false);
-    setManageMode(false);
-    setSelectedNotifIds([]);
-
-    localStorage.removeItem("admin_session");
-    localStorage.removeItem("admin_user");
-
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await adminLogout();
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      queryClient.removeQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
+      setNotifOpen(false);
+      setProfileOpen(false);
+      setManageMode(false);
+      setSelectedNotifIds([]);
+      localStorage.removeItem("admin_session");
+      localStorage.removeItem("admin_user");
+      navigate("/");
+    }
   };
-
   return (
     <div className={`topbar ${scrolled ? "scrolled" : ""}`}>
       <div className="topbar-left">
