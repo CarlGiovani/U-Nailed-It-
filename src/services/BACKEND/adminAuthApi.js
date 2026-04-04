@@ -72,3 +72,30 @@ export const getAdminProfileById = async () => {
   const res = await api.get("/auth/adminProfile");
   return res.data;
 };
+
+/* =========================
+   GET ALL ADMINS
+========================= */
+export const getAllAdmins = async () => {
+  const res = await api.get("/auth/admins");
+  return res.data;
+};
+
+/* =========================
+   UPDATE CURRENT ADMIN PROFILE
+========================= */
+export const updateCurrentAdminProfile = async ({ full_name, username }) => {
+  const res = await api.put("/auth/adminProfile", {
+    full_name,
+    username,
+  });
+  return res.data;
+};
+
+/* =========================
+   DELETE CURRENT ADMIN ACCOUNT
+========================= */
+export const deleteCurrentAdminAccount = async () => {
+  const res = await api.delete("/auth/adminProfile");
+  return res.data;
+};
