@@ -83,3 +83,39 @@ export const getAdminProfileById = async (userId) => {
     .eq("id", userId)
     .single();
 };
+
+
+/* =========================
+   GET ALL ADMIN PROFILES
+========================= */
+export const getAllAdminProfiles = async () => {
+  return await supabaseAdmin
+    .from("admin_profiles")
+    .select("id, email, username, full_name, role, created_at")
+    .order("created_at", { ascending: false });
+};
+
+/* =========================
+   UPDATE ADMIN PROFILE BY ID
+========================= */
+export const updateAdminProfileById = async (userId, updates) => {
+  return await supabaseAdmin
+    .from("admin_profiles")
+    .update({
+      full_name: updates.full_name || null,
+      username: updates.username || null,
+    })
+    .eq("id", userId)
+    .select()
+    .single();
+};
+
+/* =========================
+   DELETE ADMIN PROFILE BY ID
+========================= */
+export const deleteAdminProfileById = async (userId) => {
+  return await supabaseAdmin
+    .from("admin_profiles")
+    .delete()
+    .eq("id", userId);
+};

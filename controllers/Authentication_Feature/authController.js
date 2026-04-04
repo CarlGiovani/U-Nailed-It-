@@ -1,10 +1,13 @@
 import {
   createAdminAuthUser,
   deleteAdminAuthUser,
+  deleteAdminProfileById,
   getAdminProfileById,
+  getAllAdminProfiles,
   sendPasswordResetEmail,
   signInAdmin,
   updateAdminPasswordById,
+  updateAdminProfileById,
   upsertAdminProfile,
 } from "../../models/Admin_Auth_Feature/adminAuthModel.js";
 
@@ -279,6 +282,120 @@ export const getCurrentAdminProfile = async (req, res) => {
     });
   } catch (err) {
     console.error("Get current admin profile error:", err);
+
+    return res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+};
+
+
+
+
+
+
+/* =========================
+   GET ALL ADMINS
+========================= */
+export const getAllAdmins = async (req, res) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({
+        error: "Unauthorized",
+      });
+    }
+
+    const { data, error } = await getAllAdminProfiles();
+
+    if (error) {
+      return res.status(400).json({
+        error: error.message,
+      });
+    }
+
+    return res.status(200).json({
+      admins: data || [],
+    });
+  } catch (err) {
+    console.error("Get all admins error:", err);
+
+    return res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+};
+
+/* =========================
+   UPDATE OWN ADMIN PROFILE
+========================= */
+export const updateCurrentAdminProfile = async (req, res) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({
+        error: "Unauthorized",
+      });
+    }
+
+    const { full_name, username } = req.body;
+
+    const { data, error } = await updateAdminProfileById(req.user.id, {
+      full_name,
+      username,
+    });
+
+    if (error) {
+      return res.status(400).json({
+        error: error.message,
+      });
+    }
+
+    return res.status(200).json({
+      message: "Admin profile updated successfully",
+      profile: data,
+    });
+  } catch (err) {
+    console.error("Update current admin profile error:", err);
+
+    return res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+};
+
+/* =========================
+   DELETE OWN ADMIN ACCOUNT
+========================= */
+export const deleteCurrentAdminAccount = async (req, res) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({
+        error: "Unauthorized",
+      });
+    }
+
+    const userId = req.user.id;
+
+    const { error: profileError } = await deleteAdminProfileById(userId);
+
+    if (profileError) {
+      return res.status(400).json({
+        error: profileError.message,
+      });
+    }
+
+    const { error: authError } = await deleteAdminAuthUser(userId);
+
+    if (authError) {
+      return res.status(400).json({
+        error: authError.message,
+      });
+    }
+
+    return res.status(200).json({
+      message: "Your admin account has been deleted successfully",
+    });
+  } catch (err) {
+    console.error("Delete current admin account error:", err);
 
     return res.status(500).json({
       error: "Internal server error",
