@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import supabase from "../../utils/supabaseClient.js";
+import { supabaseAdmin } from "../../utils/supabaseClient.js";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_KEY;
@@ -9,20 +9,25 @@ export const verifyAdmin = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
-      return res.status(401).json({ error: "No token provided" });
+      return res.status(401).json({
+        error: "No token provided",
+      });
     }
 
     if (!authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Malformed token" });
+      return res.status(401).json({
+        error: "Malformed token",
+      });
     }
 
     const token = authHeader.split(" ")[1];
 
     if (!token) {
-      return res.status(401).json({ error: "Malformed token" });
+      return res.status(401).json({
+        error: "Malformed token",
+      });
     }
 
-    // User-scoped client only for validating the token/user identity
     const supabaseUserClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
         headers: {
@@ -38,13 +43,14 @@ export const verifyAdmin = async (req, res, next) => {
     const { data, error } = await supabaseUserClient.auth.getUser();
 
     if (error || !data?.user) {
-      return res.status(401).json({ error: "Invalid token" });
+      return res.status(401).json({
+        error: "Invalid token",
+      });
     }
 
     const user = data.user;
 
-    // Use backend service-role client for admin profile lookup
-    const { data: adminProfile, error: profileError } = await supabase
+    const { data: adminProfile, error: profileError } = await supabaseAdmin
       .from("admin_profiles")
       .select("id, email, role, username, full_name")
       .eq("id", user.id)
@@ -64,8 +70,8 @@ export const verifyAdmin = async (req, res, next) => {
 
     req.user = user;
     req.admin = adminProfile;
+    req.supabase = supabaseUserClient;
 
-    // wag mo na i-attach yung req.supabase = supabaseUserClient
     next();
   } catch (err) {
     console.error("Verify admin error:", err);

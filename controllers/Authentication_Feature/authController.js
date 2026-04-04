@@ -1,31 +1,42 @@
+import {
+  createAdminAuthUser,
+  deleteAdminAuthUser,
+  getAdminProfileById,
+  sendPasswordResetEmail,
+  signInAdmin,
+  upsertAdminProfile,
+  updateAdminPasswordById,
+} from "../../models/Admin_Auth_Feature/adminAuthModel.js";
 
-import supabase from "../../utils/supabaseClient.js";
+import {
+  adminCreateAccountSchema,
+  adminLoginSchema,
+  changePasswordSchema,
+  forgotPasswordSchema,
+  validate,
+} from "../../utils/validators/authValidation.js";
 
-// CREATE ACCOUNT
+/* =========================
+   CREATE ACCOUNT
+========================= */
 export const adminCreateAccount = async (req, res) => {
   try {
+    const errors = validate(adminCreateAccountSchema, req.body);
+
+    if (errors) {
+      return res.status(400).json({
+        error: errors[0],
+        errors,
+      });
+    }
+
     const { email, password, username, full_name } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({
-        error: "Email and password are required",
-      });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({
-        error: "Password must be at least 6 characters",
-      });
-    }
-
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    const { data, error } = await createAdminAuthUser({
       email,
       password,
-      email_confirm: true,
-      user_metadata: {
-        username: username || null,
-        full_name: full_name || null,
-      },
+      username,
+      full_name,
     });
 
     if (error || !data?.user) {
@@ -34,18 +45,15 @@ export const adminCreateAccount = async (req, res) => {
       });
     }
 
-    const { error: profileError } = await supabaseAdmin
-      .from("admin_profiles")
-      .upsert({
-        id: data.user.id,
-        email,
-        username: username || null,
-        full_name: full_name || null,
-        role: "admin",
-      });
+    const { error: profileError } = await upsertAdminProfile({
+      id: data.user.id,
+      email,
+      username,
+      full_name,
+    });
 
     if (profileError) {
-      await supabaseAdmin.auth.admin.deleteUser(data.user.id);
+      await deleteAdminAuthUser(data.user.id);
 
       return res.status(400).json({
         error: profileError.message,
@@ -65,22 +73,23 @@ export const adminCreateAccount = async (req, res) => {
   }
 };
 
-
-// ADMIN LOGIN
+/* =========================
+   ADMIN LOGIN
+========================= */
 export const adminLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const errors = validate(adminLoginSchema, req.body);
 
-    if (!email || !password) {
+    if (errors) {
       return res.status(400).json({
-        error: "Email and password required",
+        error: errors[0],
+        errors,
       });
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { email, password } = req.body;
+
+    const { data, error } = await signInAdmin({ email, password });
 
     if (error) {
       return res.status(401).json({
@@ -88,10 +97,21 @@ export const adminLogin = async (req, res) => {
       });
     }
 
+    const { data: profile, error: profileError } = await getAdminProfileById(
+      data.user.id,
+    );
+
+    if (profileError || !profile) {
+      return res.status(403).json({
+        error: "Admin profile not found",
+      });
+    }
+
     return res.status(200).json({
       message: "Login successful",
       session: data.session,
       user: data.user,
+      profile,
     });
   } catch (err) {
     console.error("Admin login error:", err);
@@ -132,19 +152,23 @@ export const adminLogout = async (req, res) => {
 ========================= */
 export const forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const errors = validate(forgotPasswordSchema, req.body);
 
-    if (!email) {
+    if (errors) {
       return res.status(400).json({
-        error: "Email is required",
+        error: errors[0],
+        errors,
       });
     }
+
+    const { email } = req.body;
 
     const redirectTo =
       process.env.ADMIN_RESET_PASSWORD_URL ||
       "http://localhost:5174/reset-password";
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await sendPasswordResetEmail({
+      email,
       redirectTo,
     });
 
@@ -169,40 +193,32 @@ export const forgotPassword = async (req, res) => {
 /* =========================
    CHANGE PASSWORD
 ========================= */
+/* =========================
+   CHANGE PASSWORD
+========================= */
 export const changePassword = async (req, res) => {
   try {
-    const { newPassword, confirmPassword } = req.body;
+    const errors = validate(changePasswordSchema, req.body);
 
-    if (!newPassword) {
+    if (errors) {
       return res.status(400).json({
-        error: "New password is required",
+        error: errors[0],
+        errors,
       });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        error: "Password must be at least 6 characters",
-      });
-    }
-
-    if (confirmPassword !== undefined && newPassword !== confirmPassword) {
-      return res.status(400).json({
-        error: "Passwords do not match",
-      });
-    }
-
-    const { data: userData, error: userError } =
-      await req.supabase.auth.getUser();
-
-    if (userError || !userData?.user) {
+    if (!req.user?.id) {
       return res.status(401).json({
-        error: "Unauthorized or invalid session",
+        error: "Unauthorized",
       });
     }
 
-    const { data, error } = await req.supabase.auth.updateUser({
-      password: newPassword,
-    });
+    const { newPassword } = req.body;
+
+    const { data, error } = await updateAdminPasswordById(
+      req.user.id,
+      newPassword,
+    );
 
     if (error) {
       return res.status(400).json({
@@ -216,6 +232,36 @@ export const changePassword = async (req, res) => {
     });
   } catch (err) {
     console.error("Change password error:", err);
+
+    return res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+};
+/* =========================
+   GET CURRENT ADMIN PROFILE
+========================= */
+export const getCurrentAdminProfile = async (req, res) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({
+        error: "Unauthorized",
+      });
+    }
+
+    const { data: profile, error } = await getAdminProfileById(req.user.id);
+
+    if (error || !profile) {
+      return res.status(404).json({
+        error: "Admin profile not found",
+      });
+    }
+
+    return res.status(200).json({
+      profile,
+    });
+  } catch (err) {
+    console.error("Get current admin profile error:", err);
 
     return res.status(500).json({
       error: "Internal server error",
