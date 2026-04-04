@@ -3,10 +3,17 @@ import api from "../axios";
 /* ===============================
    ADMIN LOGIN
 =============================== */
-export const adminAuthLogin = async ({ email, password }) => {
+export const adminAuthLogin = async ({
+  email,
+  password,
+  username,
+  full_name,
+}) => {
   const res = await api.post("/auth/login", {
     email,
     password,
+    username,
+    full_name,
   });
 
   return res.data;
@@ -42,10 +49,26 @@ export const changePassword = async ({ newPassword, confirmPassword }) => {
 /* ===============================
    CREATE NEW ADMIN ACCOUNT
 =============================== */
-export const createAdminAccount = async ({ email, password }) => {
+export const createAdminAccount = async ({
+  full_name,
+  username,
+  email,
+  password,
+}) => {
   const res = await api.post("/auth/create-account", {
+    full_name,
+    username,
     email,
     password,
   });
+
+  return res.data;
+};
+
+/* =========================
+   getAdminProfileById
+========================= */
+export const getAdminProfileById = async () => {
+  const res = await api.get("/auth/adminProfile");
   return res.data;
 };

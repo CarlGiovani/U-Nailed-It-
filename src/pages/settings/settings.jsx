@@ -1,21 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "../../components/layout/sidebar";
 import {
   changePassword,
   createAdminAccount,
+  getAdminProfileById,
 } from "../../services/BACKEND/adminAuthApi";
 import "../../styles/settings.css";
 
 const Settings = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const adminUser = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem("admin_user")) || {};
-    } catch {
-      return {};
-    }
-  }, []);
+  const [adminProfile, setAdminProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   const [passwordForm, setPasswordForm] = useState({
     newPassword: "",
@@ -38,6 +33,23 @@ const Settings = () => {
   const [createMessage, setCreateMessage] = useState("");
   const [createError, setCreateError] = useState("");
 
+  useEffect(() => {
+    const fetchAdminProfile = async () => {
+      try {
+        setProfileLoading(true);
+        const res = await getAdminProfileById(); // Assuming you have the admin ID available
+        setAdminProfile(res.profile || null);
+      } catch (err) {
+        console.error("Failed to load admin profile:", err);
+        setAdminProfile(null);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    fetchAdminProfile();
+  }, []);
+
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
     setPasswordForm((prev) => ({
@@ -58,11 +70,6 @@ const Settings = () => {
     e.preventDefault();
     setPasswordMessage("");
     setPasswordError("");
-
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError("Passwords do not match.");
-      return;
-    }
 
     try {
       setPasswordLoading(true);
@@ -145,22 +152,36 @@ const Settings = () => {
             <div className="info-list">
               <div className="info-row">
                 <span>Full Name</span>
-                <strong>{adminUser.user_metadata?.full_name || "N/A"}</strong>
+                <strong>
+                  {profileLoading
+                    ? "Loading..."
+                    : adminProfile?.full_name || "N/A"}
+                </strong>
               </div>
 
               <div className="info-row">
                 <span>Username</span>
-                <strong>{adminUser.user_metadata?.username || "N/A"}</strong>
+                <strong>
+                  {profileLoading
+                    ? "Loading..."
+                    : adminProfile?.username || "N/A"}
+                </strong>
               </div>
 
               <div className="info-row">
                 <span>Email</span>
-                <strong>{adminUser.email || "N/A"}</strong>
+                <strong>
+                  {profileLoading ? "Loading..." : adminProfile?.email || "N/A"}
+                </strong>
               </div>
 
               <div className="info-row">
                 <span>Role</span>
-                <strong>Admin</strong>
+                <strong>
+                  {profileLoading
+                    ? "Loading..."
+                    : adminProfile?.role || "Admin"}
+                </strong>
               </div>
             </div>
           </section>
