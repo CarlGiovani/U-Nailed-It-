@@ -14,7 +14,6 @@ const AdminLogin = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
   const [successModal, setSuccessModal] = useState(false);
 
   const handleChange = (e) => {
@@ -67,6 +66,7 @@ const AdminLogin = () => {
               placeholder="Email"
               value={form.email}
               onChange={handleChange}
+              autoComplete="email"
               required
             />
             <label className={form.email ? "filled" : ""}></label>
@@ -79,6 +79,7 @@ const AdminLogin = () => {
               placeholder="Password"
               value={form.password}
               onChange={handleChange}
+              autoComplete="current-password"
               required
             />
             <label className={form.password ? "filled" : ""}></label>
@@ -89,10 +90,15 @@ const AdminLogin = () => {
           </button>
         </form>
 
-        <div className="forgot-link">Forgot password?</div>
+        <button
+          type="button"
+          className="forgot-link-btn"
+          onClick={() => navigate("/forgot-password")}
+        >
+          Forgot password?
+        </button>
       </div>
 
-      {/* SUCCESS MODAL */}
       {successModal && (
         <div className="success-modal-overlay">
           <div className="success-modal">

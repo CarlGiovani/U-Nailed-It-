@@ -1,6 +1,8 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Announcements from "./pages/announcement/announcement.jsx";
 import AdminLogin from "./pages/auth/AdminLogin";
+import ForgotPassword from "./pages/Forgot_Password/forgotPassword.jsx";
+import ResetPassword from "./pages/Reset_Password/resetPassword.jsx";
 import Bookings from "./pages/bookings/bookings.jsx";
 import AdminCalendar from "./pages/calendar/calendar.jsx";
 import Dashboard from "./pages/dashboard/Dashboard";
@@ -15,8 +17,12 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* PUBLIC ROUTES */}
         <Route path="/" element={<AdminLogin />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
+        {/* PROTECTED ROUTES */}
         <Route
           path="/dashboard"
           element={
