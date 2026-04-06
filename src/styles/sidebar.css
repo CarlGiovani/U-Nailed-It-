@@ -1,11 +1,22 @@
 /* ======================================================
-   SIDEBAR BASE (DESKTOP)
+   SIDEBAR BASE
 ====================================================== */
 
 .sidebar {
-  position: relative;
+  position: sticky;
+  top: 0;
   width: 250px;
   min-width: 250px;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  box-sizing: border-box;
+
+  display: flex;
+  flex-direction: column;
+
+  padding: 16px;
+
   background: linear-gradient(
     180deg,
     #f8c8dc 0%,
@@ -13,15 +24,19 @@
     #d4af37 70%,
     #b8962e 100%
   );
-  color: white;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.3s ease;
+  color: #ffffff;
+
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08);
+  transition:
+    width 0.3s ease,
+    min-width 0.3s ease,
+    transform 0.3s ease;
   z-index: 500;
 }
-/* Collapsed Sidebar */
+
+/* ======================================================
+   COLLAPSED STATE
+====================================================== */
 
 .sidebar.collapsed {
   width: 80px;
@@ -29,40 +44,41 @@
 }
 
 /* ======================================================
-   SIDEBAR HEADER / BRAND
+   HEADER / BRAND
 ====================================================== */
 
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 
   padding-bottom: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
-
-/* Logo Circle */
 
 .brand-icon {
   width: 50px;
   height: 50px;
-
   border-radius: 50%;
-  background: white;
+  background: #ffffff;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
   overflow: hidden;
+  flex-shrink: 0;
 
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.15),
@@ -75,8 +91,6 @@
   object-fit: contain;
 }
 
-/* Brand Name */
-
 .brand-text {
   font-size: 18px;
   font-weight: 700;
@@ -88,112 +102,181 @@
     transform 0.25s ease;
 }
 
-/* Collapse Button */
+/* ======================================================
+   COLLAPSE BUTTON
+====================================================== */
 
 .collapse-btn {
+  border: none;
+  outline: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
   cursor: pointer;
-  font-size: 18px;
-  transition: transform 0.2s ease;
+  flex-shrink: 0;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 
 .collapse-btn:hover {
-  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.05);
+}
+
+.collapse-btn svg {
+  font-size: 16px;
 }
 
 /* ======================================================
-   NAVIGATION
+   NAVIGATION AREA
 ====================================================== */
 
-nav {
+.sidebar-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: -4px;
+  padding-right: 4px;
+  margin-top: 1px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
 }
 
-/* Navigation Link */
+.sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* ======================================================
+   NAV LINKS
+====================================================== */
 
 .nav-link {
+  position: relative;
+
   display: flex;
   align-items: center;
   gap: 12px;
 
   padding: 12px 14px;
-
   border-radius: 12px;
 
-  color: white;
+  color: #ffffff;
   text-decoration: none;
-
   font-size: 14px;
   font-weight: 500;
 
-  transition: all 0.2s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  flex-shrink: 0;
 }
 
-/* Icons */
+.nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  flex-shrink: 0;
+}
 
-.nav-link svg {
+.nav-icon svg {
   font-size: 16px;
   transition: transform 0.2s ease;
 }
 
-/* Hover */
-
-.nav-link:hover {
-  background: rgba(255, 255, 255, 0.18);
-  transform: translateX(3px);
-}
-
-.nav-link:hover svg {
-  transform: scale(1.15);
-}
-
-/* Active Link */
-
-.active-link {
-  background: rgba(255, 255, 255, 0.28);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
-  position: relative;
-}
-
-/* Active Indicator Bar */
-
-.active-link::before {
-  content: "";
-  position: absolute;
-  left: -18px;
-  top: 0;
-  height: 100%;
-  width: 4px;
-  background: white;
-  border-radius: 4px;
-}
-
-/* ======================================================
-   COLLAPSE ANIMATION
-====================================================== */
-
-.nav-link span {
+.nav-label {
   white-space: nowrap;
   transition:
     opacity 0.25s ease,
     transform 0.25s ease;
 }
 
-.sidebar.collapsed .nav-link span,
-.sidebar.collapsed .brand-text {
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateX(3px);
+}
+
+.nav-link:hover .nav-icon svg {
+  transform: scale(1.15);
+}
+
+/* ======================================================
+   ACTIVE LINK
+====================================================== */
+
+.active-link {
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.active-link::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  border-radius: 4px;
+  background: #ffffff;
+}
+
+/* ======================================================
+   COLLAPSED ANIMATION
+====================================================== */
+
+.sidebar.collapsed .brand-text,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .logout-btn .nav-label {
   opacity: 0;
   transform: translateX(-8px);
   pointer-events: none;
 }
 
-/* Center icons when collapsed */
-
-.sidebar.collapsed .nav-link {
+.sidebar.collapsed .nav-link,
+.sidebar.collapsed .logout-btn {
   justify-content: center;
   padding-left: 0;
   padding-right: 0;
+}
+
+.sidebar.collapsed .sidebar-header {
+  justify-content: center;
+}
+
+.sidebar.collapsed .brand {
+  justify-content: center;
+}
+
+.sidebar.collapsed .collapse-btn {
+  position: absolute;
+  top: 22px;
+  right: 16px;
 }
 
 /* ======================================================
@@ -201,20 +284,28 @@ nav {
 ====================================================== */
 
 .logout-btn {
-  margin-top: auto;
+  margin-top: 12px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #ffffff;
 
   display: flex;
   align-items: center;
   gap: 12px;
 
   padding: 12px 14px;
-
   border-radius: 12px;
 
   cursor: pointer;
+  font-size: 14px;
   font-weight: 500;
+  text-align: left;
 
-  transition: all 0.2s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+  flex-shrink: 0;
 }
 
 .logout-btn:hover {
@@ -223,7 +314,7 @@ nav {
 }
 
 /* ======================================================
-   MOBILE SIDEBAR
+   MOBILE
 ====================================================== */
 
 @media (max-width: 768px) {
@@ -234,12 +325,12 @@ nav {
 
     width: 260px;
     min-width: 260px;
-    height: 100%;
-
-    z-index: 600;
+    height: 100dvh;
+    max-height: 100dvh;
 
     transform: translateX(-100%);
-    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 600;
+    overflow: hidden;
   }
 
   .sidebar.open {
@@ -251,16 +342,86 @@ nav {
     min-width: 260px;
   }
 
+  .sidebar-header {
+    margin-bottom: 10px;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 2px;
+  }
+
   .sidebar-overlay {
     position: fixed;
     inset: 0;
-
     background: rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(3px);
-
+    -webkit-backdrop-filter: blur(3px);
     z-index: 500;
-
     animation: fadeOverlay 0.25s ease;
+  }
+
+  .sidebar.collapsed .brand-text,
+  .sidebar.collapsed .nav-label,
+  .sidebar.collapsed .logout-btn .nav-label {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .sidebar.collapsed .nav-link,
+  .sidebar.collapsed .logout-btn {
+    justify-content: flex-start;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .sidebar.collapsed .sidebar-header {
+    justify-content: space-between;
+  }
+
+  .sidebar.collapsed .brand {
+    justify-content: flex-start;
+  }
+
+  .sidebar.collapsed .collapse-btn {
+    position: static;
+  }
+}
+
+/* ======================================================
+   SMALL HEIGHT DEVICES
+====================================================== */
+
+@media (max-height: 700px) {
+  .sidebar {
+    padding: 12px;
+  }
+
+  .sidebar-header {
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+  }
+
+  .brand-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .brand-text {
+    font-size: 16px;
+  }
+
+  .nav-link,
+  .logout-btn {
+    padding: 10px 12px;
+  }
+
+  .sidebar-nav {
+    gap: 6px;
   }
 }
 
