@@ -51,7 +51,9 @@ const ForgotPassword = () => {
     }
 
     if (cooldown > 0) {
-      setError(`Please wait ${cooldown}s before requesting another reset link.`);
+      setError(
+        `Please wait ${cooldown}s before requesting another reset link.`,
+      );
       return;
     }
 
@@ -139,7 +141,9 @@ const ForgotPassword = () => {
           </p>
 
           {touched && email && !emailIsValid && (
-            <div className="field-error">Please enter a valid email format.</div>
+            <div className="field-error">
+              Please enter a valid email format.
+            </div>
           )}
 
           <button

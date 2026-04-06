@@ -102,7 +102,7 @@ const ResetPassword = () => {
 
       setTimeout(async () => {
         await supabase.auth.signOut();
-        navigate("/admin/login");
+        navigate("/");
       }, 1800);
     } catch (err) {
       setError(err.message || "Failed to reset password.");
