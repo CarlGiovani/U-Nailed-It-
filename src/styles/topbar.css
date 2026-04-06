@@ -545,3 +545,48 @@
     min-width: 200px;
   }
 }
+
+/* ================= PROFILE NAME ================= */
+
+.profile-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* inside dropdown */
+.profile-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 4px;
+}
+
+/* ======================================================
+   TOPBAR TITLE
+====================================================== */
+
+.topbar-title-wrapper {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.topbar-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #222;
+}
+
+.topbar-subtitle {
+  font-size: 12px;
+  color: #888;
+  margin-top: 2px;
+}

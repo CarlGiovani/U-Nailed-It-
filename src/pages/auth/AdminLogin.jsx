@@ -32,7 +32,13 @@ const AdminLogin = () => {
       const res = await adminAuthLogin(form);
 
       localStorage.setItem("admin_session", JSON.stringify(res.session));
-      localStorage.setItem("admin_user", JSON.stringify(res.user));
+      localStorage.setItem(
+        "admin_user",
+        JSON.stringify({
+          ...res.user,
+          ...res.profile,
+        }),
+      );
 
       setSuccessModal(true);
 

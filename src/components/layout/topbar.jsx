@@ -11,15 +11,14 @@ import {
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
+import supabase from "../../../config/supabaseClient.js";
+import { adminLogout } from "../../services/BACKEND/adminAuthApi.js";
 import {
   deleteNotification,
   getNotifications,
   markAllNotificationsAsRead,
   markNotificationAsRead,
 } from "../../services/BACKEND/adminNotificationApi";
-
-import supabase from "../../../config/supabaseClient.js";
-import { adminLogout } from "../../services/BACKEND/adminAuthApi.js";
 import "../../styles/topbar.css";
 
 const NOTIF_PER_PAGE = 6;
@@ -398,7 +397,6 @@ const Topbar = ({ setMobileOpen }) => {
   };
 
   /* ================= LOGOUT ================= */
-
   const handleLogout = async () => {
     try {
       await adminLogout();
@@ -415,14 +413,23 @@ const Topbar = ({ setMobileOpen }) => {
       navigate("/");
     }
   };
+
   return (
     <div className={`topbar ${scrolled ? "scrolled" : ""}`}>
       <div className="topbar-left">
-        <button className="mobile-menu-btn" onClick={() => setMobileOpen(true)}>
+        <button
+          className="mobile-menu-btn"
+          onClick={() => setMobileOpen(true)}
+          type="button"
+        >
           <FaBars />
         </button>
 
-        <h3>Admin Panel</h3>
+        <div className="topbar-title-wrapper">
+          <h3 className="topbar-title">
+            Hi, {user?.username?.split(" ")[0] || "Admin"}
+          </h3>
+        </div>
       </div>
 
       <div className="topbar-right">
