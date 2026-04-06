@@ -24,7 +24,7 @@
       transparent 28%
     ),
     linear-gradient(180deg, #f7bfd6 0%, #efc86f 45%, #d8af43 72%, #b78926 100%);
-  color: #ffffff;
+  color: black;
 
   box-shadow:
     8px 0 28px rgba(28, 21, 10, 0.14),
@@ -140,36 +140,32 @@
 }
 
 .collapse-btn {
-  border: none;
-  outline: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  cursor: pointer;
-  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
 
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
 
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: #1a1a1a;
+  padding-left: 8px;
 
-  transition:
-    transform 0.2s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease;
+  box-shadow: none;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+
+  transition: all 0.2s ease;
 }
 
 .collapse-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.2);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
-    0 8px 16px rgba(0, 0, 0, 0.08);
-}
 
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.15),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
 .collapse-btn svg {
   font-size: 15px;
 }
@@ -186,6 +182,8 @@
   opacity: 0.78;
   margin: 2px 4px 12px;
   flex-shrink: 0;
+  color: rgba(0, 0, 0, 0.6);
+  opacity: 1;
 }
 
 /* ======================================================
@@ -202,7 +200,7 @@
   flex-direction: column;
   gap: 8px;
 
-  padding-right: 4px;
+  padding-right: 10px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
 }
@@ -212,8 +210,8 @@
 }
 
 .sidebar-nav::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 999px;
+  background: transparent;
+  margin: 6px 0;
 }
 
 .sidebar-nav::-webkit-scrollbar-thumb {
@@ -234,7 +232,7 @@
   padding: 12px 14px;
   border-radius: 16px;
   text-decoration: none;
-  color: #ffffff;
+  color: #1a1a1a;
   overflow: hidden;
 
   background: transparent;
@@ -250,11 +248,7 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.08),
-    rgba(255, 255, 255, 0)
-  );
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0));
   opacity: 0;
   transition: opacity 0.2s ease;
   pointer-events: none;
@@ -262,10 +256,10 @@
 
 .nav-link:hover {
   transform: translateX(4px);
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.07);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 8px 14px rgba(0, 0, 0, 0.06);
+    inset 0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 8px 14px rgba(0, 0, 0, 0.08);
 }
 
 .nav-link:hover::after {
@@ -309,12 +303,11 @@
 /* ======================================================
    ACTIVE LINK
 ====================================================== */
-
 .active-link {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.1);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
-    0 10px 20px rgba(124, 83, 18, 0.12);
+    inset 0 0 0 1px rgba(0, 0, 0, 0.1),
+    0 10px 20px rgba(0, 0, 0, 0.08);
 }
 
 .active-link::before {
@@ -325,8 +318,8 @@
   bottom: 10px;
   width: 4px;
   border-radius: 0 999px 999px 0;
-  background: #ffffff;
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.45);
+  background: #1a1a1a;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.18);
 }
 
 /* ======================================================
@@ -359,14 +352,14 @@
   margin: 0 0 6px;
   font-size: 13px;
   font-weight: 700;
-  color: #ffffff;
+  color: #1a1a1a;
 }
 
 .footer-card-text {
   margin: 0;
   font-size: 12px;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.84);
+  color: black;
 }
 
 .logout-btn {
@@ -383,7 +376,7 @@
   padding: 12px 14px;
 
   background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
+  color: #1a1a1a;
   text-align: left;
 
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
@@ -440,7 +433,7 @@
 .sidebar.collapsed .collapse-btn {
   position: absolute;
   top: 6px;
-  right: 0;
+  right: 2;
 }
 
 .sidebar.collapsed .sidebar-footer {
@@ -555,6 +548,8 @@
 
   .brand-subtext {
     font-size: 10px;
+    color: rgba(0, 0, 0, 0.65);
+    opacity: 1;
   }
 
   .sidebar-header {
@@ -589,4 +584,11 @@
   to {
     opacity: 1;
   }
+}
+
+.nav-link,
+.nav-link .nav-label,
+.nav-link .nav-icon,
+.nav-link .nav-icon svg {
+  color: #1a1a1a;
 }

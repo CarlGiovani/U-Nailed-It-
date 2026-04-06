@@ -146,7 +146,7 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
           <div className="sidebar-footer">
             {(!collapsed || isMobile) && (
               <div className="sidebar-footer-card">
-                <p className="footer-card-title">Manage your salon</p>
+                <p className="footer-card-title">Manage your business</p>
                 <p className="footer-card-text">
                   Keep bookings, services, and updates organized in one place.
                 </p>
