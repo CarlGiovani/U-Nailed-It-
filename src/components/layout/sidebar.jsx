@@ -12,7 +12,7 @@ import {
   FaStar,
   FaTachometerAlt,
 } from "react-icons/fa";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import logo from "../../../../UNailedIt_Website/src/assets/images/logo.png";
 import { adminLogout } from "../../services/BACKEND/adminAuthApi";
 import "../../styles/sidebar.css";
@@ -21,6 +21,7 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const handleResize = () => {
@@ -40,6 +41,12 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, [setMobileOpen]);
 
+  useEffect(() => {
+    if (isMobile) {
+      setMobileOpen(false);
+    }
+  }, [location.pathname, isMobile, setMobileOpen]);
+
   const handleLogout = async () => {
     try {
       await adminLogout();
@@ -53,28 +60,29 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
   };
 
   const handleNavClick = () => {
-    if (isMobile) {
-      setMobileOpen(false);
-    }
+    if (isMobile) setMobileOpen(false);
   };
 
-  const navItem = (to, icon, label) => (
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        isActive ? "nav-link active-link" : "nav-link"
-      }
-      onClick={handleNavClick}
-    >
-      <span className="nav-icon">{icon}</span>
-      {(!collapsed || isMobile) && <span className="nav-label">{label}</span>}
-    </NavLink>
-  );
+  const navItems = [
+    { to: "/dashboard", icon: <FaTachometerAlt />, label: "Dashboard" },
+    { to: "/calendar", icon: <FaCalendarAlt />, label: "Calendar" },
+    { to: "/bookings", icon: <FaClipboardList />, label: "Bookings" },
+    { to: "/services", icon: <FaServicestack />, label: "Services" },
+    { to: "/reviews", icon: <FaStar />, label: "Reviews" },
+    { to: "/portfolio", icon: <FaImages />, label: "Portfolio" },
+    { to: "/announcements", icon: <FaBullhorn />, label: "Announcements" },
+    { to: "/policies", icon: <FaFileAlt />, label: "Policies" },
+    { to: "/settings", icon: <FaCog />, label: "Settings" },
+  ];
 
   return (
     <>
       {mobileOpen && isMobile && (
-        <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />
+        <div
+          className="sidebar-overlay"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
       )}
 
       <aside
@@ -82,49 +90,81 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
           mobileOpen && isMobile ? "open" : ""
         }`}
       >
-        <div className="sidebar-header">
-          <div className="brand">
-            <div className="brand-icon">
-              <img src={logo} alt="UNAILEDIT Logo" />
+        <div className="sidebar-shell">
+          <div className="sidebar-header">
+            <div className="brand">
+              <div className="brand-icon">
+                <img src={logo} alt="UNAILEDIT Logo" />
+              </div>
+
+              {(!collapsed || isMobile) && (
+                <div className="brand-copy">
+                  <span className="brand-text">UNAILEDIT</span>
+                  <span className="brand-subtext">Admin Panel</span>
+                </div>
+              )}
             </div>
 
-            {(!collapsed || isMobile) && (
-              <span className="brand-text">UNAILEDIT</span>
+            {!isMobile && (
+              <button
+                type="button"
+                className="collapse-btn"
+                onClick={() => setCollapsed((prev) => !prev)}
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                <FaBars />
+              </button>
             )}
           </div>
 
-          {!isMobile && (
-            <button
-              type="button"
-              className="collapse-btn"
-              onClick={() => setCollapsed((prev) => !prev)}
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              <FaBars />
-            </button>
-          )}
-        </div>
-
-        <nav className="sidebar-nav">
-          {navItem("/dashboard", <FaTachometerAlt />, "Dashboard")}
-          {navItem("/calendar", <FaCalendarAlt />, "Calendar")}
-          {navItem("/bookings", <FaClipboardList />, "Bookings")}
-          {navItem("/services", <FaServicestack />, "Services")}
-          {navItem("/reviews", <FaStar />, "Reviews")}
-          {navItem("/portfolio", <FaImages />, "Portfolio")}
-          {navItem("/announcements", <FaBullhorn />, "Announcements")}
-          {navItem("/policies", <FaFileAlt />, "Policies")}
-          {navItem("/settings", <FaCog />, "Settings")}
-        </nav>
-
-        <button type="button" className="logout-btn" onClick={handleLogout}>
-          <span className="nav-icon">
-            <FaSignOutAlt />
-          </span>
           {(!collapsed || isMobile) && (
-            <span className="nav-label">Logout</span>
+            <div className="sidebar-section-label">Navigation</div>
           )}
-        </button>
+
+          <nav className="sidebar-nav">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={handleNavClick}
+                title={collapsed && !isMobile ? item.label : ""}
+                className={({ isActive }) =>
+                  `nav-link ${isActive ? "active-link" : ""}`
+                }
+              >
+                <span className="nav-icon">{item.icon}</span>
+                {(!collapsed || isMobile) && (
+                  <span className="nav-copy">
+                    <span className="nav-label">{item.label}</span>
+                  </span>
+                )}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="sidebar-footer">
+            {(!collapsed || isMobile) && (
+              <div className="sidebar-footer-card">
+                <p className="footer-card-title">Manage your salon</p>
+                <p className="footer-card-text">
+                  Keep bookings, services, and updates organized in one place.
+                </p>
+              </div>
+            )}
+
+            <button type="button" className="logout-btn" onClick={handleLogout}>
+              <span className="nav-icon">
+                <FaSignOutAlt />
+              </span>
+              {(!collapsed || isMobile) && (
+                <span className="nav-copy">
+                  <span className="nav-label">Logout</span>
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
       </aside>
     </>
   );
