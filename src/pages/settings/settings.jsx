@@ -72,6 +72,20 @@ const Settings = () => {
     danger: false,
   });
 
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+  });
+
+  const [feedbackModal, setFeedbackModal] = useState({
+    open: false,
+    title: "",
+    message: "",
+    type: "info", // success | error | info
+  });
+
   const currentAdminId = adminProfile?.id || null;
 
   const sortedAdmins = useMemo(() => {
@@ -336,33 +350,49 @@ const Settings = () => {
     }
   };
 
-  const handleDeleteMyAccount = async () => {
-    const confirmed = window.confirm(
-      "Are you sure you want to permanently delete your admin account? This action cannot be undone.",
-    );
-
-    if (!confirmed) return;
-
+  const proceedDeleteMyAccount = async () => {
     try {
       setDeleteLoading(true);
 
       const res = await deleteCurrentAdminAccount();
 
-      alert(
-        res?.message || "Your admin account has been deleted successfully.",
-      );
+      setFeedbackModal({
+        open: true,
+        title: "Account Deleted",
+        message:
+          res?.message || "Your admin account has been deleted successfully.",
+        type: "success",
+      });
 
       localStorage.removeItem("admin_session");
       localStorage.removeItem("admin_user");
       localStorage.removeItem("admin_profile");
 
-      window.location.href = "/login";
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1200);
     } catch (err) {
       console.error("Failed to delete account:", err);
-      alert(err?.response?.data?.error || "Failed to delete your account.");
+
+      setFeedbackModal({
+        open: true,
+        title: "Delete Failed",
+        message: err?.response?.data?.error || "Failed to delete your account.",
+        type: "error",
+      });
     } finally {
       setDeleteLoading(false);
     }
+  };
+
+  const handleDeleteMyAccount = () => {
+    setConfirmModal({
+      open: true,
+      title: "Delete My Account?",
+      message:
+        "Are you sure you want to permanently delete your admin account? This action cannot be undone.",
+      onConfirm: proceedDeleteMyAccount,
+    });
   };
 
   const adminCount = allAdmins.length;
@@ -375,6 +405,77 @@ const Settings = () => {
 
       <div className="settings-content-area">
         <Topbar setMobileOpen={setMobileOpen} />
+
+        {confirmModal.open && (
+          <div className="custom-modal-overlay">
+            <div className="custom-modal">
+              <h3>{confirmModal.title}</h3>
+              <p>{confirmModal.message}</p>
+
+              <div className="custom-modal-actions">
+                <button
+                  type="button"
+                  className="settings-btn ghost"
+                  onClick={() =>
+                    setConfirmModal({
+                      open: false,
+                      title: "",
+                      message: "",
+                      onConfirm: null,
+                    })
+                  }
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  className="settings-btn danger"
+                  onClick={async () => {
+                    const action = confirmModal.onConfirm;
+                    setConfirmModal({
+                      open: false,
+                      title: "",
+                      message: "",
+                      onConfirm: null,
+                    });
+                    if (action) await action();
+                  }}
+                >
+                  Confirm Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {feedbackModal.open && (
+          <div className="custom-modal-overlay">
+            <div className="custom-modal">
+              <h3>{feedbackModal.title}</h3>
+              <p>{feedbackModal.message}</p>
+
+              <div className="custom-modal-actions">
+                <button
+                  type="button"
+                  className={`settings-btn ${
+                    feedbackModal.type === "error" ? "danger" : "primary"
+                  }`}
+                  onClick={() =>
+                    setFeedbackModal({
+                      open: false,
+                      title: "",
+                      message: "",
+                      type: "info",
+                    })
+                  }
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <main className="settings-main">
           <div className="settings-page-header">
