@@ -215,28 +215,46 @@ const Settings = () => {
     try {
       setEditLoading(true);
 
-      const res = await updateCurrentAdminProfile({
-        full_name: editForm.full_name.trim(),
-        username: editForm.username.trim(),
-      });
+      const trimmedFullName = editForm.full_name.trim();
+      const trimmedUsername = editForm.username.trim();
 
-      const updatedProfile = res?.profile || null;
+      const res = await updateCurrentAdminProfile({
+        full_name: trimmedFullName,
+        username: trimmedUsername,
+      });
 
       setEditMessage(res?.message || "Profile updated successfully.");
 
-      if (updatedProfile) {
-        setAdminProfile(updatedProfile);
+      // gamitin ang backend profile kung meron, pero siguraduhin nating
+      // updated talaga ang full_name at username gamit ang form values
+      const updatedProfile = {
+        ...(adminProfile || {}),
+        ...(res?.profile || {}),
+        full_name: trimmedFullName,
+        username: trimmedUsername,
+      };
 
-        setAllAdmins((prev) =>
-          prev.map((admin) =>
-            admin.id === updatedProfile.id
-              ? { ...admin, ...updatedProfile }
-              : admin,
-          ),
-        );
-      } else {
-        await fetchSettingsData({ silent: true });
-      }
+      setAdminProfile(updatedProfile);
+
+      setAllAdmins((prev) =>
+        prev.map((admin) =>
+          admin.id === updatedProfile.id
+            ? { ...admin, ...updatedProfile }
+            : admin,
+        ),
+      );
+
+      const storedUser = JSON.parse(localStorage.getItem("admin_user") || "{}");
+
+      const updatedAdminUser = {
+        ...storedUser,
+        ...updatedProfile,
+        full_name: trimmedFullName,
+        username: trimmedUsername,
+      };
+
+      localStorage.setItem("admin_user", JSON.stringify(updatedAdminUser));
+      window.dispatchEvent(new Event("admin-user-updated"));
     } catch (err) {
       console.error("Failed to update profile:", err);
       setEditError(err?.response?.data?.error || "Failed to update profile.");
@@ -244,7 +262,6 @@ const Settings = () => {
       setEditLoading(false);
     }
   };
-
   const handleChangePassword = async (e) => {
     e.preventDefault();
     setPasswordMessage("");

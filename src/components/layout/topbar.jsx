@@ -25,15 +25,24 @@ const NOTIF_PER_PAGE = 6;
 const NOTIF_MAX_AGE_DAYS = 7;
 const NOTIFICATIONS_QUERY_KEY = ["admin-topbar-notifications"];
 
+const getStoredAdminUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("admin_user") || "null");
+  } catch (error) {
+    console.error("Failed to parse admin_user from localStorage:", error);
+    return null;
+  }
+};
+
 const Topbar = ({ setMobileOpen }) => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-
   const [page, setPage] = useState(1);
   const [scrolled, setScrolled] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [manageMode, setManageMode] = useState(false);
   const [selectedNotifIds, setSelectedNotifIds] = useState([]);
+  const [user, setUser] = useState(() => getStoredAdminUser());
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -42,8 +51,47 @@ const Topbar = ({ setMobileOpen }) => {
   const profileRef = useRef(null);
   const realtimeChannelRef = useRef(null);
 
-  const user = JSON.parse(localStorage.getItem("admin_user") || "null");
+  /* ================= USER SYNC ================= */
+  const syncUserFromStorage = useCallback(() => {
+    setUser(getStoredAdminUser());
+  }, []);
 
+  useEffect(() => {
+    syncUserFromStorage();
+
+    const handleStorageChange = (event) => {
+      if (!event.key || event.key === "admin_user") {
+        syncUserFromStorage();
+      }
+    };
+
+    const handleAdminUserUpdated = () => {
+      syncUserFromStorage();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("admin-user-updated", handleAdminUserUpdated);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("admin-user-updated", handleAdminUserUpdated);
+    };
+  }, [syncUserFromStorage]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const latestUser = getStoredAdminUser();
+
+      setUser((prev) => {
+        if (JSON.stringify(prev) !== JSON.stringify(latestUser)) {
+          return latestUser;
+        }
+        return prev;
+      });
+    }, 500); // check every 500ms
+
+    return () => clearInterval(interval);
+  }, []);
   /* ================= HELPERS ================= */
   const isRecentNotification = useCallback((notif) => {
     if (!notif?.created_at) return false;
@@ -98,6 +146,16 @@ const Topbar = ({ setMobileOpen }) => {
     },
     [isRecentNotification],
   );
+
+  const getDisplayName = useMemo(() => {
+    const rawName =
+      user?.username?.trim() ||
+      user?.full_name?.trim() ||
+      user?.email?.split("@")[0] ||
+      "Admin";
+
+    return rawName.split(" ")[0];
+  }, [user]);
 
   /* ================= REACT QUERY CACHE ================= */
   const {
@@ -410,6 +468,7 @@ const Topbar = ({ setMobileOpen }) => {
       setSelectedNotifIds([]);
       localStorage.removeItem("admin_session");
       localStorage.removeItem("admin_user");
+      window.dispatchEvent(new Event("admin-user-updated"));
       navigate("/");
     }
   };
@@ -426,9 +485,7 @@ const Topbar = ({ setMobileOpen }) => {
         </button>
 
         <div className="topbar-title-wrapper">
-          <h3 className="topbar-title">
-            Hi, {user?.username?.split(" ")[0] || "Admin"}
-          </h3>
+          <h3 className="topbar-title">Hi, {getDisplayName}</h3>
         </div>
       </div>
 
