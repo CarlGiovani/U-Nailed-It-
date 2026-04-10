@@ -137,42 +137,27 @@ const Dashboard = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "bookings" },
-        (payload) => {
-          console.log("Dashboard realtime: bookings", payload.eventType);
-          invalidateDashboard();
-        },
+        () => invalidateDashboard(),
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "revenue_logs" },
-        (payload) => {
-          console.log("Dashboard realtime: revenue_logs", payload.eventType);
-          invalidateDashboard();
-        },
+        () => invalidateDashboard(),
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "reviews" },
-        (payload) => {
-          console.log("Dashboard realtime: reviews", payload.eventType);
-          invalidateDashboard();
-        },
+        () => invalidateDashboard(),
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "services" },
-        (payload) => {
-          console.log("Dashboard realtime: services", payload.eventType);
-          invalidateDashboard();
-        },
+        () => invalidateDashboard(),
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "audit_logs" },
-        (payload) => {
-          console.log("Dashboard realtime: audit_logs", payload.eventType);
-          invalidateDashboard();
-        },
+        () => invalidateDashboard(),
       )
       .subscribe((status) => {
         console.log("Dashboard realtime status:", status);
@@ -181,9 +166,7 @@ const Dashboard = () => {
     realtimeChannelRef.current = channel;
 
     return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
 
       if (realtimeChannelRef.current) {
         supabase.removeChannel(realtimeChannelRef.current);
@@ -203,9 +186,10 @@ const Dashboard = () => {
     }
   }, [bookings.length, currentPage]);
 
-  const totalPages = useMemo(() => {
-    return Math.max(1, Math.ceil(bookings.length / ITEMS_PER_PAGE));
-  }, [bookings.length]);
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(bookings.length / ITEMS_PER_PAGE)),
+    [bookings.length],
+  );
 
   const paginatedBookings = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -241,7 +225,7 @@ const Dashboard = () => {
     }));
   }, [bookings]);
 
-  const COLORS = ["#d4af37", "#ff69b4", "#8884d8", "#82ca9d", "#60a5fa"];
+  const COLORS = ["#d4af37", "#ff69b4", "#8b5cf6", "#60a5fa", "#34d399"];
 
   const getStatusClass = (status) => {
     if (status === "approved") return "status approved";
@@ -396,7 +380,6 @@ const Dashboard = () => {
       autoFitColumns(bookingsSheet);
 
       const customersSheet = workbook.addWorksheet("Customers");
-
       customersSheet.columns = [
         { header: "ID", key: "id" },
         { header: "Full Name", key: "full_name" },
@@ -421,7 +404,6 @@ const Dashboard = () => {
       autoFitColumns(customersSheet);
 
       const servicesSheet = workbook.addWorksheet("Services");
-
       servicesSheet.columns = [
         { header: "ID", key: "id" },
         { header: "Name", key: "name" },
@@ -450,7 +432,6 @@ const Dashboard = () => {
       autoFitColumns(servicesSheet);
 
       const categoriesSheet = workbook.addWorksheet("Service Categories");
-
       categoriesSheet.columns = [
         { header: "ID", key: "id" },
         { header: "Service ID", key: "service_id" },
@@ -475,7 +456,6 @@ const Dashboard = () => {
       autoFitColumns(categoriesSheet);
 
       const variantsSheet = workbook.addWorksheet("Service Variants");
-
       variantsSheet.columns = [
         { header: "ID", key: "id" },
         { header: "Category ID", key: "category_id" },
@@ -506,7 +486,6 @@ const Dashboard = () => {
       autoFitColumns(variantsSheet);
 
       const reviewsSheet = workbook.addWorksheet("Reviews");
-
       reviewsSheet.columns = [
         { header: "ID", key: "id" },
         { header: "Booking ID", key: "booking_id" },
@@ -537,7 +516,6 @@ const Dashboard = () => {
       autoFitColumns(reviewsSheet);
 
       const notificationsSheet = workbook.addWorksheet("Notifications");
-
       notificationsSheet.columns = [
         { header: "ID", key: "id" },
         { header: "Type", key: "type" },
@@ -568,7 +546,6 @@ const Dashboard = () => {
       autoFitColumns(notificationsSheet);
 
       const revenueLogsSheet = workbook.addWorksheet("Revenue Logs");
-
       revenueLogsSheet.columns = [
         { header: "ID", key: "id" },
         { header: "Booking ID", key: "booking_id" },
@@ -595,7 +572,6 @@ const Dashboard = () => {
       autoFitColumns(revenueLogsSheet);
 
       const announcementsSheet = workbook.addWorksheet("Announcements");
-
       announcementsSheet.columns = [
         { header: "ID", key: "id" },
         { header: "Title", key: "title" },
@@ -628,7 +604,6 @@ const Dashboard = () => {
       autoFitColumns(announcementsSheet);
 
       const policiesSheet = workbook.addWorksheet("Policies");
-
       policiesSheet.columns = [
         { header: "ID", key: "id" },
         { header: "Title", key: "title" },
@@ -653,7 +628,6 @@ const Dashboard = () => {
       autoFitColumns(policiesSheet);
 
       const calendarSlotsSheet = workbook.addWorksheet("Calendar Slots");
-
       calendarSlotsSheet.columns = [
         { header: "ID", key: "id" },
         { header: "Service ID", key: "service_id" },
@@ -1115,9 +1089,19 @@ const Dashboard = () => {
   if (isLoading) {
     return (
       <AdminLayout>
-        <div className="dashboard-container">
-          <h1 className="dashboard-title">Dashboard Overview</h1>
-          <div className="empty-panel">Loading dashboard...</div>
+        <div className="dashboard-shell">
+          <div className="dashboard-container">
+            <div className="dashboard-page-header">
+              <div>
+                <h1 className="dashboard-title">Dashboard Overview</h1>
+                <p className="dashboard-subtitle">
+                  View your system performance, activity, and booking summary.
+                </p>
+              </div>
+            </div>
+
+            <div className="empty-panel">Loading dashboard...</div>
+          </div>
         </div>
       </AdminLayout>
     );
@@ -1126,9 +1110,19 @@ const Dashboard = () => {
   if (error) {
     return (
       <AdminLayout>
-        <div className="dashboard-container">
-          <h1 className="dashboard-title">Dashboard Overview</h1>
-          <div className="empty-panel">Failed to load dashboard.</div>
+        <div className="dashboard-shell">
+          <div className="dashboard-container">
+            <div className="dashboard-page-header">
+              <div>
+                <h1 className="dashboard-title">Dashboard Overview</h1>
+                <p className="dashboard-subtitle">
+                  View your system performance, activity, and booking summary.
+                </p>
+              </div>
+            </div>
+
+            <div className="empty-panel">Failed to load dashboard.</div>
+          </div>
         </div>
       </AdminLayout>
     );
@@ -1136,208 +1130,280 @@ const Dashboard = () => {
 
   return (
     <AdminLayout>
-      <div className="dashboard-container">
-        <h1 className="dashboard-title">Dashboard Overview</h1>
+      <div className="dashboard-shell">
+        <div className="dashboard-container">
+          <div className="dashboard-page-header">
+            <div>
+              <h1 className="dashboard-title">Dashboard Overview</h1>
+              <p className="dashboard-subtitle">
+                View your system performance, activity, and booking summary.
+              </p>
+            </div>
 
-        {isFetching && (
-          <div className="loading-text">Refreshing dashboard...</div>
-        )}
+            <div className="dashboard-actions dashboard-actions-top">
+              <button
+                onClick={exportExcel}
+                className="admin-btn admin-btn-secondary"
+                disabled={exportingExcel}
+              >
+                {exportingExcel ? "Exporting Excel..." : "Export Excel"}
+              </button>
 
-        <div className="stats-grid">
-          <div className="stat-card">
-            <h3>Total Bookings</h3>
-            <p>{stats.totalBookings}</p>
-          </div>
-
-          <div className="stat-card">
-            <h3>Total Revenue</h3>
-            <p>{formatCurrency(stats.totalRevenue)}</p>
-          </div>
-
-          <div className="stat-card stat-card-pending">
-            <h3>Pending Approval</h3>
-            <p>{stats.pendingApprovalBookings}</p>
-          </div>
-
-          <div className="stat-card">
-            <h3>Pending Reviews</h3>
-            <p>{stats.pendingReviews}</p>
-          </div>
-
-          <div className="stat-card">
-            <h3>Active Services</h3>
-            <p>{stats.activeServices}</p>
-          </div>
-        </div>
-
-        <div className="charts-grid">
-          <div className="chart-card">
-            <h3>Bookings Per Month</h3>
-
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={bookingChart}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="bookings" fill="#d4af37" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="chart-card">
-            <h3>Revenue Per Month</h3>
-
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={revenueChart}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip formatter={(value) => formatCurrency(value)} />
-                <Bar dataKey="revenue" fill="#ff69b4" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="chart-card">
-            <h3>Top Services</h3>
-
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={topServices}
-                  dataKey="value"
-                  nameKey="name"
-                  outerRadius={100}
-                >
-                  {topServices.map((entry, index) => (
-                    <Cell
-                      key={entry.name || index}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="activity-card">
-          <div className="section-header">
-            <h3>Audit Logs</h3>
-            <span>{activities.length} activities</span>
-          </div>
-
-          <div className="activity-feed">
-            {activities.length > 0 ? (
-              activities.slice(0, 5).map((log) => (
-                <div className="activity-item" key={log.id}>
-                  <div className={`activity-icon ${log.action}`}>●</div>
-
-                  <div className="activity-content">
-                    <div className="activity-title">
-                      {safeText(log.action).replaceAll("_", " ")}
-                    </div>
-
-                    <div className="activity-desc">
-                      {safeText(log.description)}
-                    </div>
-
-                    <div className="activity-time">
-                      {formatDateTime(log.created_at)}
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="empty-panel">No audit logs found.</div>
-            )}
-          </div>
-        </div>
-
-        <div className="dashboard-actions">
-          <button
-            onClick={exportExcel}
-            className="admin-btn"
-            disabled={exportingExcel}
-          >
-            {exportingExcel ? "Exporting Excel..." : "Export Excel"}
-          </button>
-
-          <button
-            onClick={exportPDF}
-            className="admin-btn"
-            disabled={exportingPDF}
-          >
-            {exportingPDF ? "Exporting PDF..." : "Export PDF Report"}
-          </button>
-        </div>
-
-        <div className="recent-bookings">
-          <div className="section-header">
-            <h2>Recent Bookings</h2>
-            <span>{bookings.length} bookings</span>
-          </div>
-
-          <div className="table-card">
-            <div className="table-wrapper recent-bookings-scroll">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Service</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {paginatedBookings.length > 0 ? (
-                    paginatedBookings.map((booking) => (
-                      <tr key={booking.id}>
-                        <td>{booking.id}</td>
-                        <td>{booking.customers?.full_name || "N/A"}</td>
-                        <td>{booking.services?.name || "N/A"}</td>
-                        <td>
-                          <span className={getStatusClass(booking.status)}>
-                            {booking.status}
-                          </span>
-                        </td>
-                        <td>{booking.booking_date}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="5" className="empty-state">
-                        No recent bookings found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              <button
+                onClick={exportPDF}
+                className="admin-btn"
+                disabled={exportingPDF}
+              >
+                {exportingPDF ? "Exporting PDF..." : "Export PDF Report"}
+              </button>
             </div>
           </div>
 
-          <div className="pagination">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((prev) => prev - 1)}
-            >
-              Prev
-            </button>
+          {isFetching && (
+            <div className="dashboard-refresh-banner">
+              Refreshing dashboard...
+            </div>
+          )}
 
-            <span>
-              Page {currentPage} / {totalPages}
-            </span>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <span className="stat-label">Total Bookings</span>
+              <p>{stats.totalBookings}</p>
+            </div>
 
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((prev) => prev + 1)}
-            >
-              Next
-            </button>
+            <div className="stat-card">
+              <span className="stat-label">Total Revenue</span>
+              <p>{formatCurrency(stats.totalRevenue)}</p>
+            </div>
+
+            <div className="stat-card stat-card-pending">
+              <span className="stat-label">Pending Approval</span>
+              <p>{stats.pendingApprovalBookings}</p>
+            </div>
+
+            <div className="stat-card">
+              <span className="stat-label">Pending Reviews</span>
+              <p>{stats.pendingReviews}</p>
+            </div>
+
+            <div className="stat-card">
+              <span className="stat-label">Active Services</span>
+              <p>{stats.activeServices}</p>
+            </div>
+          </div>
+
+          <div className="charts-grid">
+            <div className="chart-card">
+              <div className="card-heading">
+                <h3>Bookings Per Month</h3>
+                <span>Monthly trend</span>
+              </div>
+
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={bookingChart}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar
+                    dataKey="bookings"
+                    fill="#d4af37"
+                    radius={[8, 8, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="chart-card">
+              <div className="card-heading">
+                <h3>Revenue Per Month</h3>
+                <span>Financial trend</span>
+              </div>
+
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={revenueChart}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => formatCurrency(value)} />
+                  <Bar dataKey="revenue" fill="#ff69b4" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="chart-card">
+              <div className="card-heading">
+                <h3>Top Services</h3>
+                <span>Based on recent bookings</span>
+              </div>
+
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie
+                    data={topServices}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={100}
+                  >
+                    {topServices.map((entry, index) => (
+                      <Cell
+                        key={entry.name || index}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="dashboard-main-grid">
+            <div className="activity-card">
+              <div className="section-header">
+                <div>
+                  <h3>Audit Logs</h3>
+                  <p className="section-subtext">Latest admin activities</p>
+                </div>
+                <span>{activities.length} activities</span>
+              </div>
+
+              <div className="activity-feed">
+                {activities.length > 0 ? (
+                  activities.slice(0, 5).map((log) => (
+                    <div className="activity-item" key={log.id}>
+                      <div className={`activity-icon ${log.action}`} />
+
+                      <div className="activity-content">
+                        <div className="activity-title">
+                          {safeText(log.action).replaceAll("_", " ")}
+                        </div>
+
+                        <div className="activity-desc">
+                          {safeText(log.description)}
+                        </div>
+
+                        <div className="activity-time">
+                          {formatDateTime(log.created_at)}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-panel">No audit logs found.</div>
+                )}
+              </div>
+            </div>
+
+            <div className="recent-bookings card-surface">
+              <div className="section-header">
+                <div>
+                  <h2>Recent Bookings</h2>
+                  <p className="section-subtext">Latest booking records</p>
+                </div>
+                <span>{bookings.length} bookings</span>
+              </div>
+
+              {/* DESKTOP / TABLE VIEW */}
+              <div className="table-card table-card-elevated recent-bookings-desktop">
+                <div className="table-wrapper recent-bookings-scroll">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Service</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {paginatedBookings.length > 0 ? (
+                        paginatedBookings.map((booking) => (
+                          <tr key={booking.id}>
+                            <td>{booking.id}</td>
+                            <td>{booking.customers?.full_name || "N/A"}</td>
+                            <td>{booking.services?.name || "N/A"}</td>
+                            <td>
+                              <span className={getStatusClass(booking.status)}>
+                                {booking.status}
+                              </span>
+                            </td>
+                            <td>{booking.booking_date || "N/A"}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="5" className="empty-state">
+                            No recent bookings found.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* MOBILE / CARD VIEW */}
+              <div className="recent-bookings-mobile">
+                {paginatedBookings.length > 0 ? (
+                  paginatedBookings.map((booking) => (
+                    <div className="booking-mobile-card" key={booking.id}>
+                      <div className="booking-mobile-top">
+                        <div>
+                          <p className="booking-mobile-label">Booking ID</p>
+                          <h4 className="booking-mobile-id">{booking.id}</h4>
+                        </div>
+
+                        <span className={getStatusClass(booking.status)}>
+                          {booking.status}
+                        </span>
+                      </div>
+
+                      <div className="booking-mobile-grid">
+                        <div className="booking-mobile-field">
+                          <span className="booking-mobile-label">Name</span>
+                          <p>{booking.customers?.full_name || "N/A"}</p>
+                        </div>
+
+                        <div className="booking-mobile-field">
+                          <span className="booking-mobile-label">Service</span>
+                          <p>{booking.services?.name || "N/A"}</p>
+                        </div>
+
+                        <div className="booking-mobile-field booking-mobile-field-full">
+                          <span className="booking-mobile-label">Date</span>
+                          <p>{booking.booking_date || "N/A"}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-panel">No recent bookings found.</div>
+                )}
+              </div>
+
+              <div className="pagination">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((prev) => prev - 1)}
+                >
+                  Prev
+                </button>
+
+                <span className="pagination-indicator">
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((prev) => prev + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
