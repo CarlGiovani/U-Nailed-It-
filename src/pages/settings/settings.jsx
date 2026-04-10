@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Sidebar from "../../components/layout/sidebar";
 import Topbar from "../../components/layout/topbar";
 import {
@@ -12,6 +12,20 @@ import {
 import "../../styles/settings.css";
 
 const ITEMS_PER_PAGE = 6;
+
+const DEFAULT_CONFIRM_MODAL = {
+  open: false,
+  title: "",
+  message: "",
+  onConfirm: null,
+};
+
+const DEFAULT_FEEDBACK_MODAL = {
+  open: false,
+  title: "",
+  message: "",
+  type: "info",
+};
 
 const Settings = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -72,21 +86,18 @@ const Settings = () => {
     danger: false,
   });
 
-  const [confirmModal, setConfirmModal] = useState({
-    open: false,
-    title: "",
-    message: "",
-    onConfirm: null,
-  });
-
-  const [feedbackModal, setFeedbackModal] = useState({
-    open: false,
-    title: "",
-    message: "",
-    type: "info", // success | error | info
-  });
+  const [confirmModal, setConfirmModal] = useState(DEFAULT_CONFIRM_MODAL);
+  const [feedbackModal, setFeedbackModal] = useState(DEFAULT_FEEDBACK_MODAL);
 
   const currentAdminId = adminProfile?.id || null;
+
+  const resetConfirmModal = useCallback(() => {
+    setConfirmModal(DEFAULT_CONFIRM_MODAL);
+  }, []);
+
+  const resetFeedbackModal = useCallback(() => {
+    setFeedbackModal(DEFAULT_FEEDBACK_MODAL);
+  }, []);
 
   const sortedAdmins = useMemo(() => {
     if (!Array.isArray(allAdmins)) return [];
@@ -118,28 +129,25 @@ const Settings = () => {
     });
   }, [sortedAdmins, adminSearch]);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredAdmins.length / ITEMS_PER_PAGE),
-  );
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredAdmins.length / ITEMS_PER_PAGE));
+  }, [filteredAdmins.length]);
+
+  const safeCurrentPage = useMemo(() => {
+    return Math.min(Math.max(currentPage, 1), totalPages);
+  }, [currentPage, totalPages]);
 
   const paginatedAdmins = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
     return filteredAdmins.slice(startIndex, endIndex);
-  }, [filteredAdmins, currentPage]);
+  }, [filteredAdmins, safeCurrentPage]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [adminSearch]);
 
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
-
-  const fetchSettingsData = async ({ silent = false } = {}) => {
+  const fetchSettingsData = useCallback(async ({ silent = false } = {}) => {
     try {
       setPageError("");
 
@@ -168,7 +176,7 @@ const Settings = () => {
     } catch (err) {
       console.error("Failed to load settings data:", err);
       setPageError(
-        err?.response?.data?.error || "Failed to load settings data.",
+        err?.response?.data?.error || "Failed to load settings data."
       );
       setAdminProfile(null);
       setAllAdmins([]);
@@ -177,180 +185,190 @@ const Settings = () => {
       setAdminsLoading(false);
       setPageRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchSettingsData();
-  }, []);
+  }, [fetchSettingsData]);
 
-  const toggleSection = (key) => {
+  const toggleSection = useCallback((key) => {
     setSectionOpen((prev) => ({
       ...prev,
       [key]: !prev[key],
     }));
-  };
+  }, []);
 
-  const handleEditFormChange = (e) => {
+  const handleEditFormChange = useCallback((e) => {
     const { name, value } = e.target;
-
     setEditForm((prev) => ({
       ...prev,
       [name]: value,
     }));
-  };
+  }, []);
 
-  const handlePasswordChange = (e) => {
+  const handlePasswordChange = useCallback((e) => {
     const { name, value } = e.target;
-
     setPasswordForm((prev) => ({
       ...prev,
       [name]: value,
     }));
-  };
+  }, []);
 
-  const handleCreateAdminChange = (e) => {
+  const handleCreateAdminChange = useCallback((e) => {
     const { name, value } = e.target;
-
     setCreateAdminForm((prev) => ({
       ...prev,
       [name]: value,
     }));
-  };
+  }, []);
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = useCallback((e) => {
     setAdminSearch(e.target.value);
-  };
+  }, []);
 
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault();
-    setEditMessage("");
-    setEditError("");
+  const goToPage = useCallback(
+    (page) => {
+      const clamped = Math.min(Math.max(page, 1), totalPages);
+      setCurrentPage(clamped);
+    },
+    [totalPages]
+  );
 
-    try {
-      setEditLoading(true);
+  const handleUpdateProfile = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setEditMessage("");
+      setEditError("");
 
-      const trimmedFullName = editForm.full_name.trim();
-      const trimmedUsername = editForm.username.trim();
+      try {
+        setEditLoading(true);
 
-      const res = await updateCurrentAdminProfile({
-        full_name: trimmedFullName,
-        username: trimmedUsername,
-      });
+        const trimmedFullName = editForm.full_name.trim();
+        const trimmedUsername = editForm.username.trim();
 
-      setEditMessage(res?.message || "Profile updated successfully.");
+        const res = await updateCurrentAdminProfile({
+          full_name: trimmedFullName,
+          username: trimmedUsername,
+        });
 
-      // gamitin ang backend profile kung meron, pero siguraduhin nating
-      // updated talaga ang full_name at username gamit ang form values
-      const updatedProfile = {
-        ...(adminProfile || {}),
-        ...(res?.profile || {}),
-        full_name: trimmedFullName,
-        username: trimmedUsername,
-      };
+        setEditMessage(res?.message || "Profile updated successfully.");
 
-      setAdminProfile(updatedProfile);
+        const updatedProfile = {
+          ...(adminProfile || {}),
+          ...(res?.profile || {}),
+          full_name: trimmedFullName,
+          username: trimmedUsername,
+        };
 
-      setAllAdmins((prev) =>
-        prev.map((admin) =>
-          admin.id === updatedProfile.id
-            ? { ...admin, ...updatedProfile }
-            : admin,
-        ),
-      );
+        setAdminProfile(updatedProfile);
 
-      const storedUser = JSON.parse(localStorage.getItem("admin_user") || "{}");
+        setAllAdmins((prev) =>
+          prev.map((admin) =>
+            admin.id === updatedProfile.id ? { ...admin, ...updatedProfile } : admin
+          )
+        );
 
-      const updatedAdminUser = {
-        ...storedUser,
-        ...updatedProfile,
-        full_name: trimmedFullName,
-        username: trimmedUsername,
-      };
+        const storedUser = JSON.parse(localStorage.getItem("admin_user") || "{}");
+        const updatedAdminUser = {
+          ...storedUser,
+          ...updatedProfile,
+          full_name: trimmedFullName,
+          username: trimmedUsername,
+        };
 
-      localStorage.setItem("admin_user", JSON.stringify(updatedAdminUser));
-      window.dispatchEvent(new Event("admin-user-updated"));
-    } catch (err) {
-      console.error("Failed to update profile:", err);
-      setEditError(err?.response?.data?.error || "Failed to update profile.");
-    } finally {
-      setEditLoading(false);
-    }
-  };
-  const handleChangePassword = async (e) => {
-    e.preventDefault();
-    setPasswordMessage("");
-    setPasswordError("");
+        localStorage.setItem("admin_user", JSON.stringify(updatedAdminUser));
+        window.dispatchEvent(new Event("admin-user-updated"));
+      } catch (err) {
+        console.error("Failed to update profile:", err);
+        setEditError(err?.response?.data?.error || "Failed to update profile.");
+      } finally {
+        setEditLoading(false);
+      }
+    },
+    [editForm, adminProfile]
+  );
 
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError("Passwords do not match.");
-      return;
-    }
+  const handleChangePassword = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setPasswordMessage("");
+      setPasswordError("");
 
-    try {
-      setPasswordLoading(true);
+      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        setPasswordError("Passwords do not match.");
+        return;
+      }
 
-      const res = await changePassword({
-        newPassword: passwordForm.newPassword,
-        confirmPassword: passwordForm.confirmPassword,
-      });
+      try {
+        setPasswordLoading(true);
 
-      setPasswordMessage(res?.message || "Password updated successfully.");
-      setPasswordForm({
-        newPassword: "",
-        confirmPassword: "",
-      });
-    } catch (err) {
-      console.error("Failed to change password:", err);
-      setPasswordError(
-        err?.response?.data?.error || "Failed to change password.",
-      );
-    } finally {
-      setPasswordLoading(false);
-    }
-  };
+        const res = await changePassword({
+          newPassword: passwordForm.newPassword,
+          confirmPassword: passwordForm.confirmPassword,
+        });
 
-  const handleCreateAdmin = async (e) => {
-    e.preventDefault();
-    setCreateMessage("");
-    setCreateError("");
+        setPasswordMessage(res?.message || "Password updated successfully.");
+        setPasswordForm({
+          newPassword: "",
+          confirmPassword: "",
+        });
+      } catch (err) {
+        console.error("Failed to change password:", err);
+        setPasswordError(
+          err?.response?.data?.error || "Failed to change password."
+        );
+      } finally {
+        setPasswordLoading(false);
+      }
+    },
+    [passwordForm]
+  );
 
-    try {
-      setCreateAdminLoading(true);
+  const handleCreateAdmin = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setCreateMessage("");
+      setCreateError("");
 
-      const res = await createAdminAccount({
-        full_name: createAdminForm.full_name.trim(),
-        username: createAdminForm.username.trim(),
-        email: createAdminForm.email.trim(),
-        password: createAdminForm.password,
-      });
+      try {
+        setCreateAdminLoading(true);
 
-      setCreateMessage(res?.message || "Admin account created successfully.");
-      setCreateAdminForm({
-        full_name: "",
-        username: "",
-        email: "",
-        password: "",
-      });
+        const res = await createAdminAccount({
+          full_name: createAdminForm.full_name.trim(),
+          username: createAdminForm.username.trim(),
+          email: createAdminForm.email.trim(),
+          password: createAdminForm.password,
+        });
 
-      setSectionOpen((prev) => ({
-        ...prev,
-        createAdmin: true,
-        admins: true,
-      }));
+        setCreateMessage(res?.message || "Admin account created successfully.");
+        setCreateAdminForm({
+          full_name: "",
+          username: "",
+          email: "",
+          password: "",
+        });
 
-      setCurrentPage(1);
-      await fetchSettingsData({ silent: true });
-    } catch (err) {
-      console.error("Failed to create admin account:", err);
-      setCreateError(
-        err?.response?.data?.error || "Failed to create admin account.",
-      );
-    } finally {
-      setCreateAdminLoading(false);
-    }
-  };
+        setSectionOpen((prev) => ({
+          ...prev,
+          createAdmin: true,
+          admins: true,
+        }));
 
-  const proceedDeleteMyAccount = async () => {
+        setCurrentPage(1);
+        await fetchSettingsData({ silent: true });
+      } catch (err) {
+        console.error("Failed to create admin account:", err);
+        setCreateError(
+          err?.response?.data?.error || "Failed to create admin account."
+        );
+      } finally {
+        setCreateAdminLoading(false);
+      }
+    },
+    [createAdminForm, fetchSettingsData]
+  );
+
+  const proceedDeleteMyAccount = useCallback(async () => {
     try {
       setDeleteLoading(true);
 
@@ -383,9 +401,9 @@ const Settings = () => {
     } finally {
       setDeleteLoading(false);
     }
-  };
+  }, []);
 
-  const handleDeleteMyAccount = () => {
+  const handleDeleteMyAccount = useCallback(() => {
     setConfirmModal({
       open: true,
       title: "Delete My Account?",
@@ -393,7 +411,7 @@ const Settings = () => {
         "Are you sure you want to permanently delete your admin account? This action cannot be undone.",
       onConfirm: proceedDeleteMyAccount,
     });
-  };
+  }, [proceedDeleteMyAccount]);
 
   const adminCount = allAdmins.length;
   const currentRole = adminProfile?.role || "Admin";
@@ -416,14 +434,7 @@ const Settings = () => {
                 <button
                   type="button"
                   className="settings-btn ghost"
-                  onClick={() =>
-                    setConfirmModal({
-                      open: false,
-                      title: "",
-                      message: "",
-                      onConfirm: null,
-                    })
-                  }
+                  onClick={resetConfirmModal}
                 >
                   Cancel
                 </button>
@@ -433,12 +444,7 @@ const Settings = () => {
                   className="settings-btn danger"
                   onClick={async () => {
                     const action = confirmModal.onConfirm;
-                    setConfirmModal({
-                      open: false,
-                      title: "",
-                      message: "",
-                      onConfirm: null,
-                    });
+                    resetConfirmModal();
                     if (action) await action();
                   }}
                 >
@@ -461,14 +467,7 @@ const Settings = () => {
                   className={`settings-btn ${
                     feedbackModal.type === "error" ? "danger" : "primary"
                   }`}
-                  onClick={() =>
-                    setFeedbackModal({
-                      open: false,
-                      title: "",
-                      message: "",
-                      type: "info",
-                    })
-                  }
+                  onClick={resetFeedbackModal}
                 >
                   OK
                 </button>
@@ -613,10 +612,7 @@ const Settings = () => {
                       </div>
                     )}
 
-                    <form
-                      onSubmit={handleUpdateProfile}
-                      className="settings-form"
-                    >
+                    <form onSubmit={handleUpdateProfile} className="settings-form">
                       <div className="compact-two-grid">
                         <div className="form-group">
                           <label htmlFor="full_name">Full Name</label>
@@ -710,9 +706,7 @@ const Settings = () => {
                       </div>
 
                       <div className="form-group">
-                        <label htmlFor="confirmPassword">
-                          Confirm Password
-                        </label>
+                        <label htmlFor="confirmPassword">Confirm Password</label>
                         <div className="password-input-wrap">
                           <input
                             id="confirmPassword"
@@ -873,15 +867,15 @@ const Settings = () => {
                             <button
                               type="button"
                               className="settings-btn ghost"
-                              onClick={() => setCurrentPage((prev) => prev - 1)}
-                              disabled={currentPage === 1}
+                              onClick={() => goToPage(safeCurrentPage - 1)}
+                              disabled={safeCurrentPage === 1}
                             >
                               Previous
                             </button>
 
                             <div className="settings-pagination-info">
                               <span>
-                                Page <strong>{currentPage}</strong> of{" "}
+                                Page <strong>{safeCurrentPage}</strong> of{" "}
                                 <strong>{totalPages}</strong>
                               </span>
                             </div>
@@ -889,8 +883,8 @@ const Settings = () => {
                             <button
                               type="button"
                               className="settings-btn ghost"
-                              onClick={() => setCurrentPage((prev) => prev + 1)}
-                              disabled={currentPage === totalPages}
+                              onClick={() => goToPage(safeCurrentPage + 1)}
+                              disabled={safeCurrentPage === totalPages}
                             >
                               Next
                             </button>
@@ -931,10 +925,7 @@ const Settings = () => {
                       </div>
                     )}
 
-                    <form
-                      onSubmit={handleCreateAdmin}
-                      className="settings-form"
-                    >
+                    <form onSubmit={handleCreateAdmin} className="settings-form">
                       <div className="compact-two-grid">
                         <div className="form-group">
                           <label htmlFor="create_full_name">Full Name</label>
