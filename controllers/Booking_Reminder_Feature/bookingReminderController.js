@@ -5,7 +5,7 @@ export const runBookingReminderJob = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET_REMINDERS_NOTIF}`) {
       return res.status(401).json({
         error: "Unauthorized",
       });

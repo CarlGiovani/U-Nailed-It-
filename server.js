@@ -20,6 +20,7 @@ import reviewsRoutes from "./routes/Review_Feature/reviewsRoutes.js";
 import servicesRouter from "./routes/Services_Feature/serviceRoutes.js";
 import testEmailRoutes from "./routes/testEmail.js";
 import bookingRemindersRoutes from "./routes/Booking_Reminders_Feature/bookingRemindersRoutes.js";
+import jobRoutes from "./routes/Cron_Jobs_Feature/jobRoutes.js";
 
 dotenv.config();
 
@@ -63,6 +64,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api", bookingRemindersRoutes);
+app.use("/api/jobs", jobRoutes);
 
 // START CRON JOBS
 scheduleSlotCleanup();
