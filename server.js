@@ -66,9 +66,9 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api", bookingRemindersRoutes);
 app.use("/api/jobs", jobRoutes);
 
-// START CRON JOBS
-scheduleSlotCleanup();
-scheduleBookingExpiry();
+// START CRON JOBS LOCAL for serverless
+// scheduleSlotCleanup();
+// scheduleBookingExpiry();
 
 // START SERVER
 app.listen(PORT, () => {
