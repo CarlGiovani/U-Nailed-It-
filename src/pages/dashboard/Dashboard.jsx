@@ -3,7 +3,7 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -26,6 +26,8 @@ import {
 import "../../styles/dashboard.css";
 
 const ITEMS_PER_PAGE = 5;
+const DASHBOARD_QUERY_KEY = ["admin-dashboard"];
+const REALTIME_DEBOUNCE_MS = 500;
 
 const fetchDashboardData = async () => {
   const [dashboardData, logs] = await Promise.all([
@@ -60,104 +62,155 @@ const Dashboard = () => {
   const [exportingPDF, setExportingPDF] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
 
+  const debounceTimeoutRef = useRef(null);
+  const isInvalidatingRef = useRef(false);
+  const realtimeChannelRef = useRef(null);
+
   const {
     data: dashboardData,
     isLoading,
     isFetching,
     error,
   } = useQuery({
-    queryKey: ["admin-dashboard"],
+    queryKey: DASHBOARD_QUERY_KEY,
     queryFn: fetchDashboardData,
-    staleTime: 1000 * 60 * 2, // 2 mins fresh
-    gcTime: 1000 * 60 * 10, // 10 mins cache
-    refetchOnWindowFocus: true,
+    staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
     retry: 2,
   });
 
-  const stats = dashboardData?.stats || {
-    totalBookings: 0,
-    totalRevenue: 0,
-    pendingReviews: 0,
-    activeServices: 0,
-    pendingApprovalBookings: 0,
-  };
+  const stats = useMemo(
+    () => ({
+      totalBookings: dashboardData?.stats?.totalBookings || 0,
+      totalRevenue: dashboardData?.stats?.totalRevenue || 0,
+      pendingReviews: dashboardData?.stats?.pendingReviews || 0,
+      activeServices: dashboardData?.stats?.activeServices || 0,
+      pendingApprovalBookings:
+        dashboardData?.stats?.pendingApprovalBookings || 0,
+    }),
+    [dashboardData?.stats],
+  );
 
-  const analytics = dashboardData?.analytics || {
-    bookingsPerMonth: {},
-    revenuePerMonth: {},
-  };
+  const analytics = useMemo(
+    () => ({
+      bookingsPerMonth: dashboardData?.analytics?.bookingsPerMonth || {},
+      revenuePerMonth: dashboardData?.analytics?.revenuePerMonth || {},
+    }),
+    [dashboardData?.analytics],
+  );
 
   const bookings = useMemo(
     () => dashboardData?.recentBookings || [],
     [dashboardData?.recentBookings],
   );
-  const activities = dashboardData?.activities || [];
+
+  const activities = useMemo(
+    () => dashboardData?.activities || [],
+    [dashboardData?.activities],
+  );
+
+  const invalidateDashboard = () => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    debounceTimeoutRef.current = setTimeout(async () => {
+      if (isInvalidatingRef.current) return;
+
+      try {
+        isInvalidatingRef.current = true;
+        await queryClient.invalidateQueries({
+          queryKey: DASHBOARD_QUERY_KEY,
+        });
+      } catch (error) {
+        console.error("Dashboard invalidate error:", error);
+      } finally {
+        isInvalidatingRef.current = false;
+      }
+    }, REALTIME_DEBOUNCE_MS);
+  };
 
   useEffect(() => {
-    let timeoutId = null;
-
-    const invalidateDashboard = () => {
-      if (timeoutId) clearTimeout(timeoutId);
-
-      timeoutId = setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-      }, 300);
-    };
-
-    const dashboardChannel = supabase
+    const channel = supabase
       .channel("admin-dashboard-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "bookings" },
-        invalidateDashboard,
+        (payload) => {
+          console.log("Dashboard realtime: bookings", payload.eventType);
+          invalidateDashboard();
+        },
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "revenue_logs" },
-        invalidateDashboard,
+        (payload) => {
+          console.log("Dashboard realtime: revenue_logs", payload.eventType);
+          invalidateDashboard();
+        },
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "reviews" },
-        invalidateDashboard,
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications" },
-        invalidateDashboard,
+        (payload) => {
+          console.log("Dashboard realtime: reviews", payload.eventType);
+          invalidateDashboard();
+        },
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "services" },
-        invalidateDashboard,
+        (payload) => {
+          console.log("Dashboard realtime: services", payload.eventType);
+          invalidateDashboard();
+        },
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "audit_logs" },
-        invalidateDashboard,
+        (payload) => {
+          console.log("Dashboard realtime: audit_logs", payload.eventType);
+          invalidateDashboard();
+        },
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Dashboard realtime status:", status);
+      });
+
+    realtimeChannelRef.current = channel;
 
     return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      supabase.removeChannel(dashboardChannel);
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
     };
   }, [queryClient]);
 
   useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(bookings.length / ITEMS_PER_PAGE));
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
+    const computedTotalPages = Math.max(
+      1,
+      Math.ceil(bookings.length / ITEMS_PER_PAGE),
+    );
+
+    if (currentPage > computedTotalPages) {
+      setCurrentPage(computedTotalPages);
     }
   }, [bookings.length, currentPage]);
 
-  const totalPages = Math.ceil(bookings.length / ITEMS_PER_PAGE);
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(bookings.length / ITEMS_PER_PAGE));
+  }, [bookings.length]);
 
   const paginatedBookings = useMemo(() => {
-    return bookings.slice(
-      (currentPage - 1) * ITEMS_PER_PAGE,
-      currentPage * ITEMS_PER_PAGE,
-    );
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    return bookings.slice(start, end);
   }, [bookings, currentPage]);
 
   const bookingChart = useMemo(() => {
@@ -1276,11 +1329,11 @@ const Dashboard = () => {
             </button>
 
             <span>
-              Page {totalPages === 0 ? 0 : currentPage} / {totalPages || 1}
+              Page {currentPage} / {totalPages}
             </span>
 
             <button
-              disabled={currentPage === totalPages || totalPages === 0}
+              disabled={currentPage === totalPages}
               onClick={() => setCurrentPage((prev) => prev + 1)}
             >
               Next

@@ -53,7 +53,14 @@ const Topbar = ({ setMobileOpen }) => {
 
   /* ================= USER SYNC ================= */
   const syncUserFromStorage = useCallback(() => {
-    setUser(getStoredAdminUser());
+    setUser((prev) => {
+      const next = getStoredAdminUser();
+
+      const prevSerialized = JSON.stringify(prev ?? null);
+      const nextSerialized = JSON.stringify(next ?? null);
+
+      return prevSerialized === nextSerialized ? prev : next;
+    });
   }, []);
 
   useEffect(() => {
@@ -78,20 +85,6 @@ const Topbar = ({ setMobileOpen }) => {
     };
   }, [syncUserFromStorage]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const latestUser = getStoredAdminUser();
-
-      setUser((prev) => {
-        if (JSON.stringify(prev) !== JSON.stringify(latestUser)) {
-          return latestUser;
-        }
-        return prev;
-      });
-    }, 500); // check every 500ms
-
-    return () => clearInterval(interval);
-  }, []);
   /* ================= HELPERS ================= */
   const isRecentNotification = useCallback((notif) => {
     if (!notif?.created_at) return false;
@@ -179,30 +172,36 @@ const Topbar = ({ setMobileOpen }) => {
 
   const notifCount = unreadVisibleCount;
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(notifications.length / NOTIF_PER_PAGE),
-  );
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(notifications.length / NOTIF_PER_PAGE));
+  }, [notifications.length]);
 
-  const currentPage = page > totalPages ? 1 : page;
-  const startIndex = (currentPage - 1) * NOTIF_PER_PAGE;
+  const currentPage = useMemo(() => {
+    return page > totalPages ? 1 : page;
+  }, [page, totalPages]);
 
   const paginatedNotifications = useMemo(() => {
+    const startIndex = (currentPage - 1) * NOTIF_PER_PAGE;
     return notifications.slice(startIndex, startIndex + NOTIF_PER_PAGE);
-  }, [notifications, startIndex]);
+  }, [notifications, currentPage]);
 
-  const allVisibleSelected =
-    paginatedNotifications.length > 0 &&
-    paginatedNotifications.every((notif) =>
-      selectedNotifIds.includes(notif.id),
+  const allVisibleSelected = useMemo(() => {
+    return (
+      paginatedNotifications.length > 0 &&
+      paginatedNotifications.every((notif) =>
+        selectedNotifIds.includes(notif.id),
+      )
     );
+  }, [paginatedNotifications, selectedNotifIds]);
 
   const setNotificationsCache = useCallback(
     (updater) => {
       queryClient.setQueryData(NOTIFICATIONS_QUERY_KEY, (old = []) => {
+        const safeOld = Array.isArray(old) ? old : [];
         const nextValue =
-          typeof updater === "function" ? updater(old || []) : updater;
-        return Array.isArray(nextValue) ? nextValue : [];
+          typeof updater === "function" ? updater(safeOld) : updater;
+
+        return Array.isArray(nextValue) ? nextValue : safeOld;
       });
     },
     [queryClient],
@@ -325,7 +324,7 @@ const Topbar = ({ setMobileOpen }) => {
     const nextOpen = !notifOpen;
     setNotifOpen(nextOpen);
 
-    if (!notifOpen) {
+    if (nextOpen) {
       setPage(1);
       setManageMode(false);
       setSelectedNotifIds([]);
@@ -394,6 +393,7 @@ const Topbar = ({ setMobileOpen }) => {
       );
 
       setNotifOpen(false);
+      setProfileOpen(false);
       setManageMode(false);
       setSelectedNotifIds([]);
       navigate(targetPath);
@@ -461,6 +461,11 @@ const Topbar = ({ setMobileOpen }) => {
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
+
       queryClient.removeQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
       setNotifOpen(false);
       setProfileOpen(false);
