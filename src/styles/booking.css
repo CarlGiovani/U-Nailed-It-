@@ -21,10 +21,57 @@ body {
   margin: 0;
 }
 
+.bookings-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .bookings-subtitle {
   margin: 6px 0 0;
   color: #8b7280;
   font-size: 14px;
+}
+
+/* =========================================
+   REALTIME BADGE
+========================================= */
+.realtime-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.realtime-pill.live {
+  background: #ecfdf3;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+
+.realtime-pill.connecting,
+.realtime-pill.reconnecting {
+  background: #fff7ed;
+  color: #b45309;
+  border-color: #fed7aa;
+}
+
+.realtime-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.45);
 }
 
 /* =========================================
@@ -168,6 +215,41 @@ body {
 }
 
 /* =========================================
+   REFRESH BANNER
+========================================= */
+.refreshing-banner {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff8e7;
+  border: 1px solid #f6df9b;
+  color: #9a6b00;
+  font-weight: 700;
+  font-size: 13px;
+  animation: fadeIn 0.2s ease;
+}
+
+/* =========================================
+   SKELETON LOADING
+========================================= */
+.loading-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.loading-card {
+  height: 72px;
+  border-radius: 18px;
+  background: linear-gradient(90deg, #fff6fa 25%, #ffe8f2 50%, #fff6fa 75%);
+  background-size: 200% 100%;
+  border: 1px solid #ffe3ee;
+}
+
+.shimmer-row {
+  animation: shimmer 1.2s linear infinite;
+}
+
+/* =========================================
    PREMIUM TABLE
 ========================================= */
 .premium-table {
@@ -205,15 +287,27 @@ body {
   white-space: nowrap;
 }
 
+.premium-table tr {
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
 .premium-table tr:hover {
   background: #fff6fa;
+}
+
+.premium-table tr:active {
+  transform: scale(0.997);
 }
 
 .clickable {
   cursor: pointer;
   font-weight: 600;
   color: #c28c2d;
-  transition: 0.2s;
+  transition:
+    color 0.2s ease,
+    text-decoration-color 0.2s ease;
 }
 
 .clickable:hover {
@@ -231,13 +325,17 @@ body {
    STATUS BADGES
 ========================================= */
 .status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 6px 14px;
   border-radius: 25px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: white;
   text-transform: capitalize;
   white-space: nowrap;
+  letter-spacing: 0.2px;
 }
 
 .status-badge.pending_payment {
@@ -353,21 +451,33 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 14px;
   margin-bottom: 20px;
 }
 
 .modal-header h2 {
   font-size: 22px;
   color: #c28c2d;
+  margin: 0 0 8px;
 }
 
 .modal-close {
+  flex-shrink: 0;
   background: #f5f5f5;
   border: none;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   cursor: pointer;
+  font-weight: 800;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.modal-close:hover {
+  background: #ececec;
+  transform: scale(1.04);
 }
 
 .modal-body-grid {
@@ -391,14 +501,19 @@ body {
 
 .info-card h3 {
   font-size: 15px;
-  margin-bottom: 10px;
+  margin: 0 0 10px;
   color: #c28c2d;
 }
 
 .info-card p {
   font-size: 13px;
-  margin-bottom: 6px;
+  margin: 0 0 8px;
   color: #555;
+  line-height: 1.5;
+}
+
+.info-card p:last-child {
+  margin-bottom: 0;
 }
 
 /* =========================================
@@ -421,7 +536,9 @@ body {
   border: none;
   cursor: pointer;
   font-weight: 600;
-  transition: 0.3s;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .btn-proof:hover {
@@ -448,7 +565,26 @@ body {
   padding: 10px 16px;
   border-radius: 10px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 700;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.btn-approve:hover,
+.btn-reject:hover,
+.btn-complete:hover,
+.btn-close:hover {
+  transform: translateY(-1px);
+}
+
+.btn-approve:disabled,
+.btn-reject:disabled,
+.btn-complete:disabled,
+.btn-close:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-approve {
@@ -468,6 +604,7 @@ body {
 
 .btn-close {
   background: #f1f1f1;
+  color: #444;
 }
 
 /* =========================================
@@ -620,6 +757,48 @@ body {
 }
 
 /* =========================================
+   PAGINATION
+========================================= */
+.pagination-controls {
+  margin-top: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pagination-btn {
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #d4af37, #c59b2d);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+  box-shadow: 0 10px 20px rgba(212, 175, 55, 0.2);
+}
+
+.pagination-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #8b7280;
+}
+
+/* =========================================
    RESPONSIVE
 ========================================= */
 @media (max-width: 1024px) {
@@ -637,6 +816,11 @@ body {
   .bookings-page-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .bookings-title-row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .toggle-filters-btn {
@@ -693,6 +877,19 @@ body {
     max-width: 180px;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .pagination-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pagination-btn {
+    width: 100%;
+  }
+
+  .pagination-info {
+    text-align: center;
   }
 }
 
@@ -753,56 +950,11 @@ body {
   }
 }
 
-.pagination-controls {
-  margin-top: 18px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.pagination-btn {
-  border: none;
-  border-radius: 12px;
-  padding: 10px 16px;
-  background: linear-gradient(135deg, #d4af37, #c59b2d);
-  color: white;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    opacity 0.2s ease;
-  box-shadow: 0 10px 20px rgba(212, 175, 55, 0.2);
-}
-
-.pagination-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
-.pagination-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-.pagination-info {
-  font-size: 14px;
-  color: #8b7280;
-}
-
-@media (max-width: 768px) {
-  .pagination-controls {
-    flex-direction: column;
-    align-items: stretch;
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
   }
-
-  .pagination-btn {
-    width: 100%;
-  }
-
-  .pagination-info {
-    text-align: center;
+  to {
+    background-position: -200% 0;
   }
 }
