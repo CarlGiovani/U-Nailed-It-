@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {  useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import AdminLayout from "../../components/layout/adminLayout";
 
 import {
@@ -13,6 +13,12 @@ import "../../styles/policies.css";
 
 const ITEMS_PER_PAGE = 6;
 const POLICIES_QUERY_KEY = ["admin-policies"];
+
+const EMPTY_MODAL = {
+  title: "",
+  content: "",
+  is_active: true,
+};
 
 const Policies = () => {
   const queryClient = useQueryClient();
@@ -31,11 +37,12 @@ const Policies = () => {
     },
     staleTime: 1000 * 60 * 3,
     gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
   });
 
-  const invalidatePolicies = async () => {
+  const invalidatePolicies = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: POLICIES_QUERY_KEY });
-  };
+  }, [queryClient]);
 
   /* ================= MUTATIONS ================= */
   const createPolicyMutation = useMutation({
@@ -53,22 +60,67 @@ const Policies = () => {
     onSuccess: invalidatePolicies,
   });
 
+  const saving =
+    createPolicyMutation.isPending || updatePolicyMutation.isPending;
+
+  const deleting = deletePolicyMutation.isPending;
+
   /* ================= PAGINATION ================= */
-  const totalPages = Math.max(1, Math.ceil(policies.length / ITEMS_PER_PAGE));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
-  const currentItems = policies.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(policies.length / ITEMS_PER_PAGE));
+  }, [policies.length]);
 
-  const goToPage = (page) => {
-    const clampedPage = Math.min(Math.max(page, 1), totalPages);
-    setCurrentPage(clampedPage);
-  };
+  const safeCurrentPage = useMemo(() => {
+    return Math.min(Math.max(currentPage, 1), totalPages);
+  }, [currentPage, totalPages]);
 
+  const currentItems = useMemo(() => {
+    const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+    return policies.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [policies, safeCurrentPage]);
 
+  const goToPage = useCallback(
+    (page) => {
+      const clampedPage = Math.min(Math.max(page, 1), totalPages);
+      setCurrentPage(clampedPage);
+    },
+    [totalPages],
+  );
+
+  /* ================= HELPERS ================= */
+  const closeModal = useCallback(() => {
+    setModal(null);
+    setErrors({});
+  }, []);
+
+  const openCreateModal = useCallback(() => {
+    setModal(EMPTY_MODAL);
+    setErrors({});
+  }, []);
+
+  const openEditModal = useCallback((item) => {
+    setModal({ ...item });
+    setErrors({});
+  }, []);
+
+  const handleFieldChange = useCallback((field, value) => {
+    setModal((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [field]: value,
+      };
+    });
+
+    setErrors((prev) => ({
+      ...prev,
+      [field]: null,
+    }));
+  }, []);
 
   /* ================= SAVE ================= */
-  const handleSave = async () => {
-    if (!modal) return;
+  const handleSave = useCallback(async () => {
+    if (!modal || saving) return;
 
     const newErrors = {};
 
@@ -87,8 +139,8 @@ const Policies = () => {
 
     try {
       const payload = {
-        title: modal.title,
-        content: modal.content,
+        title: modal.title.trim(),
+        content: modal.content.trim(),
         is_active: modal.is_active ?? true,
       };
 
@@ -103,31 +155,38 @@ const Policies = () => {
 
       closeModal();
     } catch (err) {
-      console.error(err);
+      console.error("Save policy error:", err);
     }
-  };
+  }, [modal, saving, updatePolicyMutation, createPolicyMutation, closeModal]);
 
   /* ================= DELETE ================= */
-  const confirmDelete = async () => {
-    if (!deleteItem?.id) return;
+  const confirmDelete = useCallback(async () => {
+    if (!deleteItem?.id || deleting) return;
 
     try {
       await deletePolicyMutation.mutateAsync(deleteItem.id);
+
+      const remainingItems = policies.length - 1;
+      const newTotalPages = Math.max(
+        1,
+        Math.ceil(remainingItems / ITEMS_PER_PAGE),
+      );
+
+      if (currentPage > newTotalPages) {
+        setCurrentPage(newTotalPages);
+      }
+
       setDeleteItem(null);
     } catch (err) {
-      console.error(err);
+      console.error("Delete policy error:", err);
     }
-  };
-
-  const closeModal = () => {
-    setModal(null);
-    setErrors({});
-  };
-
-  const saving =
-    createPolicyMutation.isPending || updatePolicyMutation.isPending;
-
-  const deleting = deletePolicyMutation.isPending;
+  }, [
+    deleteItem,
+    deleting,
+    deletePolicyMutation,
+    policies.length,
+    currentPage,
+  ]);
 
   /* ================= RENDER ================= */
   return (
@@ -136,16 +195,7 @@ const Policies = () => {
         <div className="policies-header">
           <h1>Policies Management</h1>
 
-          <button
-            className="btn-primary"
-            onClick={() =>
-              setModal({
-                title: "",
-                content: "",
-                is_active: true,
-              })
-            }
-          >
+          <button className="btn-primary" onClick={openCreateModal}>
             + Add Policy
           </button>
         </div>
@@ -172,11 +222,7 @@ const Policies = () => {
                   <div className="policy-card-actions">
                     <button
                       className="btn-secondary"
-                      onClick={() =>
-                        setModal({
-                          ...item,
-                        })
-                      }
+                      onClick={() => openEditModal(item)}
                     >
                       Edit
                     </button>
@@ -200,7 +246,7 @@ const Policies = () => {
                 Prev
               </button>
 
-              {[...Array(totalPages)].map((_, index) => {
+              {Array.from({ length: totalPages }, (_, index) => {
                 const page = index + 1;
 
                 return (
@@ -224,7 +270,6 @@ const Policies = () => {
           </>
         )}
 
-        {/* MODAL */}
         {modal && (
           <div className="modal-overlay" onClick={closeModal}>
             <div className="premium-modal" onClick={(e) => e.stopPropagation()}>
@@ -233,10 +278,7 @@ const Policies = () => {
               <input
                 placeholder="Title"
                 value={modal.title}
-                onChange={(e) => {
-                  setModal({ ...modal, title: e.target.value });
-                  setErrors({ ...errors, title: null });
-                }}
+                onChange={(e) => handleFieldChange("title", e.target.value)}
               />
 
               {errors.title && (
@@ -246,10 +288,7 @@ const Policies = () => {
               <textarea
                 placeholder="Content"
                 value={modal.content}
-                onChange={(e) => {
-                  setModal({ ...modal, content: e.target.value });
-                  setErrors({ ...errors, content: null });
-                }}
+                onChange={(e) => handleFieldChange("content", e.target.value)}
               />
 
               {errors.content && (
@@ -259,15 +298,11 @@ const Policies = () => {
               <label className="policy-toggle">
                 <input
                   type="checkbox"
-                  checked={modal.is_active}
+                  checked={Boolean(modal.is_active)}
                   onChange={(e) =>
-                    setModal({
-                      ...modal,
-                      is_active: e.target.checked,
-                    })
+                    handleFieldChange("is_active", e.target.checked)
                   }
                 />
-
                 <span>Active Policy</span>
               </label>
 
@@ -282,9 +317,11 @@ const Policies = () => {
           </div>
         )}
 
-        {/* DELETE MODAL */}
         {deleteItem && (
-          <div className="modal-overlay">
+          <div
+            className="modal-overlay"
+            onClick={() => !deleting && setDeleteItem(null)}
+          >
             <div
               className="premium-modal delete-modal"
               onClick={(e) => e.stopPropagation()}
