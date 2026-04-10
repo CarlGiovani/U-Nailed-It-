@@ -632,10 +632,11 @@
 
 .pagination {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: row;
+  justify-content: center;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-wrap: nowrap;
+  gap: 8px;
   width: 100%;
 }
 
@@ -669,9 +670,11 @@
 }
 
 .pagination-indicator {
-  font-size: 13px;
-  color: #6b7280;
-  font-weight: 600;
+  width: auto;
+  text-align: center;
+  font-size: 12px;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 /* ======================================================
@@ -1151,13 +1154,12 @@ body.dark .admin-btn-secondary:hover:not(:disabled) {
   }
 
   .recent-bookings-desktop {
-    display: none;
-  }
-
-  .recent-bookings-mobile {
     display: block;
   }
 
+  .recent-bookings-mobile {
+    display: none;
+  }
   .booking-mobile-card {
     border-radius: 16px;
     padding: 12px;
@@ -1389,5 +1391,82 @@ body.dark .admin-btn-secondary:hover:not(:disabled) {
     height: 36px;
     font-size: 11px;
     padding: 0 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .recent-bookings.card-surface {
+    padding: 16px;
+    overflow: hidden;
+  }
+
+  .recent-bookings-desktop {
+    display: block;
+  }
+
+  .recent-bookings-mobile {
+    display: none;
+  }
+
+  .recent-bookings-scroll,
+  .table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-table {
+    width: max-content;
+    min-width: 760px;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .recent-bookings-scroll::-webkit-scrollbar,
+  .table-wrapper::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .recent-bookings-scroll::-webkit-scrollbar-thumb,
+  .table-wrapper::-webkit-scrollbar-thumb {
+    background: #d4af37;
+    border-radius: 999px;
+  }
+}
+
+@media (max-width: 768px) {
+  .pagination {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 8px;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pagination button {
+    min-width: 76px;
+    height: 38px;
+    padding: 0 12px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  .pagination-indicator {
+    width: auto;
+    text-align: center;
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 }
