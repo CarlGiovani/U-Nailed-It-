@@ -266,13 +266,11 @@ const AdminReviews = () => {
                 </p>
                 <p>
                   <strong>Date:</strong>{" "}
-                  {formatDate(selectedReview.booking?.booking_date) ||
-                    "N/A"}
+                  {formatDate(selectedReview.booking?.booking_date) || "N/A"}
                 </p>
                 <p>
                   <strong>Time:</strong>{" "}
-                  {formatTime(selectedReview.booking?.booking_time) ||
-                    "N/A"}
+                  {formatTime(selectedReview.booking?.booking_time) || "N/A"}
                 </p>
                 <p>
                   <strong>Email:</strong>{" "}
