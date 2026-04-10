@@ -90,8 +90,7 @@ export const NotificationModel = {
       .eq("id", notifId)
       .eq("admin_id", adminId)
       .select()
-      .single();
-
+      .maybeSingle();
     if (error) throw error;
     return data;
   },

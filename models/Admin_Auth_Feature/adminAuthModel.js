@@ -77,13 +77,12 @@ export const sendPasswordResetEmail = async ({ email, redirectTo }) => {
    GET ADMIN PROFILE BY ID
 ========================= */
 export const getAdminProfileById = async (userId) => {
-  return await supabase
+  return await supabaseAdmin
     .from("admin_profiles")
     .select("id, email, username, full_name, role, created_at")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
 };
-
 
 /* =========================
    GET ALL ADMIN PROFILES
@@ -114,8 +113,5 @@ export const updateAdminProfileById = async (userId, updates) => {
    DELETE ADMIN PROFILE BY ID
 ========================= */
 export const deleteAdminProfileById = async (userId) => {
-  return await supabaseAdmin
-    .from("admin_profiles")
-    .delete()
-    .eq("id", userId);
+  return await supabaseAdmin.from("admin_profiles").delete().eq("id", userId);
 };
