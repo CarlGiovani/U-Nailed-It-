@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminLayout from "../../components/layout/adminLayout";
 
 import {
@@ -11,6 +11,14 @@ import {
 import "../../styles/announcement.css";
 
 const ITEMS_PER_PAGE = 6;
+
+const EMPTY_MODAL = {
+  title: "",
+  content: "",
+  start_date: "",
+  end_date: "",
+  images: [],
+};
 
 const Announcements = () => {
   const [announcements, setAnnouncements] = useState([]);
@@ -29,41 +37,127 @@ const Announcements = () => {
   const [errors, setErrors] = useState({});
 
   /* ================= FETCH ================= */
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-
       const data = await getAllAnnouncements();
-      const list = data.data || data;
-
-      setAnnouncements(list);
+      const list = data?.data || data || [];
+      setAnnouncements(Array.isArray(list) ? list : []);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch announcements error:", err);
+      setAnnouncements([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   /* ================= PAGINATION ================= */
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(announcements.length / ITEMS_PER_PAGE));
+  }, [announcements.length]);
 
-  const totalPages = Math.ceil(announcements.length / ITEMS_PER_PAGE);
+  const safeCurrentPage = useMemo(() => {
+    return Math.min(Math.max(currentPage, 1), totalPages);
+  }, [currentPage, totalPages]);
 
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const currentItems = useMemo(() => {
+    const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+    return announcements.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [announcements, safeCurrentPage]);
 
-  const currentItems = announcements.slice(
-    startIndex,
-    startIndex + ITEMS_PER_PAGE,
+  const goToPage = useCallback(
+    (page) => {
+      setCurrentPage(Math.min(Math.max(page, 1), totalPages));
+    },
+    [totalPages]
   );
 
-  const goToPage = (page) => setCurrentPage(page);
+  /* ================= HELPERS ================= */
+  const revokeBlobUrls = useCallback((urls) => {
+    urls.forEach((url) => {
+      if (typeof url === "string" && url.startsWith("blob:")) {
+        URL.revokeObjectURL(url);
+      }
+    });
+  }, []);
 
-  /* ================= SAVE ================= */
-  const handleSave = async () => {
+  const closeModal = useCallback(() => {
+    revokeBlobUrls(previewImages);
+    setModal(null);
+    setPreviewImages([]);
+    setErrors({});
+  }, [previewImages, revokeBlobUrls]);
+
+  const openCreateModal = useCallback(() => {
+    revokeBlobUrls(previewImages);
+    setPreviewImages([]);
+    setErrors({});
+    setModal(EMPTY_MODAL);
+  }, [previewImages, revokeBlobUrls]);
+
+  const openEditModal = useCallback(
+    (item) => {
+      revokeBlobUrls(previewImages);
+      setErrors({});
+      setModal({
+        ...item,
+        images: [],
+      });
+      setPreviewImages(item.images || []);
+    },
+    [previewImages, revokeBlobUrls]
+  );
+
+  const handleFieldChange = useCallback((field, value) => {
+    setModal((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [field]: value,
+      };
+    });
+
+    setErrors((prev) => ({
+      ...prev,
+      [field]: null,
+      ...(field === "start_date" ? { end_date: null } : {}),
+    }));
+  }, []);
+
+  const handleFileChange = useCallback(
+    (e) => {
+      const files = Array.from(e.target.files || []).slice(0, 5);
+      const previews = files.map((file) => URL.createObjectURL(file));
+
+      setModal((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          images: files,
+        };
+      });
+
+      setPreviewImages((prev) => {
+        revokeBlobUrls(prev);
+        return previews;
+      });
+    },
+    [revokeBlobUrls]
+  );
+
+  useEffect(() => {
+    return () => {
+      revokeBlobUrls(previewImages);
+    };
+  }, [previewImages, revokeBlobUrls]);
+
+  const validateModal = useCallback(() => {
+    if (!modal) return { valid: false, newErrors: {} };
+
     const newErrors = {};
 
     if (!modal.title?.trim()) {
@@ -82,7 +176,6 @@ const Announcements = () => {
       newErrors.end_date = "End date is required";
     }
 
-    // check if end date is earlier than start date
     if (modal.start_date && modal.end_date) {
       const start = new Date(modal.start_date);
       const end = new Date(modal.end_date);
@@ -92,7 +185,19 @@ const Announcements = () => {
       }
     }
 
-    if (Object.keys(newErrors).length > 0) {
+    return {
+      valid: Object.keys(newErrors).length === 0,
+      newErrors,
+    };
+  }, [modal]);
+
+  /* ================= SAVE ================= */
+  const handleSave = useCallback(async () => {
+    if (!modal || saving) return;
+
+    const { valid, newErrors } = validateModal();
+
+    if (!valid) {
       setErrors(newErrors);
       return;
     }
@@ -101,13 +206,12 @@ const Announcements = () => {
       setSaving(true);
 
       const formData = new FormData();
+      formData.append("title", modal.title?.trim() || "");
+      formData.append("content", modal.content?.trim() || "");
+      formData.append("start_date", modal.start_date || "");
+      formData.append("end_date", modal.end_date || "");
 
-      formData.append("title", modal.title);
-      formData.append("content", modal.content);
-      formData.append("start_date", modal.start_date);
-      formData.append("end_date", modal.end_date);
-
-      if (modal.images) {
+      if (modal.images?.length) {
         modal.images.forEach((img) => {
           formData.append("images", img);
         });
@@ -120,56 +224,58 @@ const Announcements = () => {
       }
 
       closeModal();
-      fetchData();
+      await fetchData();
     } catch (err) {
-      console.error(err);
+      console.error("Save announcement error:", err);
     } finally {
       setSaving(false);
     }
-  };
-  /* ================= DELETE ================= */
+  }, [modal, saving, validateModal, closeModal, fetchData]);
 
-  const confirmDelete = async () => {
+  /* ================= DELETE ================= */
+  const confirmDelete = useCallback(async () => {
+    if (!deleteItem?.id || deleting) return;
+
     try {
       setDeleting(true);
-
       await deleteAnnouncement(deleteItem.id);
 
+      const remainingItems = announcements.length - 1;
+      const newTotalPages = Math.max(
+        1,
+        Math.ceil(remainingItems / ITEMS_PER_PAGE)
+      );
+
+      if (currentPage > newTotalPages) {
+        setCurrentPage(newTotalPages);
+      }
+
       setDeleteItem(null);
-      fetchData();
+      await fetchData();
     } catch (err) {
-      console.error(err);
+      console.error("Delete announcement error:", err);
     } finally {
       setDeleting(false);
     }
-  };
+  }, [deleteItem, deleting, announcements.length, currentPage, fetchData]);
 
-  const closeModal = () => {
-    setModal(null);
-    setPreviewImages([]);
-    setErrors({});
-  };
+  const closePreview = useCallback(() => {
+    setPreview(null);
+  }, []);
+
+  const openPreview = useCallback((images, index = 0) => {
+    if (!images?.length) return;
+    setPreview({ images, index });
+  }, []);
 
   /* ================= RENDER ================= */
-
   return (
     <AdminLayout>
       <div className="announcement-page">
         <div className="announcement-header">
           <h1>Announcement Management</h1>
 
-          <button
-            className="btn-primary"
-            onClick={() =>
-              setModal({
-                title: "",
-                content: "",
-                start_date: "",
-                end_date: "",
-                images: [],
-              })
-            }
-          >
+          <button className="btn-primary" onClick={openCreateModal}>
             + Add Announcement
           </button>
         </div>
@@ -178,86 +284,78 @@ const Announcements = () => {
           <div>Loading...</div>
         ) : (
           <>
-            {/* GRID */}
-
             <div className="announcement-grid">
-              {currentItems.map((item) => (
-                <div key={item.id} className="announcement-card">
-                  <div className="announcement-images">
-                    {item.images?.slice(0, 1).map((img, i) => (
-                      <img
-                        key={i}
-                        src={img}
-                        alt={item.title}
-                        onClick={() =>
-                          setPreview({
-                            images: item.images,
-                            index: i,
-                          })
-                        }
-                      />
-                    ))}
-                  </div>
+              {currentItems.map((item) => {
+                const firstImage = item.images?.[0];
 
-                  <div className="announcement-content">
-                    <h3>{item.title}</h3>
-
-                    <p>{item.content}</p>
-
-                    <div className="announcement-date">
-                      {item.start_date} → {item.end_date || "No End"}
-                    </div>
-
-                    <div className="announcement-status">
-                      {item.is_active ? (
-                        <span className="status-active">Active</span>
+                return (
+                  <div key={item.id} className="announcement-card">
+                    <div className="announcement-images">
+                      {firstImage ? (
+                        <img
+                          src={firstImage}
+                          alt={item.title}
+                          loading="lazy"
+                          onClick={() => openPreview(item.images, 0)}
+                        />
                       ) : (
-                        <span className="status-inactive">Inactive</span>
+                        <div className="announcement-no-image">No Image</div>
                       )}
                     </div>
 
-                    <div className="announcement-buttons">
-                      <button
-                        className="btn-secondary"
-                        onClick={() =>
-                          setModal({
-                            ...item,
-                            images: [],
-                          })
-                        }
-                      >
-                        Edit
-                      </button>
+                    <div className="announcement-content">
+                      <h3>{item.title}</h3>
 
-                      <button
-                        className="btn-danger"
-                        onClick={() => setDeleteItem(item)}
-                      >
-                        Delete
-                      </button>
+                      <p>{item.content}</p>
+
+                      <div className="announcement-date">
+                        {item.start_date} → {item.end_date || "No End"}
+                      </div>
+
+                      <div className="announcement-status">
+                        {item.is_active ? (
+                          <span className="status-active">Active</span>
+                        ) : (
+                          <span className="status-inactive">Inactive</span>
+                        )}
+                      </div>
+
+                      <div className="announcement-buttons">
+                        <button
+                          className="btn-secondary"
+                          onClick={() => openEditModal(item)}
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          className="btn-danger"
+                          onClick={() => setDeleteItem(item)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-
-            {/* PAGINATION */}
 
             <div className="pagination">
               <button
-                disabled={currentPage === 1}
-                onClick={() => goToPage(currentPage - 1)}
+                disabled={safeCurrentPage === 1}
+                onClick={() => goToPage(safeCurrentPage - 1)}
               >
                 Prev
               </button>
 
-              {[...Array(totalPages)].map((_, index) => {
+              {Array.from({ length: totalPages }, (_, index) => {
                 const page = index + 1;
 
                 return (
                   <button
                     key={page}
-                    className={page === currentPage ? "active-page" : ""}
+                    className={page === safeCurrentPage ? "active-page" : ""}
                     onClick={() => goToPage(page)}
                   >
                     {page}
@@ -266,16 +364,14 @@ const Announcements = () => {
               })}
 
               <button
-                disabled={currentPage === totalPages}
-                onClick={() => goToPage(currentPage + 1)}
+                disabled={safeCurrentPage === totalPages}
+                onClick={() => goToPage(safeCurrentPage + 1)}
               >
                 Next
               </button>
             </div>
           </>
         )}
-
-        {/* MODAL */}
 
         {modal && (
           <div className="modal-overlay" onClick={closeModal}>
@@ -285,38 +381,25 @@ const Announcements = () => {
               <input
                 placeholder="Title"
                 value={modal.title}
-                onChange={(e) => {
-                  setModal({ ...modal, title: e.target.value });
-                  setErrors({ ...errors, title: null });
-                }}
+                onChange={(e) => handleFieldChange("title", e.target.value)}
               />
-
-              {errors.title && (
-                <span className="form-error">{errors.title}</span>
-              )}
+              {errors.title && <span className="form-error">{errors.title}</span>}
 
               <textarea
                 placeholder="Content"
                 value={modal.content}
-                onChange={(e) => {
-                  setModal({ ...modal, content: e.target.value });
-                  setErrors({ ...errors, content: null });
-                }}
+                onChange={(e) => handleFieldChange("content", e.target.value)}
               />
-
               {errors.content && (
                 <span className="form-error">{errors.content}</span>
               )}
+
               <label>Start Date</label>
               <input
                 type="date"
                 value={modal.start_date || ""}
-                onChange={(e) => {
-                  setModal({ ...modal, start_date: e.target.value });
-                  setErrors({ ...errors, start_date: null, end_date: null });
-                }}
+                onChange={(e) => handleFieldChange("start_date", e.target.value)}
               />
-
               {errors.start_date && (
                 <span className="form-error">{errors.start_date}</span>
               )}
@@ -325,38 +408,22 @@ const Announcements = () => {
               <input
                 type="date"
                 value={modal.end_date || ""}
-                onChange={(e) => {
-                  setModal({ ...modal, end_date: e.target.value });
-                  setErrors({ ...errors, end_date: null });
-                }}
+                onChange={(e) => handleFieldChange("end_date", e.target.value)}
               />
-
               {errors.end_date && (
                 <span className="form-error">{errors.end_date}</span>
               )}
+
               <input
                 type="file"
                 accept="image/*"
                 multiple
-                onChange={(e) => {
-                  const files = Array.from(e.target.files).slice(0, 5);
-
-                  setModal({
-                    ...modal,
-                    images: files,
-                  });
-
-                  const previews = files.map((file) =>
-                    URL.createObjectURL(file),
-                  );
-
-                  setPreviewImages(previews);
-                }}
+                onChange={handleFileChange}
               />
 
               <div className="announcement-preview">
                 {previewImages.map((img, i) => (
-                  <img key={i} src={img} />
+                  <img key={`${img}-${i}`} src={img} alt="preview" />
                 ))}
               </div>
 
@@ -371,10 +438,8 @@ const Announcements = () => {
           </div>
         )}
 
-        {/* DELETE MODAL */}
-
         {deleteItem && (
-          <div className="modal-overlay">
+          <div className="modal-overlay" onClick={() => !deleting && setDeleteItem(null)}>
             <div
               className="premium-modal delete-modal"
               onClick={(e) => e.stopPropagation()}
@@ -407,17 +472,17 @@ const Announcements = () => {
           </div>
         )}
 
-        {/* IMAGE PREVIEW */}
-
         {preview && (
-          <div className="image-preview-overlay">
-            <button className="preview-close" onClick={() => setPreview(null)}>
+          <div className="image-preview-overlay" onClick={closePreview}>
+            <button className="preview-close" onClick={closePreview}>
               ✕
             </button>
 
             <img
               src={preview.images[preview.index]}
               className="preview-image"
+              alt="Announcement preview"
+              onClick={(e) => e.stopPropagation()}
             />
           </div>
         )}
