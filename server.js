@@ -19,6 +19,7 @@ import portfolioRoutes from "./routes/portfolio_Feature/portfolioRoutes.js";
 import reviewsRoutes from "./routes/Review_Feature/reviewsRoutes.js";
 import servicesRouter from "./routes/Services_Feature/serviceRoutes.js";
 import testEmailRoutes from "./routes/testEmail.js";
+import bookingRemindersRoutes from "./routes/Booking_Reminders_Feature/bookingRemindersRoutes.js";
 
 dotenv.config();
 
@@ -29,8 +30,8 @@ const PORT = process.env.PORT || 5000;
 app.use(
   cors({
     origin: [
-      "http://10.246.128.215:5173",
-      "http://10.246.128.2151:5174",
+      "http://192.168.100.5:5173",
+      "http://192.168.100.5:5174",
       "http://localhost:5173",
       "http://localhost:5174",
     ],
@@ -61,6 +62,7 @@ app.use("/api/announcements", announcementRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api", bookingRemindersRoutes);
 
 // START CRON JOBS
 scheduleSlotCleanup();

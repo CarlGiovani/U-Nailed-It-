@@ -5,6 +5,7 @@ import sendEmail from "../../services/Email_Feature/emailService.js";
 import { bookingApprovedTemplate } from "../../templates/emails/bookingApproved.js";
 import { bookingCompletedTemplate } from "../../templates/emails/bookingCompletedTemplate.js";
 import { bookingSubmittedTemplate } from "../../templates/emails/bookingSubmitted.js";
+import { bookingRejectedTemplate } from "../../templates/emails/bookingRejected.js";
 
 dotenv.config();
 
