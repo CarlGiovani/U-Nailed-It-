@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AdminLayout from "../../components/layout/adminLayout";
 
 import {
@@ -17,6 +17,164 @@ import {
 import "../../styles/services.css";
 
 const ITEMS_PER_PAGE = 3;
+const DEFAULT_SERVICE_DURATION = "01:00";
+
+const MODAL_TYPES = {
+  SERVICE: "service",
+  MANAGE: "manage",
+  CATEGORY: "category",
+  VARIANT: "variant",
+};
+
+const formatDurationToInterval = (time) => {
+  if (!time) return "00:00:00";
+  const [h = "00", m = "00"] = String(time).split(":");
+  return `${h}:${m}:00`;
+};
+
+const normalizeDurationForInput = (value) => {
+  if (!value) return "";
+
+  if (/^\d{2}:\d{2}$/.test(value)) return value;
+
+  if (/^\d+$/.test(String(value))) {
+    const totalMinutes = Number(value);
+    const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+    const minutes = String(totalMinutes % 60).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+
+  if (/^\d{2}:\d{2}:\d{2}$/.test(value)) {
+    return value.slice(0, 5);
+  }
+
+  return "";
+};
+
+const getFreshServiceFromMap = (service, servicesById) => {
+  return servicesById.get(service.id) || service;
+};
+
+const ServiceCard = memo(function ServiceCard({
+  service,
+  togglingId,
+  onEdit,
+  onManage,
+  onToggle,
+}) {
+  const isToggling = togglingId === service.id;
+  const isLocked = service.hasBookings;
+
+  return (
+    <div className="service-card">
+      {service.image_url && (
+        <div className="service-image-wrapper">
+          <img
+            src={service.image_url}
+            alt={service.name}
+            className="service-image"
+            loading="lazy"
+          />
+        </div>
+      )}
+
+      <div className="service-top">
+        <div className="service-title">
+          <h3>{service.name}</h3>
+
+          <span
+            className={service.is_active ? "status-active" : "status-inactive"}
+          >
+            {service.is_active ? "Active" : "Inactive"}
+          </span>
+        </div>
+
+        <div className="service-buttons">
+          <button
+            className="btn-secondary"
+            disabled={isLocked}
+            onClick={() => onEdit(service)}
+          >
+            Edit
+          </button>
+
+          <button className="btn-secondary" onClick={() => onManage(service)}>
+            Manage
+          </button>
+
+          <button
+            className="btn-danger"
+            disabled={isLocked || isToggling}
+            onClick={() => onToggle(service)}
+          >
+            {isLocked
+              ? "Locked"
+              : isToggling
+                ? "Saving..."
+                : service.is_active
+                  ? "Deactivate"
+                  : "Activate"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const Pagination = memo(function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="pagination">
+      <button
+        className="pagination-btn"
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+      >
+        Prev
+      </button>
+
+      <div className="pagination-pages">
+        {Array.from({ length: totalPages }, (_, index) => {
+          const page = index + 1;
+          return (
+            <button
+              key={page}
+              className={`pagination-number ${
+                currentPage === page ? "active" : ""
+              }`}
+              onClick={() => onPageChange(page)}
+            >
+              {page}
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        className="pagination-btn"
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+      >
+        Next
+      </button>
+    </div>
+  );
+});
+
+const ModalShell = memo(function ModalShell({ children, onClose }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="premium-modal" onClick={(e) => e.stopPropagation()}>
+        {children}
+      </div>
+    </div>
+  );
+});
 
 const Services = () => {
   const [modal, setModal] = useState(null);
@@ -26,23 +184,8 @@ const Services = () => {
   const [currentPage, setCurrentPage] = useState(1);
 
   const queryClient = useQueryClient();
+  const objectUrlRef = useRef(null);
 
-  const normalizeDurationForInput = (value) => {
-    if (!value) return "";
-
-    if (/^\d{2}:\d{2}$/.test(value)) return value;
-
-    if (/^\d+$/.test(String(value))) {
-      const totalMinutes = Number(value);
-      const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
-      const minutes = String(totalMinutes % 60).padStart(2, "0");
-      return `${hours}:${minutes}`;
-    }
-
-    return "";
-  };
-
-  /* ================= CACHED FETCH ================= */
   const { data: services = [], isLoading } = useQuery({
     queryKey: ["admin-services"],
     queryFn: async () => {
@@ -51,15 +194,25 @@ const Services = () => {
     },
     staleTime: 1000 * 60 * 3,
     gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
   });
 
   const servicesById = useMemo(() => {
     return new Map(services.map((service) => [service.id, service]));
   }, [services]);
 
-  const invalidateServices = async () => {
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(services.length / ITEMS_PER_PAGE));
+  }, [services.length]);
+
+  const paginatedServices = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return services.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [services, currentPage]);
+
+  const invalidateServices = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ["admin-services"] });
-  };
+  }, [queryClient]);
 
   const createServiceMutation = useMutation({
     mutationFn: createService,
@@ -101,64 +254,117 @@ const Services = () => {
     onSuccess: invalidateServices,
   });
 
-  const closeModal = () => {
+  const clearPreviewObjectUrl = useCallback(() => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+  }, []);
+
+  const closeModal = useCallback(() => {
+    clearPreviewObjectUrl();
     setModal(null);
     setPreviewImage(null);
-  };
+  }, [clearPreviewObjectUrl]);
 
-  const openCreateServiceModal = () => {
+  const openCreateServiceModal = useCallback(() => {
+    clearPreviewObjectUrl();
     setPreviewImage(null);
     setModal({
-      type: "service",
+      type: MODAL_TYPES.SERVICE,
       name: "",
       description: "",
-      duration: "01:00",
+      duration: DEFAULT_SERVICE_DURATION,
       image: null,
     });
-  };
+  }, [clearPreviewObjectUrl]);
 
-  const openEditServiceModal = (service) => {
-    setPreviewImage(service.image_url || null);
+  const openEditServiceModal = useCallback(
+    (service) => {
+      clearPreviewObjectUrl();
+      setPreviewImage(service.image_url || null);
+      setModal({
+        ...service,
+        type: MODAL_TYPES.SERVICE,
+        duration: normalizeDurationForInput(service.duration),
+        image: null,
+      });
+    },
+    [clearPreviewObjectUrl],
+  );
+
+  const openManageModal = useCallback(
+    (service) => {
+      const freshService = getFreshServiceFromMap(service, servicesById);
+
+      clearPreviewObjectUrl();
+      setPreviewImage(null);
+      setModal({
+        type: MODAL_TYPES.MANAGE,
+        service: freshService,
+      });
+    },
+    [clearPreviewObjectUrl, servicesById],
+  );
+
+  const openCategoryCreateModal = useCallback((serviceId) => {
     setModal({
-      ...service,
-      type: "service",
-      duration: normalizeDurationForInput(service.duration),
-      image: null,
+      type: MODAL_TYPES.CATEGORY,
+      service_id: serviceId,
+      name: "",
     });
-  };
+  }, []);
 
-  const openManageModal = (service) => {
-    const freshService = servicesById.get(service.id) || service;
-
-    setPreviewImage(null);
+  const openCategoryEditModal = useCallback((category) => {
     setModal({
-      type: "manage",
-      service: freshService,
+      ...category,
+      type: MODAL_TYPES.CATEGORY,
     });
-  };
+  }, []);
 
-  /* ================= PAGINATION ================= */
-  const totalPages = Math.max(1, Math.ceil(services.length / ITEMS_PER_PAGE));
+  const openVariantCreateModal = useCallback((categoryId) => {
+    setModal({
+      type: MODAL_TYPES.VARIANT,
+      category_id: categoryId,
+      body_part: "",
+      size: "",
+      price: "",
+      downpayment: "",
+    });
+  }, []);
 
-  const paginatedServices = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    return services.slice(startIndex, endIndex);
-  }, [services, currentPage]);
+  const openVariantEditModal = useCallback((variant, categoryId) => {
+    setModal({
+      id: variant.id,
+      type: MODAL_TYPES.VARIANT,
+      category_id: categoryId,
+      body_part: variant.body_part,
+      size: variant.size,
+      price: variant.price,
+      downpayment: variant.downpayment,
+    });
+  }, []);
 
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
+  const updateModalField = useCallback((field, value) => {
+    setModal((prev) => ({ ...prev, [field]: value }));
+  }, []);
 
-  const goToPage = (page) => {
-    if (page < 1 || page > totalPages) return;
-    setCurrentPage(page);
-  };
+  const handleImageChange = useCallback(
+    (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-  /* ================= SERVICE SAVE ================= */
-  const handleServiceSave = async () => {
+      clearPreviewObjectUrl();
+      const objectUrl = URL.createObjectURL(file);
+      objectUrlRef.current = objectUrl;
+
+      setModal((prev) => ({ ...prev, image: file }));
+      setPreviewImage(objectUrl);
+    },
+    [clearPreviewObjectUrl],
+  );
+
+  const handleServiceSave = useCallback(async () => {
     if (!modal) return;
 
     try {
@@ -167,12 +373,6 @@ const Services = () => {
       const formData = new FormData();
       formData.append("name", modal.name || "");
       formData.append("description", modal.description || "");
-      const formatDurationToInterval = (time) => {
-        if (!time) return "00:00:00";
-        const [h = "00", m = "00"] = time.split(":");
-        return `${h}:${m}:00`;
-      };
-
       formData.append("duration", formatDurationToInterval(modal.duration));
 
       if (modal.image) {
@@ -199,10 +399,9 @@ const Services = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [modal, createServiceMutation, updateServiceMutation, closeModal]);
 
-  /* ================= CATEGORY SAVE ================= */
-  const handleCategorySave = async () => {
+  const handleCategorySave = useCallback(async () => {
     if (!modal) return;
 
     try {
@@ -226,10 +425,9 @@ const Services = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [modal, updateCategoryMutation, createCategoryMutation, closeModal]);
 
-  /* ================= VARIANT SAVE ================= */
-  const handleVariantSave = async () => {
+  const handleVariantSave = useCallback(async () => {
     if (!modal) return;
 
     try {
@@ -258,29 +456,39 @@ const Services = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [modal, updateVariantMutation, createVariantMutation, closeModal]);
 
-  /* ================= TOGGLE SERVICE ================= */
-  const handleToggleService = async (service) => {
-    try {
-      if (service.hasBookings) {
-        alert("Cannot deactivate service with existing bookings.");
-        return;
+  const handleToggleService = useCallback(
+    async (service) => {
+      try {
+        if (service.hasBookings) {
+          alert("Cannot deactivate service with existing bookings.");
+          return;
+        }
+
+        setTogglingId(service.id);
+
+        if (service.is_active) {
+          await deactivateServiceMutation.mutateAsync(service.id);
+        } else {
+          await reactivateServiceMutation.mutateAsync(service.id);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setTogglingId(null);
       }
+    },
+    [deactivateServiceMutation, reactivateServiceMutation],
+  );
 
-      setTogglingId(service.id);
-
-      if (service.is_active) {
-        await deactivateServiceMutation.mutateAsync(service.id);
-      } else {
-        await reactivateServiceMutation.mutateAsync(service.id);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setTogglingId(null);
-    }
-  };
+  const goToPage = useCallback(
+    (page) => {
+      if (page < 1 || page > totalPages) return;
+      setCurrentPage(page);
+    },
+    [totalPages],
+  );
 
   const isAnyMutationPending =
     saving ||
@@ -291,7 +499,236 @@ const Services = () => {
     createVariantMutation.isPending ||
     updateVariantMutation.isPending;
 
-  /* ================= RENDER ================= */
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    return () => {
+      clearPreviewObjectUrl();
+    };
+  }, [clearPreviewObjectUrl]);
+
+  const renderServiceModal = () => (
+    <>
+      <h2>{modal?.id ? "Edit Service" : "Create Service"}</h2>
+
+      <div className="modal-form-grid">
+        <div className="field-group">
+          <label className="field-label">Service Name</label>
+          <input
+            placeholder="Enter service name"
+            value={modal?.name || ""}
+            onChange={(e) => updateModalField("name", e.target.value)}
+          />
+        </div>
+
+        <div className="field-group">
+          <label className="field-label">Description</label>
+          <textarea
+            placeholder="Write a short description"
+            value={modal?.description || ""}
+            onChange={(e) => updateModalField("description", e.target.value)}
+          />
+        </div>
+
+        <div className="field-row">
+          <div className="field-group">
+            <label className="field-label">Duration</label>
+            <input
+              type="time"
+              step="900"
+              value={modal?.duration || DEFAULT_SERVICE_DURATION}
+              onChange={(e) => updateModalField("duration", e.target.value)}
+            />
+          </div>
+
+          <div className="field-group">
+            <label className="field-label">Upload Image</label>
+            <input type="file" accept="image/*" onChange={handleImageChange} />
+          </div>
+        </div>
+
+        {previewImage && (
+          <div className="image-preview">
+            <img src={previewImage} alt="preview" />
+          </div>
+        )}
+
+        <button
+          className="modal-submit-btn"
+          onClick={handleServiceSave}
+          disabled={isAnyMutationPending}
+        >
+          {isAnyMutationPending
+            ? "Saving..."
+            : modal?.id
+              ? "Update Service"
+              : "Create Service"}
+        </button>
+      </div>
+    </>
+  );
+
+  const renderManageModal = () => (
+    <>
+      <div className="manage-header">
+        <h2>{modal?.service?.name}</h2>
+        <p className="manage-subtitle">
+          Manage categories and pricing variants
+        </p>
+      </div>
+
+      <div className="modal-actions">
+        <button
+          className="modal-add-btn"
+          onClick={() => openCategoryCreateModal(modal.service.id)}
+        >
+          + Add Category
+        </button>
+      </div>
+
+      {!modal?.service?.service_categories?.length ? (
+        <div className="empty-state">
+          No categories yet. Start by adding a category.
+        </div>
+      ) : (
+        modal.service.service_categories.map((cat) => (
+          <div key={cat.id} className="category-block">
+            <div className="category-header">
+              <h4>{cat.name}</h4>
+              <button onClick={() => openCategoryEditModal(cat)}>Edit</button>
+            </div>
+
+            <div className="category-variants">
+              {cat.service_variants?.map((variant) => (
+                <div key={variant.id} className="variant-item">
+                  <div className="variant-details">
+                    <span className="variant-name">
+                      {variant.body_part} - {variant.size}
+                    </span>
+                    <span className="variant-price">₱{variant.price}</span>
+                  </div>
+
+                  <button onClick={() => openVariantEditModal(variant, cat.id)}>
+                    Edit
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              className="btn-add-small"
+              onClick={() => openVariantCreateModal(cat.id)}
+            >
+              + Add Variant
+            </button>
+          </div>
+        ))
+      )}
+    </>
+  );
+
+  const renderCategoryModal = () => (
+    <>
+      <h2>{modal?.id ? "Edit Category" : "Category"}</h2>
+
+      <div className="modal-form-grid">
+        <div className="field-group">
+          <label className="field-label">Category Name</label>
+          <input
+            placeholder="Category Name"
+            value={modal?.name || ""}
+            onChange={(e) => updateModalField("name", e.target.value)}
+          />
+        </div>
+
+        <button
+          className="modal-submit-btn"
+          onClick={handleCategorySave}
+          disabled={isAnyMutationPending}
+        >
+          {isAnyMutationPending ? "Saving..." : "Save"}
+        </button>
+      </div>
+    </>
+  );
+
+  const renderVariantModal = () => (
+    <>
+      <h2>{modal?.id ? "Edit Variant" : "Variant"}</h2>
+
+      <div className="modal-form-grid">
+        <div className="field-group">
+          <label className="field-label">Body Part</label>
+          <input
+            placeholder="Body Part"
+            value={modal?.body_part || ""}
+            onChange={(e) => updateModalField("body_part", e.target.value)}
+          />
+        </div>
+
+        <div className="field-group">
+          <label className="field-label">Size</label>
+          <input
+            placeholder="Size"
+            value={modal?.size || ""}
+            onChange={(e) => updateModalField("size", e.target.value)}
+          />
+        </div>
+
+        <div className="field-row">
+          <div className="field-group">
+            <label className="field-label">Price</label>
+            <input
+              type="number"
+              placeholder="Price"
+              value={modal?.price || ""}
+              onChange={(e) => updateModalField("price", e.target.value)}
+            />
+          </div>
+
+          <div className="field-group">
+            <label className="field-label">Downpayment</label>
+            <input
+              type="number"
+              placeholder="Downpayment"
+              value={modal?.downpayment || ""}
+              onChange={(e) => updateModalField("downpayment", e.target.value)}
+            />
+          </div>
+        </div>
+
+        <button
+          className="modal-submit-btn"
+          onClick={handleVariantSave}
+          disabled={isAnyMutationPending}
+        >
+          {isAnyMutationPending ? "Saving..." : "Save"}
+        </button>
+      </div>
+    </>
+  );
+
+  const renderModalContent = () => {
+    if (!modal) return null;
+
+    switch (modal.type) {
+      case MODAL_TYPES.SERVICE:
+        return renderServiceModal();
+      case MODAL_TYPES.MANAGE:
+        return renderManageModal();
+      case MODAL_TYPES.CATEGORY:
+        return renderCategoryModal();
+      case MODAL_TYPES.VARIANT:
+        return renderVariantModal();
+      default:
+        return null;
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="services-page">
@@ -316,392 +753,34 @@ const Services = () => {
         )}
 
         {isLoading ? (
-          <div>Loading...</div>
+          <div className="empty-state">Loading services...</div>
         ) : services.length === 0 ? (
           <div className="empty-state">No services found yet.</div>
         ) : (
           <>
             <div className="services-list">
               {paginatedServices.map((service) => (
-                <div key={service.id} className="service-card">
-                  {service.image_url && (
-                    <div className="service-image-wrapper">
-                      <img
-                        src={service.image_url}
-                        alt={service.name}
-                        className="service-image"
-                      />
-                    </div>
-                  )}
-
-                  <div className="service-top">
-                    <div className="service-title">
-                      <h3>{service.name}</h3>
-
-                      <span
-                        className={
-                          service.is_active
-                            ? "status-active"
-                            : "status-inactive"
-                        }
-                      >
-                        {service.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-
-                    <div className="service-buttons">
-                      <button
-                        className="btn-secondary"
-                        disabled={service.hasBookings}
-                        onClick={() => openEditServiceModal(service)}
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        className="btn-secondary"
-                        onClick={() => openManageModal(service)}
-                      >
-                        Manage
-                      </button>
-
-                      <button
-                        className="btn-danger"
-                        disabled={
-                          service.hasBookings || togglingId === service.id
-                        }
-                        onClick={() => handleToggleService(service)}
-                      >
-                        {service.hasBookings
-                          ? "Locked"
-                          : togglingId === service.id
-                            ? "Saving..."
-                            : service.is_active
-                              ? "Deactivate"
-                              : "Activate"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <ServiceCard
+                  key={service.id}
+                  service={service}
+                  togglingId={togglingId}
+                  onEdit={openEditServiceModal}
+                  onManage={openManageModal}
+                  onToggle={handleToggleService}
+                />
               ))}
             </div>
 
-            {totalPages > 1 && (
-              <div className="pagination">
-                <button
-                  className="pagination-btn"
-                  onClick={() => goToPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                >
-                  Prev
-                </button>
-
-                <div className="pagination-pages">
-                  {Array.from({ length: totalPages }, (_, index) => {
-                    const page = index + 1;
-                    return (
-                      <button
-                        key={page}
-                        className={`pagination-number ${
-                          currentPage === page ? "active" : ""
-                        }`}
-                        onClick={() => goToPage(page)}
-                      >
-                        {page}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <button
-                  className="pagination-btn"
-                  onClick={() => goToPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </button>
-              </div>
-            )}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={goToPage}
+            />
           </>
         )}
 
-        {/* ================= MODAL ================= */}
         {modal && (
-          <div className="modal-overlay" onClick={closeModal}>
-            <div className="premium-modal" onClick={(e) => e.stopPropagation()}>
-              {/* SERVICE */}
-              {modal.type === "service" && (
-                <>
-                  <h2>{modal.id ? "Edit Service" : "Create Service"}</h2>
-
-                  <div className="modal-form-grid">
-                    <div className="field-group">
-                      <label className="field-label">Service Name</label>
-                      <input
-                        placeholder="Enter service name"
-                        value={modal.name}
-                        onChange={(e) =>
-                          setModal({ ...modal, name: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div className="field-group">
-                      <label className="field-label">Description</label>
-                      <textarea
-                        placeholder="Write a short description"
-                        value={modal.description}
-                        onChange={(e) =>
-                          setModal({ ...modal, description: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div className="field-row">
-                      <div className="field-group">
-                        <label className="field-label">Duration</label>
-                        <input
-                          type="time"
-                          step="900"
-                          value={modal.duration || "01:00"}
-                          onChange={(e) =>
-                            setModal({ ...modal, duration: e.target.value })
-                          }
-                        />
-                      </div>
-
-                      <div className="field-group">
-                        <label className="field-label">Upload Image</label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              setModal({ ...modal, image: file });
-                              setPreviewImage(URL.createObjectURL(file));
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {previewImage && (
-                      <div className="image-preview">
-                        <img src={previewImage} alt="preview" />
-                      </div>
-                    )}
-
-                    <button
-                      className="modal-submit-btn"
-                      onClick={handleServiceSave}
-                      disabled={isAnyMutationPending}
-                    >
-                      {isAnyMutationPending
-                        ? "Saving..."
-                        : modal.id
-                          ? "Update Service"
-                          : "Create Service"}
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {/* MANAGE */}
-              {modal.type === "manage" && (
-                <>
-                  <div className="manage-header">
-                    <h2>{modal.service.name}</h2>
-                    <p className="manage-subtitle">
-                      Manage categories and pricing variants
-                    </p>
-                  </div>
-
-                  <div className="modal-actions">
-                    <button
-                      className="modal-add-btn"
-                      onClick={() =>
-                        setModal({
-                          type: "category",
-                          service_id: modal.service.id,
-                          name: "",
-                        })
-                      }
-                    >
-                      + Add Category
-                    </button>
-                  </div>
-
-                  {!modal.service.service_categories?.length ? (
-                    <div className="empty-state">
-                      No categories yet. Start by adding a category.
-                    </div>
-                  ) : (
-                    modal.service.service_categories.map((cat) => (
-                      <div key={cat.id} className="category-block">
-                        <div className="category-header">
-                          <h4>{cat.name}</h4>
-                          <button
-                            onClick={() =>
-                              setModal({
-                                ...cat,
-                                type: "category",
-                              })
-                            }
-                          >
-                            Edit
-                          </button>
-                        </div>
-
-                        <div className="category-variants">
-                          {cat.service_variants?.map((variant) => (
-                            <div key={variant.id} className="variant-item">
-                              <div className="variant-details">
-                                <span className="variant-name">
-                                  {variant.body_part} - {variant.size}
-                                </span>
-                                <span className="variant-price">
-                                  ₱{variant.price}
-                                </span>
-                              </div>
-
-                              <button
-                                onClick={() =>
-                                  setModal({
-                                    id: variant.id,
-                                    type: "variant",
-                                    category_id: cat.id,
-                                    body_part: variant.body_part,
-                                    size: variant.size,
-                                    price: variant.price,
-                                    downpayment: variant.downpayment,
-                                  })
-                                }
-                              >
-                                Edit
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-
-                        <button
-                          className="btn-add-small"
-                          onClick={() =>
-                            setModal({
-                              type: "variant",
-                              category_id: cat.id,
-                              body_part: "",
-                              size: "",
-                              price: "",
-                              downpayment: "",
-                            })
-                          }
-                        >
-                          + Add Variant
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </>
-              )}
-
-              {/* CATEGORY */}
-              {modal.type === "category" && (
-                <>
-                  <h2>Category</h2>
-
-                  <div className="modal-form-grid">
-                    <div className="field-group">
-                      <label className="field-label">Category Name</label>
-                      <input
-                        placeholder="Category Name"
-                        value={modal.name}
-                        onChange={(e) =>
-                          setModal({ ...modal, name: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <button
-                      className="modal-submit-btn"
-                      onClick={handleCategorySave}
-                      disabled={isAnyMutationPending}
-                    >
-                      {isAnyMutationPending ? "Saving..." : "Save"}
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {/* VARIANT */}
-              {modal.type === "variant" && (
-                <>
-                  <h2>Variant</h2>
-
-                  <div className="modal-form-grid">
-                    <div className="field-group">
-                      <label className="field-label">Body Part</label>
-                      <input
-                        placeholder="Body Part"
-                        value={modal.body_part}
-                        onChange={(e) =>
-                          setModal({ ...modal, body_part: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div className="field-group">
-                      <label className="field-label">Size</label>
-                      <input
-                        placeholder="Size"
-                        value={modal.size}
-                        onChange={(e) =>
-                          setModal({ ...modal, size: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div className="field-row">
-                      <div className="field-group">
-                        <label className="field-label">Price</label>
-                        <input
-                          type="number"
-                          placeholder="Price"
-                          value={modal.price}
-                          onChange={(e) =>
-                            setModal({ ...modal, price: e.target.value })
-                          }
-                        />
-                      </div>
-
-                      <div className="field-group">
-                        <label className="field-label">Downpayment</label>
-                        <input
-                          type="number"
-                          placeholder="Downpayment"
-                          value={modal.downpayment}
-                          onChange={(e) =>
-                            setModal({
-                              ...modal,
-                              downpayment: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      className="modal-submit-btn"
-                      onClick={handleVariantSave}
-                      disabled={isAnyMutationPending}
-                    >
-                      {isAnyMutationPending ? "Saving..." : "Save"}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          <ModalShell onClose={closeModal}>{renderModalContent()}</ModalShell>
         )}
       </div>
     </AdminLayout>
