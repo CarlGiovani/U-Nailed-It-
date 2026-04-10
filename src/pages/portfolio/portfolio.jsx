@@ -1,5 +1,5 @@
+import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 import AdminLayout from "../../components/layout/adminLayout";
 
 import {
@@ -14,6 +14,12 @@ import "../../styles/portfolio.css";
 const ITEMS_PER_PAGE = 6;
 const PORTFOLIO_QUERY_KEY = ["admin-portfolio"];
 
+const EMPTY_MODAL = {
+  title: "",
+  description: "",
+  images: [],
+};
+
 const Portfolio = () => {
   const queryClient = useQueryClient();
 
@@ -23,7 +29,6 @@ const Portfolio = () => {
   const [deleteItem, setDeleteItem] = useState(null);
   const [preview, setPreview] = useState(null);
 
-  /* ================= CACHED FETCH ================= */
   const { data: portfolio = [], isLoading } = useQuery({
     queryKey: PORTFOLIO_QUERY_KEY,
     queryFn: async () => {
@@ -32,13 +37,13 @@ const Portfolio = () => {
     },
     staleTime: 1000 * 60 * 3,
     gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
   });
 
-  const invalidatePortfolio = async () => {
+  const invalidatePortfolio = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEY });
-  };
+  }, [queryClient]);
 
-  /* ================= MUTATIONS ================= */
   const createPortfolioMutation = useMutation({
     mutationFn: createPortfolio,
     onSuccess: invalidatePortfolio,
@@ -51,23 +56,101 @@ const Portfolio = () => {
 
   const deletePortfolioMutation = useMutation({
     mutationFn: deletePortfolio,
-    onSuccess: invalidatePortfolio,
+    onSuccess: async () => {
+      await invalidatePortfolio();
+      setDeleteItem(null);
+    },
   });
 
-  /* ================= PAGINATION ================= */
-  const totalPages = Math.max(1, Math.ceil(portfolio.length / ITEMS_PER_PAGE));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
-  const currentItems = portfolio.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const saving =
+    createPortfolioMutation.isPending || updatePortfolioMutation.isPending;
 
-  const goToPage = (page) => {
-    const clampedPage = Math.min(Math.max(page, 1), totalPages);
-    setCurrentPage(clampedPage);
-  };
+  const deleting = deletePortfolioMutation.isPending;
 
-  /* ================= SAVE ================= */
-  const handleSave = async () => {
-    if (!modal) return;
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(portfolio.length / ITEMS_PER_PAGE));
+  }, [portfolio.length]);
+
+  const safeCurrentPage = useMemo(() => {
+    return Math.min(Math.max(currentPage, 1), totalPages);
+  }, [currentPage, totalPages]);
+
+  const currentItems = useMemo(() => {
+    const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+    return portfolio.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [portfolio, safeCurrentPage]);
+
+  const goToPage = useCallback(
+    (page) => {
+      setCurrentPage(Math.min(Math.max(page, 1), totalPages));
+    },
+    [totalPages]
+  );
+
+  const closeModal = useCallback(() => {
+    previewImages.forEach((url) => {
+      if (typeof url === "string" && url.startsWith("blob:")) {
+        URL.revokeObjectURL(url);
+      }
+    });
+
+    setModal(null);
+    setPreviewImages([]);
+  }, [previewImages]);
+
+  const openCreateModal = useCallback(() => {
+    setModal(EMPTY_MODAL);
+    setPreviewImages([]);
+  }, []);
+
+  const openEditModal = useCallback((item) => {
+    setModal({
+      ...item,
+      images: [],
+    });
+    setPreviewImages(item.images || []);
+  }, []);
+
+  const openImagePreview = useCallback((images, index = 0) => {
+    if (!images?.length) return;
+    setPreview({ images, index });
+  }, []);
+
+  const handleModalChange = useCallback((field, value) => {
+    setModal((prev) => {
+      if (!prev) return prev;
+      return { ...prev, [field]: value };
+    });
+  }, []);
+
+  const handleFileChange = useCallback(
+    (e) => {
+      const files = Array.from(e.target.files || []).slice(0, 3);
+
+      const newPreviews = files.map((file) => URL.createObjectURL(file));
+
+      setPreviewImages((prev) => {
+        prev.forEach((url) => {
+          if (typeof url === "string" && url.startsWith("blob:")) {
+            URL.revokeObjectURL(url);
+          }
+        });
+        return newPreviews;
+      });
+
+      setModal((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          images: files,
+        };
+      });
+    },
+    []
+  );
+
+  const handleSave = useCallback(async () => {
+    if (!modal || saving) return;
 
     try {
       const formData = new FormData();
@@ -91,49 +174,69 @@ const Portfolio = () => {
 
       closeModal();
     } catch (err) {
-      console.error(err);
+      console.error("Save portfolio error:", err);
     }
-  };
+  }, [
+    modal,
+    saving,
+    updatePortfolioMutation,
+    createPortfolioMutation,
+    closeModal,
+  ]);
 
-  /* ================= DELETE ================= */
-  const confirmDelete = async () => {
-    if (!deleteItem?.id) return;
+  const confirmDelete = useCallback(async () => {
+    if (!deleteItem?.id || deleting) return;
 
     try {
       await deletePortfolioMutation.mutateAsync(deleteItem.id);
-      setDeleteItem(null);
+
+      const remainingItems = portfolio.length - 1;
+      const newTotalPages = Math.max(
+        1,
+        Math.ceil(remainingItems / ITEMS_PER_PAGE)
+      );
+
+      if (currentPage > newTotalPages) {
+        setCurrentPage(newTotalPages);
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Delete portfolio error:", err);
     }
-  };
+  }, [
+    deleteItem,
+    deleting,
+    deletePortfolioMutation,
+    portfolio.length,
+    currentPage,
+  ]);
 
-  const closeModal = () => {
-    setModal(null);
-    setPreviewImages([]);
-  };
+  const goToPrevPreview = useCallback(() => {
+    setPreview((prev) => {
+      if (!prev?.images?.length) return prev;
+      return {
+        ...prev,
+        index: prev.index === 0 ? prev.images.length - 1 : prev.index - 1,
+      };
+    });
+  }, []);
 
-  const saving =
-    createPortfolioMutation.isPending || updatePortfolioMutation.isPending;
+  const goToNextPreview = useCallback(() => {
+    setPreview((prev) => {
+      if (!prev?.images?.length) return prev;
+      return {
+        ...prev,
+        index: prev.index === prev.images.length - 1 ? 0 : prev.index + 1,
+      };
+    });
+  }, []);
 
-  const deleting = deletePortfolioMutation.isPending;
-
-  /* ================= RENDER ================= */
   return (
     <AdminLayout>
       <div className="portfolio-page">
         <div className="portfolio-header">
           <h1>Portfolio Management</h1>
 
-          <button
-            className="btn-primary"
-            onClick={() =>
-              setModal({
-                title: "",
-                description: "",
-                images: [],
-              })
-            }
-          >
+          <button className="btn-primary" onClick={openCreateModal}>
             + Add Portfolio
           </button>
         </div>
@@ -142,57 +245,50 @@ const Portfolio = () => {
           <div>Loading...</div>
         ) : (
           <>
-            {/* ================= GRID ================= */}
             <div className="portfolio-grid">
-              {currentItems.map((item) => (
-                <div key={item.id} className="portfolio-card">
-                  <div className="portfolio-images">
-                    {item.images?.slice(0, 1).map((img, i) => (
-                      <img
-                        key={i}
-                        src={img}
-                        alt={item.title}
-                        onClick={() =>
-                          setPreview({
-                            images: item.images,
-                            index: i,
-                          })
-                        }
-                      />
-                    ))}
-                  </div>
+              {currentItems.map((item) => {
+                const firstImage = item.images?.[0];
 
-                  <div className="portfolio-content">
-                    <h3>{item.title}</h3>
-                    <p>{item.description}</p>
+                return (
+                  <div key={item.id} className="portfolio-card">
+                    <div className="portfolio-images">
+                      {firstImage ? (
+                        <img
+                          src={firstImage}
+                          alt={item.title}
+                          loading="lazy"
+                          onClick={() => openImagePreview(item.images, 0)}
+                        />
+                      ) : (
+                        <div className="portfolio-no-image">No Image</div>
+                      )}
+                    </div>
 
-                    <div className="portfolio-buttons">
-                      <button
-                        className="btn-secondary"
-                        onClick={() => {
-                          setModal({
-                            ...item,
-                            images: [],
-                          });
-                          setPreviewImages(item.images || []);
-                        }}
-                      >
-                        Edit
-                      </button>
+                    <div className="portfolio-content">
+                      <h3>{item.title}</h3>
+                      <p>{item.description}</p>
 
-                      <button
-                        className="btn-danger"
-                        onClick={() => setDeleteItem(item)}
-                      >
-                        Delete
-                      </button>
+                      <div className="portfolio-buttons">
+                        <button
+                          className="btn-secondary"
+                          onClick={() => openEditModal(item)}
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          className="btn-danger"
+                          onClick={() => setDeleteItem(item)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            {/* ================= PAGINATION ================= */}
             <div className="pagination">
               <button
                 disabled={safeCurrentPage === 1}
@@ -201,7 +297,7 @@ const Portfolio = () => {
                 Prev
               </button>
 
-              {[...Array(totalPages)].map((_, index) => {
+              {Array.from({ length: totalPages }, (_, index) => {
                 const page = index + 1;
 
                 return (
@@ -225,7 +321,6 @@ const Portfolio = () => {
           </>
         )}
 
-        {/* ================= MODAL ================= */}
         {modal && (
           <div className="modal-overlay" onClick={closeModal}>
             <div className="premium-modal" onClick={(e) => e.stopPropagation()}>
@@ -234,14 +329,14 @@ const Portfolio = () => {
               <input
                 placeholder="Title"
                 value={modal.title}
-                onChange={(e) => setModal({ ...modal, title: e.target.value })}
+                onChange={(e) => handleModalChange("title", e.target.value)}
               />
 
               <textarea
                 placeholder="Description"
                 value={modal.description}
                 onChange={(e) =>
-                  setModal({ ...modal, description: e.target.value })
+                  handleModalChange("description", e.target.value)
                 }
               />
 
@@ -249,25 +344,12 @@ const Portfolio = () => {
                 type="file"
                 accept="image/*"
                 multiple
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || []).slice(0, 3);
-
-                  setModal({
-                    ...modal,
-                    images: files,
-                  });
-
-                  const previews = files.map((file) =>
-                    URL.createObjectURL(file),
-                  );
-
-                  setPreviewImages(previews);
-                }}
+                onChange={handleFileChange}
               />
 
               <div className="portfolio-preview">
                 {previewImages.map((img, i) => (
-                  <img key={i} src={img} alt="preview" />
+                  <img key={`${img}-${i}`} src={img} alt="preview" />
                 ))}
               </div>
 
@@ -282,9 +364,8 @@ const Portfolio = () => {
           </div>
         )}
 
-        {/* ================= DELETE MODAL ================= */}
         {deleteItem && (
-          <div className="modal-overlay">
+          <div className="modal-overlay" onClick={() => setDeleteItem(null)}>
             <div
               className="premium-modal delete-modal"
               onClick={(e) => e.stopPropagation()}
@@ -329,16 +410,7 @@ const Portfolio = () => {
               ✕
             </button>
 
-            <button
-              className="preview-arrow left"
-              onClick={() =>
-                setPreview((prev) => ({
-                  ...prev,
-                  index:
-                    prev.index === 0 ? prev.images.length - 1 : prev.index - 1,
-                }))
-              }
-            >
+            <button className="preview-arrow left" onClick={goToPrevPreview}>
               ◀
             </button>
 
@@ -348,16 +420,7 @@ const Portfolio = () => {
               alt="Portfolio preview"
             />
 
-            <button
-              className="preview-arrow right"
-              onClick={() =>
-                setPreview((prev) => ({
-                  ...prev,
-                  index:
-                    prev.index === prev.images.length - 1 ? 0 : prev.index + 1,
-                }))
-              }
-            >
+            <button className="preview-arrow right" onClick={goToNextPreview}>
               ▶
             </button>
           </div>
