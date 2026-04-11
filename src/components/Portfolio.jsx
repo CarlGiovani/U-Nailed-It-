@@ -15,26 +15,29 @@ import {
   FaTimes,
 } from "react-icons/fa";
 
-/* =========================
-   CUSTOM ARROWS
-========================= */
-
 const NextArrow = ({ onClick }) => (
-  <button className="slider-arrow next" onClick={onClick}>
+  <button
+    className="slider-arrow next"
+    onClick={onClick}
+    aria-label="Next slide"
+    type="button"
+  >
     <FaArrowRight />
   </button>
 );
 
 const PrevArrow = ({ onClick }) => (
-  <button className="slider-arrow prev" onClick={onClick}>
+  <button
+    className="slider-arrow prev"
+    onClick={onClick}
+    aria-label="Previous slide"
+    type="button"
+  >
     <FaArrowLeft />
   </button>
 );
 
 const Portfolio = () => {
-  /* =========================
-     PORTFOLIO QUERY + CACHE
-  ========================= */
   const {
     data: portfolioItems = [],
     isLoading,
@@ -42,32 +45,14 @@ const Portfolio = () => {
     error,
   } = useQuery({
     queryKey: ["portfolioItems"],
-    // CACHE KEY
-    // dito sine-save ni React Query ang portfolio data
-
     queryFn: getAllPortfolio,
-    // FETCH FUNCTION
-    // ito ang tatawag sa API kapag walang cache
-    // o stale na ang cache
-
     staleTime: 1000 * 60 * 10,
-    // CACHING
-    // 10 minutes fresh ang data
-    // within 10 mins, cached data muna ang gagamitin
-
     gcTime: 1000 * 60 * 15,
-    // CACHE LIFETIME
-    // itatago ang cache sa memory for 15 minutes
-
     refetchOnWindowFocus: false,
-    // CACHE BEHAVIOR
-    // pagbalik sa tab, hindi auto-refetch
   });
 
   const [sliderImages, setSliderImages] = useState([]);
   const [sliderTitle, setSliderTitle] = useState("");
-  const [sliderDescription, setSliderDescription] = useState("");
-
   const [isSliderOpen, setIsSliderOpen] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -77,31 +62,20 @@ const Portfolio = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
-  /* =========================
-     OPEN SLIDER
-  ========================= */
-
   const openSlider = (item) => {
     setSliderImages(item.images || []);
     setSliderTitle(item.title || "");
-    setSliderDescription(item.description || "");
     setCurrentSlide(0);
     setIsSliderOpen(true);
   };
-
-  /* =========================
-     CLOSE SLIDER
-  ========================= */
 
   const closeSlider = () => {
     setIsSliderOpen(false);
     setIsFullscreen(false);
     setSliderImages([]);
+    setSliderTitle("");
+    setCurrentSlide(0);
   };
-
-  /* =========================
-     LOCK SCROLL WHEN MODAL OPEN
-  ========================= */
 
   useEffect(() => {
     document.body.style.overflow = isSliderOpen ? "hidden" : "auto";
@@ -111,12 +85,24 @@ const Portfolio = () => {
     };
   }, [isSliderOpen]);
 
-  /* =========================
-     SLIDER SETTINGS
-  ========================= */
+  useEffect(() => {
+    if (!isSliderOpen) return;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") closeSlider();
+
+      if (sliderImages.length > 1 && sliderRef.current) {
+        if (event.key === "ArrowRight") sliderRef.current.slickNext();
+        if (event.key === "ArrowLeft") sliderRef.current.slickPrev();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isSliderOpen, sliderImages.length]);
 
   const sliderSettings = {
-    dots: true,
+    dots: sliderImages.length > 1,
     infinite: sliderImages.length > 1,
     speed: 400,
     slidesToShow: 1,
@@ -124,12 +110,9 @@ const Portfolio = () => {
     arrows: sliderImages.length > 1,
     nextArrow: <NextArrow />,
     prevArrow: <PrevArrow />,
-    afterChange: (i) => setCurrentSlide(i),
+    afterChange: (index) => setCurrentSlide(index),
+    adaptiveHeight: false,
   };
-
-  /* =========================
-     FULLSCREEN
-  ========================= */
 
   const toggleFullscreen = () => {
     setIsFullscreen((prev) => !prev);
@@ -139,75 +122,92 @@ const Portfolio = () => {
     }, 50);
   };
 
-  /* =========================
-     PAGINATION
-  ========================= */
-
-  const start = (currentPage - 1) * itemsPerPage;
-  const currentItems = portfolioItems.slice(start, start + itemsPerPage);
   const totalPages = Math.ceil(portfolioItems.length / itemsPerPage);
+  const safeCurrentPage =
+    totalPages === 0 ? 1 : Math.min(currentPage, totalPages);
+
+  const start = (safeCurrentPage - 1) * itemsPerPage;
+  const currentItems = portfolioItems.slice(start, start + itemsPerPage);
 
   if (isError) {
     console.error("Failed to load portfolio", error);
   }
 
-  /* =========================
-     COMPONENT
-  ========================= */
-
   return (
     <>
       <section className="portfolio" id="portfolio">
         <div className="container">
-          <div className="section-title">
-            <h2>Our Portfolio</h2>
-            <p>This is some of the memories and works</p>
+          <div className="portfolio-header">
+            <span className="portfolio-kicker">Portfolio</span>
+            <h2>Our Work</h2>
+            <p>
+              A curated look at some of our nail sets, details, and finished
+              designs crafted with care.
+            </p>
           </div>
 
           {isLoading ? (
-            <p className="loading-text">Loading portfolio...</p>
+            <div className="portfolio-state">
+              <p className="loading-text">Loading portfolio...</p>
+            </div>
           ) : isError ? (
-            <p className="loading-text">Failed to load portfolio.</p>
+            <div className="portfolio-state">
+              <p className="loading-text">Failed to load portfolio.</p>
+            </div>
           ) : portfolioItems.length === 0 ? (
-            <p className="loading-text">No portfolio items available.</p>
+            <div className="portfolio-state">
+              <p className="loading-text">No portfolio items available.</p>
+            </div>
           ) : (
             <>
               <div className="portfolio-grid">
-                {currentItems.map((item) => (
-                  <div
+                {currentItems.map((item, index) => (
+                  <article
                     key={item.id}
-                    className="portfolio-item"
+                    className={`portfolio-item ${
+                      index === 0 ? "portfolio-item-featured" : ""
+                    }`}
                     onClick={() => openSlider(item)}
                   >
-                    <img
-                      src={item.images?.[0]}
-                      alt={item.title}
-                      loading="lazy"
-                    />
+                    <div className="portfolio-image-wrap">
+                      <img
+                        src={item.images?.[0]}
+                        alt={item.title}
+                        loading="lazy"
+                      />
+                    </div>
 
                     <div className="portfolio-overlay">
+                      <span className="portfolio-chip">View Set</span>
                       <h3>{item.title}</h3>
+                      <p>Tap to view photos.</p>
                     </div>
-                  </div>
+                  </article>
                 ))}
               </div>
 
               {totalPages > 1 && (
                 <div className="portfolio-pagination">
                   <button
-                    onClick={() => setCurrentPage((p) => p - 1)}
-                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={safeCurrentPage === 1}
+                    aria-label="Previous page"
+                    type="button"
                   >
                     Prev
                   </button>
 
                   <span>
-                    {currentPage} / {totalPages}
+                    Page {safeCurrentPage} of {totalPages}
                   </span>
 
                   <button
-                    onClick={() => setCurrentPage((p) => p + 1)}
-                    disabled={currentPage === totalPages}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    disabled={safeCurrentPage === totalPages}
+                    aria-label="Next page"
+                    type="button"
                   >
                     Next
                   </button>
@@ -219,29 +219,54 @@ const Portfolio = () => {
       </section>
 
       {isSliderOpen && (
-        <div className={`slider-modal ${isFullscreen ? "fullscreen" : ""}`}>
+        <div
+          className={`slider-modal ${isFullscreen ? "fullscreen" : ""}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label={sliderTitle || "Portfolio image viewer"}
+        >
           <div className="slider-backdrop" onClick={closeSlider} />
 
-          <div className="slider-content">
-            <button className="slider-close" onClick={closeSlider}>
-              <FaTimes />
-            </button>
-
-            <button className="slider-fullscreen" onClick={toggleFullscreen}>
+          <div className="slider-shell">
+            <button
+              className="slider-icon-btn slider-fullscreen"
+              onClick={toggleFullscreen}
+              aria-label="Toggle fullscreen"
+              type="button"
+            >
               {isFullscreen ? <FaCompress /> : <FaExpand />}
             </button>
 
-            <h2 className="slider-title">{sliderTitle}</h2>
+            <button
+              className="slider-icon-btn slider-close"
+              onClick={closeSlider}
+              aria-label="Close viewer"
+              type="button"
+            >
+              <FaTimes />
+            </button>
 
-            <p className="slider-description">{sliderDescription}</p>
+            <div className="slider-content">
+              <div className="slider-stage">
+                <Slider ref={sliderRef} {...sliderSettings}>
+                  {sliderImages.map((img, index) => (
+                    <div key={index} className="slider-image-wrapper">
+                      <img
+                        src={img}
+                        alt={`${sliderTitle || "Portfolio image"} ${index + 1}`}
+                        loading="lazy"
+                      />
+                    </div>
+                  ))}
+                </Slider>
+              </div>
 
-            <Slider ref={sliderRef} {...sliderSettings}>
-              {sliderImages.map((img, i) => (
-                <div key={i} className="slider-image-wrapper">
-                  <img src={img} alt={`Slide ${i + 1}`} loading="lazy" />
+              {sliderImages.length > 1 && (
+                <div className="slider-count">
+                  {currentSlide + 1} / {sliderImages.length}
                 </div>
-              ))}
-            </Slider>
+              )}
+            </div>
           </div>
         </div>
       )}
