@@ -36,12 +36,16 @@ body {
   color: var(--text-dark);
   line-height: 1.6;
   overflow-x: hidden;
-
   background:
-    radial-gradient(circle at 20% 10%, rgba(255, 215, 0, 0.22) transparent 40%),
+    radial-gradient(
+      circle at 20% 10%,
+      rgba(255, 215, 0, 0.22),
+      transparent 40%
+    ),
     radial-gradient(
       circle at 85% 20%,
-      rgba(255, 105, 180, 0.18) transparent 45%
+      rgba(255, 105, 180, 0.18),
+      transparent 45%
     ),
     linear-gradient(135deg, #fdf8f2 0%, #fffaf5 40%, #fff4f8 100%);
 }

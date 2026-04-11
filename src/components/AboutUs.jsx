@@ -17,7 +17,7 @@ const AboutUs = () => {
           }
         });
       },
-      { threshold: 0.2 }
+      { threshold: 0.15 },
     );
 
     cardsRef.current.forEach((card) => {
@@ -30,83 +30,133 @@ const AboutUs = () => {
   return (
     <section className="about-us" id="about-us">
       <div className="container">
-        <div className="section-title">
-          <h2>About Us</h2>
-          <p>The artist, the journey, and the craft behind every set</p>
+        <div
+          className="about-header reveal"
+          ref={(el) => (cardsRef.current[0] = el)}
+        >
+          <span className="about-kicker">About Us</span>
+          <h2>The artist, the story, and the care behind every set</h2>
+          <p>
+            Get to know the heart of UNAiledIt — from the founder’s passion to
+            the premium experience behind every appointment.
+          </p>
         </div>
 
-        <div className="about-board">
-          {/* FOUNDER CARD */}
-          <div
-            className="board-card founder-card reveal"
-            ref={(el) => (cardsRef.current[0] = el)}
+        <div className="about-grid">
+          <article
+            className="about-card about-card-founder reveal"
+            ref={(el) => (cardsRef.current[1] = el)}
           >
-            <span className="pin pink"></span>
+            <div className="about-founder-top">
+              <div className="owner-photo">
+                <img src={profile} alt="Alliyah Bangayan" loading="lazy" />
+              </div>
 
-            <div className="owner-photo">
-              <img
-                src={profile}
-                alt="Founder"
-                loading="lazy"
-              />
+              <div className="founder-meta">
+                <span className="about-label">Founder</span>
+                <h3>Alliyah Bangayan</h3>
+                <p className="owner-role">Founder & Lead Nail Artist</p>
+              </div>
             </div>
 
-            <h3>Alliyah Bangayan</h3>
-            <span className="owner-role">Founder & Lead Nail Artist</span>
+            <p className="owner-bio">
+              Hi, I’m Alliyah — your nail artist. I’m passionate about creating
+              clean, detailed, and high-quality nail sets that help every client
+              feel confident, polished, and cared for.
+            </p>
 
             <p className="owner-bio">
-              Hi, I’m Alliyah — your nail artist! I’m 21 years old and
-              passionate about creating high quality, detailed and clean nails...
+              UNAiledIt was built with a focus on artistry, hygiene, comfort,
+              and personalized service — so every appointment feels premium from
+              start to finish.
             </p>
 
             <div className="social-links">
-              <a href="#"><i className="fab fa-facebook-f"></i></a>
-              <a href="#"><i className="fab fa-instagram"></i></a>
+              <a href="#" aria-label="Facebook">
+                <i className="fab fa-facebook-f"></i>
+              </a>
+              <a href="#" aria-label="Instagram">
+                <i className="fab fa-instagram"></i>
+              </a>
             </div>
-          </div>
+          </article>
 
-          {/* JOURNEY CARD */}
-          <div
-            className="board-card journey-card reveal"
-            ref={(el) => (cardsRef.current[1] = el)}
-          >
-            <span className="pin gold"></span>
-            <h3>Our Journey</h3>
-            <ul className="timeline">
-              <li><strong>2018</strong> Studio founded</li>
-              <li><strong>2019</strong> PNTA certified</li>
-              <li><strong>2021</strong> Media features & collabs</li>
-              <li><strong>2024</strong> Premium nail services expanded</li>
-            </ul>
-          </div>
-
-          {/* STUDIO CARD */}
-          <div
-            className="board-card studio-card reveal"
+          <article
+            className="about-card reveal"
             ref={(el) => (cardsRef.current[2] = el)}
           >
-            <span className="pin pink"></span>
-            <h3>Our Studio</h3>
-            <p>
-              A premium nail studio based in Makati City, built around hygiene,
-              artistry, and personalized service.
-            </p>
-          </div>
+            <div className="card-head">
+              <span className="about-label">Journey</span>
+              <h3>Our Journey</h3>
+            </div>
 
-          {/* GALLERY CARD */}
-          <div
-            className="board-card gallery-card reveal"
+            <ul className="timeline">
+              <li>
+                <strong>2018</strong>
+                <span>
+                  Studio founded with a passion for detailed nail artistry
+                </span>
+              </li>
+              <li>
+                <strong>2019</strong>
+                <span>
+                  Earned PNTA certification and strengthened service quality
+                </span>
+              </li>
+              <li>
+                <strong>2021</strong>
+                <span>
+                  Gained features, collaborations, and growing recognition
+                </span>
+              </li>
+              <li>
+                <strong>2024</strong>
+                <span>
+                  Expanded premium nail services and refined the client
+                  experience
+                </span>
+              </li>
+            </ul>
+          </article>
+
+          <article
+            className="about-card reveal"
             ref={(el) => (cardsRef.current[3] = el)}
           >
-            <span className="tape"></span>
-            <h3>Our Work</h3>
-            <div className="mini-gallery">
-              <img src={img1} alt="" />
-              <img src={img2} alt="" />
-              <img src={img3} alt="" />
-              <img src={img4} alt="" />
+            <div className="card-head">
+              <span className="about-label">Studio</span>
+              <h3>Our Studio</h3>
             </div>
-          </div>
+
+            <p className="studio-text">
+              A premium nail studio based in Makati City, built around hygiene,
+              artistry, comfort, and personalized service.
+            </p>
+
+            <ul className="studio-points">
+              <li>Clean and careful nail care</li>
+              <li>Elegant designs tailored to your style</li>
+              <li>Relaxing appointments with premium attention</li>
+              <li>Consistent quality in every set</li>
+            </ul>
+          </article>
+
+          <article
+            className="about-card about-card-gallery reveal"
+            ref={(el) => (cardsRef.current[4] = el)}
+          >
+            <div className="card-head">
+              <span className="about-label">Portfolio</span>
+              <h3>Our Work</h3>
+            </div>
+
+            <div className="mini-gallery">
+              <img src={img1} alt="Nail art sample 1" loading="lazy" />
+              <img src={img2} alt="Nail art sample 2" loading="lazy" />
+              <img src={img3} alt="Nail art sample 3" loading="lazy" />
+              <img src={img4} alt="Nail art sample 4" loading="lazy" />
+            </div>
+          </article>
         </div>
       </div>
     </section>
