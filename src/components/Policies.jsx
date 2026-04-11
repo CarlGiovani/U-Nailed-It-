@@ -14,8 +14,8 @@ const Policies = () => {
   } = useQuery({
     queryKey: ["activePolicies"],
     queryFn: getActivePolicies,
-    staleTime: 1000 * 60 * 10, // 10 minutes
-    gcTime: 1000 * 60 * 15, // keep cache for 15 minutes
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 15,
     refetchOnWindowFocus: false,
   });
 
@@ -30,7 +30,7 @@ const Policies = () => {
           }
         });
       },
-      { threshold: 0.2 },
+      { threshold: 0.15 },
     );
 
     itemsRef.current.forEach((el) => {
@@ -47,34 +47,49 @@ const Policies = () => {
   return (
     <section className="policies" id="policies">
       <div className="container">
-        <div className="section-title">
+        <div
+          className="policies-header reveal"
+          ref={(el) => (itemsRef.current[0] = el)}
+        >
+          <span className="policies-kicker">Policies</span>
           <h2>Our Policies</h2>
-          <p>Important information for your appointment</p>
+          <p>
+            Important information to help make your appointment smooth, clear,
+            and stress-free.
+          </p>
         </div>
 
         {isLoading ? (
-          <p className="loading-text">Loading policies...</p>
+          <div className="policies-state">
+            <p className="loading-text">Loading policies...</p>
+          </div>
         ) : isError ? (
-          <p className="loading-text">Failed to load policies.</p>
+          <div className="policies-state">
+            <p className="loading-text">Failed to load policies.</p>
+          </div>
         ) : policies.length === 0 ? (
-          <p className="loading-text">No policies available.</p>
+          <div className="policies-state">
+            <p className="loading-text">No policies available.</p>
+          </div>
         ) : (
-          <div className="policies-timeline">
+          <div className="policies-list">
             {policies.map((policy, index) => (
-              <div
+              <article
                 key={policy.id}
-                ref={(el) => (itemsRef.current[index] = el)}
-                className={`timeline-item ${
-                  index % 2 === 0 ? "left" : "right"
-                } reveal`}
+                ref={(el) => (itemsRef.current[index + 1] = el)}
+                className="policy-item reveal"
               >
-                <div className="timeline-dot"></div>
+                <div className="policy-item-top">
+                  <span className="policy-badge">
+                    Policy {String(index + 1).padStart(2, "0")}
+                  </span>
+                </div>
 
                 <div className="policy-card">
                   <h3 className="policy-title">{policy.title}</h3>
                   <p className="policy-content">{policy.content}</p>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}
