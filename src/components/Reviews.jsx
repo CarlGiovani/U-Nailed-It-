@@ -1,5 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  FaChevronLeft,
+  FaChevronRight,
+  FaQuoteLeft,
+  FaRegImage,
+  FaStar,
+  FaTimes,
+} from "react-icons/fa";
 import Slider from "react-slick";
 import { getApprovedReviews } from "../../backend/reviewApi";
 import "../styles/review-section.css";
@@ -7,19 +15,40 @@ import "../styles/review-section.css";
 import "slick-carousel/slick/slick-theme.css";
 import "slick-carousel/slick/slick.css";
 
-const sliderSettings = {
-  autoplay: true,
-  autoplaySpeed: 3500,
-  arrows: false,
-  dots: true,
-  infinite: true,
-  slidesToShow: 1,
-  slidesToScroll: 1,
-};
+const NextArrow = ({ onClick }) => (
+  <button
+    className="reviews-slider-arrow next"
+    onClick={onClick}
+    aria-label="Next reviews"
+    type="button"
+  >
+    <FaChevronRight />
+  </button>
+);
+
+const PrevArrow = ({ onClick }) => (
+  <button
+    className="reviews-slider-arrow prev"
+    onClick={onClick}
+    aria-label="Previous reviews"
+    type="button"
+  >
+    <FaChevronLeft />
+  </button>
+);
 
 const Reviews = () => {
   const [page, setPage] = useState(1);
   const [previewImage, setPreviewImage] = useState(null);
+  const [previewAlt, setPreviewAlt] = useState("Review preview");
+
+  useEffect(() => {
+    if (previewImage) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+  }, [previewImage]);
 
   const { data, isLoading, isError, error, isFetching } = useQuery({
     queryKey: ["approvedReviews", page],
@@ -27,109 +56,196 @@ const Reviews = () => {
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
-
     placeholderData: (prev) => prev,
   });
 
   const reviews = data?.data || [];
   const totalPages = data?.totalPages || 1;
 
+  const sliderSettings = useMemo(
+    () => ({
+      autoplay: reviews.length > 1,
+      autoplaySpeed: 4000,
+      arrows: reviews.length > 1,
+      dots: reviews.length > 1,
+      infinite: reviews.length > 1,
+      speed: 500,
+      slidesToShow: 1,
+      slidesToScroll: 1,
+      adaptiveHeight: false,
+      swipeToSlide: true,
+      nextArrow: <NextArrow />,
+      prevArrow: <PrevArrow />,
+    }),
+    [reviews.length],
+  );
+
   if (isError) {
     console.error("Failed to load reviews", error);
   }
 
-  if (isLoading) {
-    return <p className="loading-text">Loading reviews...</p>;
-  }
+  const openPreview = (image, customerName) => {
+    setPreviewImage(image);
+    setPreviewAlt(`${customerName}'s review image`);
+  };
+
+  const closePreview = () => {
+    setPreviewImage(null);
+    setPreviewAlt("Review preview");
+  };
+
+  const renderStars = (rating = 0) =>
+    [...Array(5)].map((_, i) => (
+      <span
+        key={i}
+        className={`review-star ${i < rating ? "filled" : ""}`}
+        aria-hidden="true"
+      >
+        <FaStar />
+      </span>
+    ));
 
   const renderCard = (review) => {
     const name = review.bookings?.customers?.full_name || "Happy Customer";
+    const formattedDate = review.created_at
+      ? new Date(review.created_at).toLocaleDateString()
+      : "Recently";
 
     return (
-      <div key={review.id} className="review-card speech">
-        <span className="pin pink" />
+      <article key={review.id} className="review-card">
+        <div className="review-card-glow" />
 
-        <div className="review-quote">“</div>
+        <div className="review-top">
+          <div className="review-avatar" aria-hidden="true">
+            {name.charAt(0).toUpperCase()}
+          </div>
 
-        <p className="review-comment">{review.comment}</p>
+          <div className="review-person">
+            <h3 className="review-name">{name}</h3>
+            <p className="review-date">{formattedDate}</p>
+          </div>
 
-        <div className="review-stars">
-          {[...Array(5)].map((_, i) => (
-            <span
-              key={i}
-              className={`star ${i < review.rating ? "filled" : ""}`}
-              style={{ animationDelay: `${i * 0.1}s` }}
-            >
-              ★
-            </span>
-          ))}
+          <div className="review-quote-badge" aria-hidden="true">
+            <FaQuoteLeft />
+          </div>
         </div>
+
+        <div
+          className="review-rating"
+          aria-label={`${review.rating} out of 5 stars`}
+        >
+          {renderStars(review.rating)}
+        </div>
+
+        <p className="review-comment">
+          {review.comment || "Lovely service and experience!"}
+        </p>
 
         {review.image_url && (
-          <div className="review-image">
-            <img
-              src={review.image_url}
-              alt="Review"
-              onClick={() => setPreviewImage(review.image_url)}
-            />
-          </div>
+          <button
+            type="button"
+            className="review-image"
+            onClick={() => openPreview(review.image_url, name)}
+            aria-label={`Open review image from ${name}`}
+          >
+            <img src={review.image_url} alt={`${name} review`} loading="lazy" />
+            <span className="review-image-overlay">
+              <FaRegImage />
+              View Photo
+            </span>
+          </button>
         )}
-
-        <div className="review-footer">
-          <span className="review-name">{name}</span>
-          <span className="review-date">
-            {new Date(review.created_at).toLocaleDateString()}
-          </span>
-        </div>
-      </div>
+      </article>
     );
   };
 
+  if (isLoading) {
+    return (
+      <section className="reviews" id="reviews">
+        <div className="container">
+          <div className="reviews-heading">
+            <span className="reviews-kicker">Client Love</span>
+            <h2>Why Customers Love Us</h2>
+            <p>Real experiences from our happy nail art clients.</p>
+          </div>
+
+          <div className="reviews-state">
+            <p className="loading-text">Loading reviews...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="reviews" id="reviews">
+      <div className="reviews-bg reviews-bg-1" />
+      <div className="reviews-bg reviews-bg-2" />
+
       <div className="container">
-        <div className="section-title">
+        <div className="reviews-heading">
+          <span className="reviews-kicker">Client Love</span>
           <h2>Why Customers Love Us</h2>
-          <p>Real experiences from our happy nail art clients</p>
+          <p>
+            Real stories, real smiles, and beautiful results from our clients.
+          </p>
         </div>
 
         {isFetching && !isLoading && (
-          <p className="loading-text">Loading new page...</p>
+          <div className="reviews-fetching">
+            <p className="loading-text">Loading new page...</p>
+          </div>
         )}
 
         {isError ? (
-          <p className="loading-text">Failed to load reviews.</p>
+          <div className="reviews-state">
+            <p className="loading-text">Failed to load reviews.</p>
+          </div>
         ) : reviews.length === 0 ? (
-          <p className="loading-text">No reviews available.</p>
+          <div className="reviews-state">
+            <p className="loading-text">No reviews available.</p>
+          </div>
         ) : (
           <>
             <div className="reviews-grid desktop-only">
               {reviews.map(renderCard)}
             </div>
 
-            <div className="mobile-only">
+            <div className="reviews-mobile mobile-only">
               <Slider {...sliderSettings}>
-                {reviews.map((r) => (
-                  <div key={r.id}>{renderCard(r)}</div>
+                {reviews.map((review) => (
+                  <div key={review.id} className="reviews-slide">
+                    {renderCard(review)}
+                  </div>
                 ))}
               </Slider>
             </div>
 
-            <div className="pagination">
+            <div className="reviews-pagination">
               <button
+                type="button"
+                className="pagination-btn"
                 disabled={page === 1}
                 onClick={() => setPage((p) => p - 1)}
               >
-                Prev
+                <FaChevronLeft />
+                <span>Prev</span>
               </button>
-              <span>
-                {page} / {totalPages}
-              </span>
+
+              <div className="pagination-status">
+                <span className="pagination-current">{page}</span>
+                <span className="pagination-divider">/</span>
+                <span className="pagination-total">{totalPages}</span>
+              </div>
+
               <button
+                type="button"
+                className="pagination-btn"
                 disabled={page === totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >
-                Next
+                <span>Next</span>
+                <FaChevronRight />
               </button>
             </div>
           </>
@@ -138,21 +254,26 @@ const Reviews = () => {
 
       {previewImage && (
         <div
-          className="image-preview-overlay"
-          onClick={() => setPreviewImage(null)}
+          className="review-preview-overlay"
+          onClick={closePreview}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Review image preview"
         >
           <div
-            className="image-preview-box"
+            className="review-preview-box"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              className="image-preview-close"
-              onClick={() => setPreviewImage(null)}
+              type="button"
+              className="review-preview-close"
+              onClick={closePreview}
+              aria-label="Close image preview"
             >
-              ✕
+              <FaTimes />
             </button>
 
-            <img src={previewImage} alt="Preview" />
+            <img src={previewImage} alt={previewAlt} />
           </div>
         </div>
       )}

@@ -29,7 +29,7 @@ const Hero = () => {
         <div className="hero-content">
           <div className="hero-copy">
             <span className="hero-kicker fade-up delay-1">
-              Premium Nail Studio
+              UNailedIt By Alliyah
             </span>
 
             <h1 className="fade-up delay-2">
@@ -47,32 +47,27 @@ const Hero = () => {
               <button
                 className="hero-btn hero-btn-primary"
                 onClick={goToBookingPage}
+                type="button"
               >
                 Book Appointment
               </button>
 
-              <a href="#services" className="hero-btn hero-btn-secondary">
-                View Services
+              <a href="#portfolio" className="hero-btn hero-btn-secondary">
+                View Works
               </a>
-            </div>
-
-            <div className="hero-proof fade-up delay-5">
-              <div className="hero-proof-item">
-                <strong>Premium care</strong>
-                <span>Clean, safe, and relaxing service</span>
-              </div>
-
-              <div className="hero-proof-item">
-                <strong>Custom style</strong>
-                <span>Looks designed around your preference</span>
-              </div>
             </div>
           </div>
 
           <div className="hero-visual fade-up delay-3">
-            <div className="hero-visual-card">
-              <div className="hero-visual-ring" />
-              <div className="hero-visual-glass" />
+            <div className="hero-visual-card" aria-hidden="true">
+              <span className="hero-orb hero-orb-1" />
+              <span className="hero-orb hero-orb-2" />
+              <span className="hero-orb hero-orb-3" />
+              <span className="hero-orb hero-orb-4" />
+
+              <span className="hero-sparkle sparkle-1" />
+              <span className="hero-sparkle sparkle-2" />
+              <span className="hero-sparkle sparkle-3" />
 
               <div className="hero-logo-wrap">
                 <img src={logo} alt="UNAiledIt Logo" />
