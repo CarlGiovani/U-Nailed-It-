@@ -53,6 +53,7 @@ const Portfolio = () => {
 
   const [sliderImages, setSliderImages] = useState([]);
   const [sliderTitle, setSliderTitle] = useState("");
+  const [sliderDescription, setSliderDescription] = useState("");
   const [isSliderOpen, setIsSliderOpen] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -65,6 +66,7 @@ const Portfolio = () => {
   const openSlider = (item) => {
     setSliderImages(item.images || []);
     setSliderTitle(item.title || "");
+    setSliderDescription(item.description || item.content || "");
     setCurrentSlide(0);
     setIsSliderOpen(true);
   };
@@ -74,14 +76,16 @@ const Portfolio = () => {
     setIsFullscreen(false);
     setSliderImages([]);
     setSliderTitle("");
+    setSliderDescription("");
     setCurrentSlide(0);
   };
 
   useEffect(() => {
-    document.body.style.overflow = isSliderOpen ? "hidden" : "auto";
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = isSliderOpen ? "hidden" : originalOverflow;
 
     return () => {
-      document.body.style.overflow = "auto";
+      document.body.style.overflow = originalOverflow;
     };
   }, [isSliderOpen]);
 
@@ -180,7 +184,11 @@ const Portfolio = () => {
                     <div className="portfolio-overlay">
                       <span className="portfolio-chip">View Set</span>
                       <h3>{item.title}</h3>
-                      <p>Tap to view photos.</p>
+                      <p>
+                        {item.description ||
+                          item.content ||
+                          "Tap to view photos."}
+                      </p>
                     </div>
                   </article>
                 ))}
@@ -261,11 +269,22 @@ const Portfolio = () => {
                 </Slider>
               </div>
 
-              {sliderImages.length > 1 && (
-                <div className="slider-count">
-                  {currentSlide + 1} / {sliderImages.length}
+              <div className="slider-meta">
+                <div className="slider-meta-inner">
+                  <span className="slider-meta-chip">Portfolio Set</span>
+                  <h3>{sliderTitle}</h3>
+                  <p>
+                    {sliderDescription ||
+                      "This nail set is part of our featured portfolio collection."}
+                  </p>
+
+                  {sliderImages.length > 1 && (
+                    <div className="slider-count">
+                      {currentSlide + 1} / {sliderImages.length}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>

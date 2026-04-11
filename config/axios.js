@@ -2,7 +2,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://192.168.100.5:5000/api", // TAMA ITO KUNG NASA PORT 5000 ANG BACKEND
+  baseURL: "http://10.20.38.126:5000/api", // TAMA ITO KUNG NASA PORT 5000 ANG BACKEND
   headers: {
     "Content-Type": "application/json",
   },

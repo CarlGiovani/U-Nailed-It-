@@ -1,7 +1,38 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Slider from "react-slick";
 import { getActiveAnnouncements } from "../../backend/promosApi";
 import "../styles/promos.css";
+
+import {
+  FaArrowLeft,
+  FaArrowRight,
+  FaCompress,
+  FaExpand,
+  FaTimes,
+} from "react-icons/fa";
+
+const NextArrow = ({ onClick }) => (
+  <button
+    className="slider-arrow next"
+    onClick={onClick}
+    aria-label="Next slide"
+    type="button"
+  >
+    <FaArrowRight />
+  </button>
+);
+
+const PrevArrow = ({ onClick }) => (
+  <button
+    className="slider-arrow prev"
+    onClick={onClick}
+    aria-label="Previous slide"
+    type="button"
+  >
+    <FaArrowLeft />
+  </button>
+);
 
 const Promos = () => {
   const {
@@ -17,33 +48,73 @@ const Promos = () => {
     refetchOnWindowFocus: false,
   });
 
-  const [previewImages, setPreviewImages] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  // Modal state
+  const [modalImages, setModalImages] = useState([]);
+  const [modalTitle, setModalTitle] = useState("");
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const sliderRef = useRef(null);
 
-  const openPreview = (images, index) => {
-    setPreviewImages(images);
-    setCurrentIndex(index);
+  const openModal = (images, title, startIndex = 0) => {
+    if (!images?.length) return;
+    setModalImages(images);
+    setModalTitle(title);
+    setCurrentSlide(startIndex);
+    setIsModalOpen(true);
   };
 
-  const closePreview = () => {
-    setPreviewImages([]);
-    setCurrentIndex(0);
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setIsFullscreen(false);
+    setModalImages([]);
+    setModalTitle("");
+    setCurrentSlide(0);
   };
 
+  // Lock body scroll when modal open
   useEffect(() => {
-    document.body.style.overflow = previewImages.length > 0 ? "hidden" : "auto";
-  }, [previewImages]);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = isModalOpen ? "hidden" : originalOverflow;
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isModalOpen]);
 
-  const nextImage = () => {
-    setCurrentIndex((prev) =>
-      prev === previewImages.length - 1 ? 0 : prev + 1,
-    );
+  // Keyboard navigation
+  useEffect(() => {
+    if (!isModalOpen) return;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") closeModal();
+      if (modalImages.length > 1 && sliderRef.current) {
+        if (event.key === "ArrowRight") sliderRef.current.slickNext();
+        if (event.key === "ArrowLeft") sliderRef.current.slickPrev();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen, modalImages.length]);
+
+  const sliderSettings = {
+    dots: modalImages.length > 1,
+    infinite: modalImages.length > 1,
+    speed: 400,
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    arrows: modalImages.length > 1,
+    nextArrow: <NextArrow />,
+    prevArrow: <PrevArrow />,
+    afterChange: (index) => setCurrentSlide(index),
+    adaptiveHeight: false,
   };
 
-  const prevImage = () => {
-    setCurrentIndex((prev) =>
-      prev === 0 ? previewImages.length - 1 : prev - 1,
-    );
+  const toggleFullscreen = () => {
+    setIsFullscreen((prev) => !prev);
+    setTimeout(() => {
+      sliderRef.current?.slickGoTo(currentSlide);
+    }, 50);
   };
 
   if (isError) {
@@ -54,34 +125,45 @@ const Promos = () => {
     <>
       <section className="bulletin" id="promos">
         <div className="container">
-          <div className="section-title">
-            <h2>Promos & Announcements</h2>
-            <p>Latest updates and special offers</p>
+          <div className="portfolio-header">
+            <span className="portfolio-kicker">Announcements</span>
+            <h2>Promos & Updates</h2>
+            <p>
+              Latest offers, news, and special announcements from our studio
+            </p>
           </div>
 
           {isLoading && (
-            <p className="loading-text">Loading announcements...</p>
+            <div className="portfolio-state">
+              <p className="loading-text">Loading announcements...</p>
+            </div>
           )}
 
           {!isLoading && announcements.length === 0 && (
-            <p className="loading-text">No announcements available.</p>
+            <div className="portfolio-state">
+              <p className="loading-text">
+                No announcements available at the moment.
+              </p>
+            </div>
           )}
 
           {!isLoading && !isError && announcements.length > 0 && (
             <div className="bulletin-board">
               {announcements.map((item) => (
-                <div key={item.id} className="note-card">
+                <article key={item.id} className="note-card">
                   <div className="pin"></div>
 
                   {item.images?.length > 0 && (
                     <div className="note-image-grid">
-                      {item.images.map((img, index) => (
+                      {item.images.map((img, idx) => (
                         <img
-                          key={index}
+                          key={idx}
                           src={img}
-                          alt={item.title}
+                          alt={`${item.title} preview ${idx + 1}`}
                           loading="lazy"
-                          onClick={() => openPreview(item.images, index)}
+                          onClick={() =>
+                            openModal(item.images, item.title, idx)
+                          }
                         />
                       ))}
                     </div>
@@ -92,45 +174,74 @@ const Promos = () => {
 
                   <div className="note-footer">
                     {item.end_date ? (
-                      <span>Until {item.end_date}</span>
+                      <span>📅 Until {item.end_date}</span>
                     ) : (
-                      <span>Ongoing</span>
+                      <span>✨ Ongoing</span>
                     )}
                   </div>
-                </div>
+                </article>
               ))}
             </div>
           )}
         </div>
       </section>
 
-      {previewImages.length > 0 && (
-        <div className="image-preview-overlay" onClick={closePreview}>
-          <div
-            className="image-preview-box"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={previewImages[currentIndex]}
-              alt="Preview"
-              loading="lazy"
-            />
+      {/* Lightbox Modal - same style as portfolio slider */}
+      {isModalOpen && (
+        <div
+          className={`slider-modal ${isFullscreen ? "fullscreen" : ""}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label={modalTitle || "Announcement image viewer"}
+        >
+          <div className="slider-backdrop" onClick={closeModal} />
 
-            {previewImages.length > 1 && (
-              <>
-                <button className="nav-btn left" onClick={prevImage}>
-                  ‹
-                </button>
-
-                <button className="nav-btn right" onClick={nextImage}>
-                  ›
-                </button>
-              </>
-            )}
-
-            <button className="image-preview-close" onClick={closePreview}>
-              ✕
+          <div className="slider-shell">
+            <button
+              className="slider-icon-btn slider-fullscreen"
+              onClick={toggleFullscreen}
+              aria-label="Toggle fullscreen"
+              type="button"
+            >
+              {isFullscreen ? <FaCompress /> : <FaExpand />}
             </button>
+
+            <button
+              className="slider-icon-btn slider-close"
+              onClick={closeModal}
+              aria-label="Close viewer"
+              type="button"
+            >
+              <FaTimes />
+            </button>
+
+            <div className="slider-content">
+              <div className="slider-stage">
+                <Slider ref={sliderRef} {...sliderSettings}>
+                  {modalImages.map((img, index) => (
+                    <div key={index} className="slider-image-wrapper">
+                      <img
+                        src={img}
+                        alt={`${modalTitle || "Announcement image"} ${index + 1}`}
+                        loading="lazy"
+                      />
+                    </div>
+                  ))}
+                </Slider>
+              </div>
+
+              <div className="slider-meta">
+                <div className="slider-meta-inner">
+                  <span className="slider-meta-chip">Promo Visual</span>
+                  <h3>{modalTitle}</h3>
+                  {modalImages.length > 1 && (
+                    <div className="slider-count">
+                      {currentSlide + 1} / {modalImages.length}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

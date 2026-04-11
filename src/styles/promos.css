@@ -1,158 +1,381 @@
 /* =========================
    BULLETIN SECTION
+   Matches portfolio gradient & spacing
 ========================= */
+
 .bulletin {
   position: relative;
-  padding: 100px 0;
-  z-index: 2;
-
+  overflow: hidden;
+  padding: 110px 0;
   background:
     radial-gradient(
-      circle at 70% 10%,
-      rgba(255, 215, 0, 0.22),
-      transparent 55%
+      circle at 84% 12%,
+      rgba(212, 175, 55, 0.14),
+      transparent 30%
     ),
     radial-gradient(
-      circle at 20% 70%,
-      rgba(255, 105, 180, 0.2),
-      transparent 60%
+      circle at 18% 72%,
+      rgba(233, 184, 200, 0.18),
+      transparent 34%
     ),
-    linear-gradient(135deg, #fff3f8 0%, #fffaf4 50%, #ffffff 100%);
+    linear-gradient(135deg, #fff8fb 0%, #fffdf8 58%, #ffffff 100%);
 }
 
 .bulletin::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 220px;
-
-  background: linear-gradient(
-    to bottom,
-    rgba(255, 243, 248, 1),
-    rgba(255, 243, 248, 0.6),
-    rgba(255, 243, 248, 0)
-  );
-
+  inset: 0;
   pointer-events: none;
-  z-index: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0) 18%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
 }
-.bulletin::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 220px;
 
-  background: linear-gradient(
-    to top,
-    rgba(255, 243, 248, 1),
-    rgba(255, 243, 248, 0.6),
-    rgba(255, 243, 248, 0)
-  );
+.bulletin .container {
+  position: relative;
+  z-index: 2;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
 
-  pointer-events: none;
-  z-index: -10;
+/* Reuse portfolio-header styles (already defined) */
+.portfolio-header {
+  max-width: 720px;
+  margin: 0 auto 52px;
+  text-align: center;
+}
+
+.portfolio-kicker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  padding: 9px 15px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--portfolio-border, rgba(255, 255, 255, 0.72));
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.06);
+  color: #8d6436;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.portfolio-header h2 {
+  margin: 0 0 14px;
+  color: var(--portfolio-text, #20181b);
+  font-size: clamp(2.2rem, 4.4vw, 3.4rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+}
+
+.portfolio-header p {
+  margin: 0 auto;
+  max-width: 620px;
+  color: var(--portfolio-text-soft, rgba(32, 24, 27, 0.72));
+  font-size: 1rem;
+  line-height: 1.75;
 }
 
 /* =========================
-   BOARD GRID
+   BOARD GRID (3 columns)
 ========================= */
 .bulletin-board {
-  margin-top: 40px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 30px;
+  margin-top: 36px;
 }
 
 /* =========================
-   NOTE CARD
+   NOTE CARD (like a pinned note with modern twist)
 ========================= */
 .note-card {
-  background: #fffafc;
-  border-radius: 16px;
-  padding: 28px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(2px);
+  border-radius: 28px;
+  padding: 24px 24px 28px;
   position: relative;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
-  transform: rotate(-1deg);
-  transition: 0.3s ease;
-  border: 1px solid #f8d7e5;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.08);
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  transform: rotate(-0.5deg);
 }
 
 .note-card:nth-child(even) {
-  transform: rotate(1deg);
+  transform: rotate(0.5deg);
 }
 
 .note-card:hover {
   transform: rotate(0deg) translateY(-6px);
-  box-shadow: 0 25px 50px rgba(255, 105, 180, 0.2);
+  box-shadow: 0 22px 45px rgba(0, 0, 0, 0.12);
+  border-color: rgba(212, 175, 55, 0.3);
 }
 
-/* =========================
-   PIN
-========================= */
+/* PIN */
 .note-card .pin {
   position: absolute;
-  top: -10px;
+  top: -12px;
   left: 50%;
-  width: 16px;
-  height: 16px;
-  background: var(--primary-pink);
+  width: 18px;
+  height: 18px;
+  background: var(--portfolio-pink, #d98cab);
   border-radius: 50%;
   transform: translateX(-50%);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
-/* =========================
-   IMAGE
-========================= */
-.note-image {
-  height: 150px;
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 16px;
+/* Image grid inside card */
+.note-image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
-.note-image img {
+.note-image-grid img {
   width: 100%;
-  height: 100%;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
-  transition: 0.4s ease;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
 }
 
-.note-image img:hover {
-  transform: scale(1.05);
+.note-image-grid img:hover {
+  transform: scale(1.03);
+  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.1);
+  border-color: var(--portfolio-gold, #d4af37);
 }
 
-/* =========================
-   TITLE
-========================= */
+/* Typography */
 .note-card h3 {
-  font-size: 1.2rem;
-  margin-bottom: 10px;
-  color: var(--primary-pink);
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0 0 12px 0;
+  color: var(--portfolio-text, #20181b);
+  letter-spacing: -0.02em;
 }
 
-/* =========================
-   CONTENT
-========================= */
 .note-card p {
   font-size: 0.95rem;
   line-height: 1.6;
-  margin-bottom: 14px;
-  color: #444;
+  color: var(--portfolio-text-soft, rgba(32, 24, 27, 0.8));
+  margin-bottom: 18px;
+}
+
+.note-footer {
+  border-top: 1px dashed rgba(212, 175, 55, 0.4);
+  padding-top: 14px;
+  font-size: 0.8rem;
+  color: #8d6436;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* =========================
-   FOOTER
+   MODAL (reuse portfolio slider styles)
+   Already defined in portfolio.css – we ensure it's available.
+   If not, add these minimal extras:
 ========================= */
-.note-footer {
-  border-top: 1px dashed #f2b6cf;
-  padding-top: 10px;
-  font-size: 0.85rem;
-  color: #777;
+
+.slider-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.slider-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 12, 0.78);
+  backdrop-filter: blur(4px);
+}
+
+.slider-shell {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 760px);
+}
+
+.slider-modal.fullscreen .slider-shell {
+  width: min(100%, 980px);
+}
+
+.slider-content {
+  position: relative;
+  width: 100%;
+  max-height: 92vh;
+  overflow: hidden;
+  border-radius: 24px;
+  background: transparent;
+  animation: fadeScale 0.22s ease;
+}
+
+.slider-icon-btn {
+  position: absolute;
+  top: 0;
+  width: 46px;
+  height: 46px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.96);
+  color: #20181b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 20;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+  transition:
+    transform 0.25s ease,
+    background 0.25s ease;
+}
+
+.slider-icon-btn:hover {
+  transform: translateY(-2px);
+  background: #ffffff;
+}
+
+.slider-close {
+  top: 0;
+  right: 0;
+}
+
+.slider-fullscreen {
+  top: 0;
+  left: 0;
+}
+
+.slider-stage {
+  padding: 0;
+  background: transparent;
+}
+
+.slider-image-wrapper img {
+  width: 100%;
+  max-height: 86vh;
+  display: block;
+  object-fit: contain;
+  margin: 0 auto;
+  border-radius: 24px;
+  background: transparent;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+}
+
+.slider-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 46px;
+  height: 46px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(20, 20, 20, 0.72);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 15;
+  transition:
+    transform 0.25s ease,
+    background 0.25s ease;
+}
+
+.slider-arrow:hover {
+  background: rgba(20, 20, 20, 0.9);
+}
+
+.slider-arrow.prev {
+  left: 14px;
+}
+
+.slider-arrow.next {
+  right: 14px;
+}
+
+.slider-content .slick-dots {
+  bottom: 12px;
+}
+
+.slider-content .slick-dots li button:before {
+  font-size: 10px;
+  opacity: 0.4;
+  color: #ffffff;
+}
+
+.slider-content .slick-dots li.slick-active button:before {
+  opacity: 1;
+  color: #ffffff;
+}
+
+.slider-meta {
+  display: none; /* we show minimal info inside modal */
+}
+
+.slider-meta-inner {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+  border-radius: 60px;
+  padding: 8px 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.slider-meta-chip {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--portfolio-gold, #d4af37);
+  background: rgba(255, 255, 255, 0.15);
+  padding: 4px 12px;
+  border-radius: 40px;
+}
+
+.slider-meta-inner h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+}
+
+.slider-count {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+@keyframes fadeScale {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* =========================
@@ -160,136 +383,100 @@
 ========================= */
 @media (max-width: 992px) {
   .bulletin-board {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .bulletin {
+    padding: 72px 0;
+  }
+  .portfolio-header {
+    margin-bottom: 42px;
+  }
+  .note-card {
+    padding: 20px;
+  }
+  .note-image-grid {
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 8px;
+  }
+  .slider-icon-btn {
+    width: 42px;
+    height: 42px;
+  }
+  .slider-arrow {
+    width: 40px;
+    height: 40px;
+  }
+  .slider-arrow.prev {
+    left: 8px;
+  }
+  .slider-arrow.next {
+    right: 8px;
   }
 }
 
 @media (max-width: 576px) {
+  .bulletin {
+    padding: 60px 0;
+  }
+  .portfolio-header h2 {
+    font-size: 1.95rem;
+  }
   .bulletin-board {
     grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .note-card {
+    transform: rotate(0deg);
+  }
+  .note-card:nth-child(even) {
+    transform: rotate(0deg);
+  }
+  .slider-modal {
+    padding: 10px;
+  }
+  .slider-shell {
+    width: 100%;
+  }
+  .slider-icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+  .slider-close {
+    right: 4px;
+    top: 4px;
+  }
+  .slider-fullscreen {
+    left: 4px;
+    top: 4px;
+  }
+  .slider-arrow {
+    width: 38px;
+    height: 38px;
+  }
+  .slider-arrow.prev {
+    left: 6px;
+  }
+  .slider-arrow.next {
+    right: 6px;
+  }
+  .slider-meta-inner {
+    padding: 6px 14px;
+    gap: 10px;
   }
 }
 
-/* =========================
-   IMAGE PREVIEW
-========================= */
-.image-preview-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  animation: fadeIn 0.25s ease;
-}
-
-.image-preview-box {
-  position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
-  animation: zoomIn 0.3s ease;
-}
-
-.image-preview-box img {
-  max-width: 100%;
-  max-height: 90vh;
-  border-radius: 18px;
-  object-fit: contain;
-}
-
-/* CLOSE BUTTON */
-.image-preview-close {
-  position: absolute;
-  top: -14px;
-  right: -14px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: #fff;
-  color: #111;
-  font-size: 1.2rem;
-  cursor: pointer;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-  transition: 0.25s ease;
-}
-
-.image-preview-close:hover {
-  background: var(--primary-pink);
-  color: #fff;
-  transform: scale(1.1);
-}
-
-/* ANIMATIONS */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
+@media (prefers-reduced-motion: reduce) {
+  .note-card,
+  .note-card img,
+  .slider-content,
+  .slider-arrow,
+  .slider-icon-btn {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
   }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes zoomIn {
-  from {
-    transform: scale(0.85);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* =========================
-   IMAGE GRID
-========================= */
-.note-image-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.note-image-grid img {
-  width: 100%;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: 0.3s ease;
-}
-
-.note-image-grid img:hover {
-  transform: scale(1.05);
-}
-
-/* =========================
-   NAV BUTTONS
-========================= */
-.nav-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 2rem;
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  padding: 8px 14px;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: 0.2s ease;
-}
-
-.nav-btn.left {
-  left: -50px;
-}
-
-.nav-btn.right {
-  right: -50px;
-}
-
-.nav-btn:hover {
-  background: var(--primary-pink);
-  color: white;
 }
