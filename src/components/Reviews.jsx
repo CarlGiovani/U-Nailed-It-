@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   FaChevronLeft,
   FaChevronRight,
@@ -37,18 +38,50 @@ const PrevArrow = ({ onClick }) => (
   </button>
 );
 
+const ReviewPreviewModal = ({ image, alt, onClose }) => {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="review-preview-overlay"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Review image preview"
+    >
+      <div className="review-preview-box" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          className="review-preview-close"
+          onClick={onClose}
+          aria-label="Close image preview"
+        >
+          <FaTimes />
+        </button>
+
+        <img src={image} alt={alt} />
+      </div>
+    </div>,
+    document.body,
+  );
+};
+
 const Reviews = () => {
   const [page, setPage] = useState(1);
   const [previewImage, setPreviewImage] = useState(null);
   const [previewAlt, setPreviewAlt] = useState("Review preview");
-
-  useEffect(() => {
-    if (previewImage) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-  }, [previewImage]);
 
   const { data, isLoading, isError, error, isFetching } = useQuery({
     queryKey: ["approvedReviews", page],
@@ -178,106 +211,90 @@ const Reviews = () => {
   }
 
   return (
-    <section className="reviews" id="reviews">
-      <div className="reviews-bg reviews-bg-1" />
-      <div className="reviews-bg reviews-bg-2" />
+    <>
+      <section className="reviews" id="reviews">
+        <div className="reviews-bg reviews-bg-1" />
+        <div className="reviews-bg reviews-bg-2" />
 
-      <div className="container">
-        <div className="reviews-heading">
-          <span className="reviews-kicker">Client Love</span>
-          <h2>Why Customers Love Us</h2>
-          <p>
-            Real stories, real smiles, and beautiful results from our clients.
-          </p>
-        </div>
+        <div className="container">
+          <div className="reviews-heading">
+            <span className="reviews-kicker">Client Love</span>
+            <h2>Why Customers Love Us</h2>
+            <p>
+              Real stories, real smiles, and beautiful results from our clients.
+            </p>
+          </div>
 
-        {isFetching && !isLoading && (
-          <div className="reviews-fetching">
-            <p className="loading-text">Loading new page...</p>
-          </div>
-        )}
-
-        {isError ? (
-          <div className="reviews-state">
-            <p className="loading-text">Failed to load reviews.</p>
-          </div>
-        ) : reviews.length === 0 ? (
-          <div className="reviews-state">
-            <p className="loading-text">No reviews available.</p>
-          </div>
-        ) : (
-          <>
-            <div className="reviews-grid desktop-only">
-              {reviews.map(renderCard)}
+          {isFetching && !isLoading && (
+            <div className="reviews-fetching">
+              <p className="loading-text">Loading new page...</p>
             </div>
+          )}
 
-            <div className="reviews-mobile mobile-only">
-              <Slider {...sliderSettings}>
-                {reviews.map((review) => (
-                  <div key={review.id} className="reviews-slide">
-                    {renderCard(review)}
-                  </div>
-                ))}
-              </Slider>
+          {isError ? (
+            <div className="reviews-state">
+              <p className="loading-text">Failed to load reviews.</p>
             </div>
-
-            <div className="reviews-pagination">
-              <button
-                type="button"
-                className="pagination-btn"
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                <FaChevronLeft />
-                <span>Prev</span>
-              </button>
-
-              <div className="pagination-status">
-                <span className="pagination-current">{page}</span>
-                <span className="pagination-divider">/</span>
-                <span className="pagination-total">{totalPages}</span>
+          ) : reviews.length === 0 ? (
+            <div className="reviews-state">
+              <p className="loading-text">No reviews available.</p>
+            </div>
+          ) : (
+            <>
+              <div className="reviews-grid desktop-only">
+                {reviews.map(renderCard)}
               </div>
 
-              <button
-                type="button"
-                className="pagination-btn"
-                disabled={page === totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                <span>Next</span>
-                <FaChevronRight />
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+              <div className="reviews-mobile mobile-only">
+                <Slider {...sliderSettings}>
+                  {reviews.map((review) => (
+                    <div key={review.id} className="reviews-slide">
+                      {renderCard(review)}
+                    </div>
+                  ))}
+                </Slider>
+              </div>
+
+              <div className="reviews-pagination">
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  <FaChevronLeft />
+                  <span>Prev</span>
+                </button>
+
+                <div className="pagination-status">
+                  <span className="pagination-current">{page}</span>
+                  <span className="pagination-divider">/</span>
+                  <span className="pagination-total">{totalPages}</span>
+                </div>
+
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  <span>Next</span>
+                  <FaChevronRight />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
 
       {previewImage && (
-        <div
-          className="review-preview-overlay"
-          onClick={closePreview}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Review image preview"
-        >
-          <div
-            className="review-preview-box"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="review-preview-close"
-              onClick={closePreview}
-              aria-label="Close image preview"
-            >
-              <FaTimes />
-            </button>
-
-            <img src={previewImage} alt={previewAlt} />
-          </div>
-        </div>
+        <ReviewPreviewModal
+          image={previewImage}
+          alt={previewAlt}
+          onClose={closePreview}
+        />
       )}
-    </section>
+    </>
   );
 };
 

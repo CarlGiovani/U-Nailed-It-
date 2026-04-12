@@ -1,6 +1,5 @@
 /* =========================
    BULLETIN SECTION
-   Matches portfolio gradient & spacing
 ========================= */
 
 .bulletin {
@@ -42,7 +41,6 @@
   padding: 0 16px;
 }
 
-/* Reuse portfolio-header styles (already defined) */
 .portfolio-header {
   max-width: 720px;
   margin: 0 auto 52px;
@@ -84,7 +82,7 @@
 }
 
 /* =========================
-   BOARD GRID (3 columns)
+   BOARD GRID
 ========================= */
 .bulletin-board {
   display: grid;
@@ -94,7 +92,7 @@
 }
 
 /* =========================
-   NOTE CARD (like a pinned note with modern twist)
+   NOTE CARD
 ========================= */
 .note-card {
   background: rgba(255, 255, 255, 0.88);
@@ -121,7 +119,6 @@
   border-color: rgba(212, 175, 55, 0.3);
 }
 
-/* PIN */
 .note-card .pin {
   position: absolute;
   top: -12px;
@@ -135,7 +132,6 @@
   border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
-/* Image grid inside card */
 .note-image-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
@@ -149,7 +145,10 @@
   object-fit: cover;
   border-radius: 20px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
   border: 1px solid rgba(255, 255, 255, 0.6);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
 }
@@ -160,7 +159,6 @@
   border-color: var(--portfolio-gold, #d4af37);
 }
 
-/* Typography */
 .note-card h3 {
   font-size: 1.35rem;
   font-weight: 800;
@@ -188,193 +186,83 @@
 }
 
 /* =========================
-   MODAL (reuse portfolio slider styles)
-   Already defined in portfolio.css – we ensure it's available.
-   If not, add these minimal extras:
+   PROMO IMAGE PREVIEW
+   Same style as review modal
 ========================= */
-
-.slider-modal {
+.promo-preview-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: 999999;
+  background: rgba(20, 12, 18, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  animation: promoFadeIn 0.22s ease;
 }
 
-.slider-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(10, 10, 12, 0.78);
-  backdrop-filter: blur(4px);
-}
-
-.slider-shell {
+.promo-preview-box {
   position: relative;
-  z-index: 2;
-  width: min(100%, 760px);
+  max-width: min(920px, 94vw);
+  max-height: 90vh;
+  animation: promoZoomIn 0.25s ease;
 }
 
-.slider-modal.fullscreen .slider-shell {
-  width: min(100%, 980px);
-}
-
-.slider-content {
-  position: relative;
-  width: 100%;
-  max-height: 92vh;
-  overflow: hidden;
-  border-radius: 24px;
-  background: transparent;
-  animation: fadeScale 0.22s ease;
-}
-
-.slider-icon-btn {
-  position: absolute;
-  top: 0;
-  width: 46px;
-  height: 46px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.96);
-  color: #20181b;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 20;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
-  transition:
-    transform 0.25s ease,
-    background 0.25s ease;
-}
-
-.slider-icon-btn:hover {
-  transform: translateY(-2px);
-  background: #ffffff;
-}
-
-.slider-close {
-  top: 0;
-  right: 0;
-}
-
-.slider-fullscreen {
-  top: 0;
-  left: 0;
-}
-
-.slider-stage {
-  padding: 0;
-  background: transparent;
-}
-
-.slider-image-wrapper img {
-  width: 100%;
-  max-height: 86vh;
+.promo-preview-box img {
   display: block;
+  max-width: 100%;
+  max-height: 90vh;
   object-fit: contain;
-  margin: 0 auto;
   border-radius: 24px;
-  background: transparent;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
 }
 
-.slider-arrow {
+.promo-preview-close {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 46px;
-  height: 46px;
+  top: -14px;
+  right: -14px;
+  width: 42px;
+  height: 42px;
   border: none;
   border-radius: 50%;
-  background: rgba(20, 20, 20, 0.72);
-  color: #fff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 15;
-  transition:
-    transform 0.25s ease,
-    background 0.25s ease;
-}
-
-.slider-arrow:hover {
-  background: rgba(20, 20, 20, 0.9);
-}
-
-.slider-arrow.prev {
-  left: 14px;
-}
-
-.slider-arrow.next {
-  right: 14px;
-}
-
-.slider-content .slick-dots {
-  bottom: 12px;
-}
-
-.slider-content .slick-dots li button:before {
-  font-size: 10px;
-  opacity: 0.4;
-  color: #ffffff;
-}
-
-.slider-content .slick-dots li.slick-active button:before {
-  opacity: 1;
-  color: #ffffff;
-}
-
-.slider-meta {
-  display: none; /* we show minimal info inside modal */
-}
-
-.slider-meta-inner {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(12px);
-  border-radius: 60px;
-  padding: 8px 18px;
-  display: inline-flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.slider-meta-chip {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--portfolio-gold, #d4af37);
-  background: rgba(255, 255, 255, 0.15);
-  padding: 4px 12px;
-  border-radius: 40px;
-}
-
-.slider-meta-inner h3 {
-  margin: 0;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  color: #1a1016;
   font-size: 1rem;
-  font-weight: 600;
-  color: white;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+  transition:
+    transform 0.22s ease,
+    background 0.22s ease,
+    color 0.22s ease;
 }
 
-.slider-count {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.8rem;
-  font-weight: 500;
+.promo-preview-close:hover {
+  transform: scale(1.08);
+  background: var(--primary-pink);
+  color: #fff;
 }
 
-@keyframes fadeScale {
+@keyframes promoFadeIn {
   from {
     opacity: 0;
-    transform: scale(0.98);
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes promoZoomIn {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  to {
     transform: scale(1);
+    opacity: 1;
   }
 }
 
@@ -392,29 +280,18 @@
   .bulletin {
     padding: 72px 0;
   }
+
   .portfolio-header {
     margin-bottom: 42px;
   }
+
   .note-card {
     padding: 20px;
   }
+
   .note-image-grid {
     grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
     gap: 8px;
-  }
-  .slider-icon-btn {
-    width: 42px;
-    height: 42px;
-  }
-  .slider-arrow {
-    width: 40px;
-    height: 40px;
-  }
-  .slider-arrow.prev {
-    left: 8px;
-  }
-  .slider-arrow.next {
-    right: 8px;
   }
 }
 
@@ -422,59 +299,42 @@
   .bulletin {
     padding: 60px 0;
   }
+
   .portfolio-header h2 {
     font-size: 1.95rem;
   }
+
   .bulletin-board {
     grid-template-columns: 1fr;
     gap: 20px;
   }
+
   .note-card {
     transform: rotate(0deg);
   }
+
   .note-card:nth-child(even) {
     transform: rotate(0deg);
   }
-  .slider-modal {
-    padding: 10px;
+
+  .promo-preview-overlay {
+    padding: 14px;
   }
-  .slider-shell {
-    width: 100%;
-  }
-  .slider-icon-btn {
+
+  .promo-preview-close {
+    top: -10px;
+    right: -6px;
     width: 38px;
     height: 38px;
-  }
-  .slider-close {
-    right: 4px;
-    top: 4px;
-  }
-  .slider-fullscreen {
-    left: 4px;
-    top: 4px;
-  }
-  .slider-arrow {
-    width: 38px;
-    height: 38px;
-  }
-  .slider-arrow.prev {
-    left: 6px;
-  }
-  .slider-arrow.next {
-    right: 6px;
-  }
-  .slider-meta-inner {
-    padding: 6px 14px;
-    gap: 10px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .note-card,
   .note-card img,
-  .slider-content,
-  .slider-arrow,
-  .slider-icon-btn {
+  .promo-preview-overlay,
+  .promo-preview-box,
+  .promo-preview-close {
     transition: none !important;
     animation: none !important;
     transform: none !important;

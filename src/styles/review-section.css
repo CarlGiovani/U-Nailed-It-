@@ -5,7 +5,6 @@
   position: relative;
   overflow: hidden;
   padding: 110px 0;
-  z-index: 1;
   background:
     radial-gradient(
       circle at 12% 18%,
@@ -459,9 +458,10 @@
 .review-preview-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: 999999;
   background: rgba(20, 12, 18, 0.82);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;

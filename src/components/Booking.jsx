@@ -1,5 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
@@ -16,38 +22,65 @@ import { getActivePolicies } from "../../backend/policiesApi.js";
 import supabase from "../config/supabaseClient.js";
 import "../styles/booking-system.css";
 
-// ===============================
-// DATE HELPERS
-// ===============================
+/* ===============================
+   CONSTANTS
+=============================== */
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const FINAL_BOOKING_STATES = ["expired", "cancelled", "rejected", "completed"];
+
+/* ===============================
+   DATE HELPERS
+=============================== */
 const formatLocalDate = (date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
 const parseLocalDate = (dateStr) => {
   if (!dateStr) return null;
   return new Date(`${dateStr}T00:00:00`);
 };
+
 const sameId = (a, b) => Number(a) === Number(b);
+
 const formatDisplayTime = (timeStr) => {
   if (!timeStr) return "N/A";
+
   try {
     const [hours, minutes] = timeStr.split(":");
     const hour = parseInt(hours, 10);
     const ampm = hour >= 12 ? "PM" : "AM";
     const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-    return `${displayHour}:${minutes.padStart(2, "0")} ${ampm}`;
+    return `${displayHour}:${String(minutes).padStart(2, "0")} ${ampm}`;
   } catch {
     return timeStr;
   }
 };
-// CURRENCY FORMATTER HELPER
+
 const formatCurrency = (value) =>
   `₱${Number(value || 0).toLocaleString("en-PH")}`;
-// ===============================
-// LOCAL STORAGE RESUME
-// ===============================
+
+/* ===============================
+   LOCAL STORAGE RESUME
+=============================== */
 const LS_KEYS = {
   bookingId: "active_booking_id",
   bookingExpiresAt: "active_booking_expires_at",
@@ -57,6 +90,7 @@ const LS_KEYS = {
 
 const saveActiveBooking = ({ bookingId, expiresAt }) => {
   if (bookingId) localStorage.setItem(LS_KEYS.bookingId, String(bookingId));
+
   if (expiresAt) {
     const expiryMs =
       typeof expiresAt === "string" ? Date.parse(expiresAt) : expiresAt;
@@ -74,9 +108,10 @@ const saveActivePayment = ({ intentId, signedUrl }) => {
 const clearActiveFlow = () => {
   Object.values(LS_KEYS).forEach((key) => localStorage.removeItem(key));
 };
-// ===============================
-// TIME HELPERS
-// ===============================
+
+/* ===============================
+   TIME HELPERS
+=============================== */
 const toMs = (isoOrNull) => {
   if (!isoOrNull) return null;
 
@@ -93,6 +128,7 @@ const toMs = (isoOrNull) => {
 
   return null;
 };
+
 const formatCountdown = (ms) => {
   if (ms == null) return null;
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -101,15 +137,109 @@ const formatCountdown = (ms) => {
   return `${mm}:${ss}`;
 };
 
-// ===============================
-// MAIN COMPONENT
-// ===============================
+/* ===============================
+   MAIN COMPONENT
+=============================== */
 const Booking = ({ services: servicesProp = [] }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // 1 = Service, 2 = Schedule, 3 = Details + Review, 4 = Payment, 5 = Done
   const [step, setStep] = useState(1);
+
+  const [selectedDate, setSelectedDate] = useState("");
+  const [bookingId, setBookingId] = useState(null);
+  const [paymentIntentId, setPaymentIntentId] = useState(null);
+  const [paymentSignedUrl, setPaymentSignedUrl] = useState(null);
+  const [bookingPreview, setBookingPreview] = useState(null);
+
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const [paymentProofUploaded, setPaymentProofUploaded] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedVariant, setSelectedVariant] = useState(null);
+
+  const [confirmationError, setConfirmationError] = useState(null);
+
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [resumeBookingData, setResumeBookingData] = useState(null);
+  const [resuming, setResuming] = useState(false);
+
+  const [proofPreviewUrl, setProofPreviewUrl] = useState(null);
+  const [selectedProofFile, setSelectedProofFile] = useState(null);
+
+  const [collapsedReview, setCollapsedReview] = useState({
+    service: false,
+    schedule: false,
+    customer: false,
+    notes: false,
+  });
+
+  const [modal, setModal] = useState({
+    open: false,
+    title: "",
+    message: "",
+    tone: "default",
+    actions: [],
+  });
+
+  const [timeLeftMs, setTimeLeftMs] = useState(null);
+  const [isExpiredLocal, setIsExpiredLocal] = useState(false);
+
+  const [formData, setFormData] = useState({
+    service_id: "",
+    service_category_id: "",
+    service_variant_id: "",
+    booking_date: "",
+    booking_time: "",
+    full_name: "",
+    email: "",
+    phone: "",
+    facebook_link: "",
+    notes: "",
+    total_price: 0,
+    downpayment: 0,
+    duration: 0,
+  });
+
+  const [reviewPanelCollapsed, setReviewPanelCollapsed] = useState(true);
+
+  // Terms modal
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [hasOpenedTerms, setHasOpenedTerms] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [hasScrolledTermsToBottom, setHasScrolledTermsToBottom] =
+    useState(false);
+
+  const expiryHandledRef = useRef(false);
+  const paymentProofInputRef = useRef(null);
+
+  // Live refs for realtime callbacks
+  const bookingIdRef = useRef(bookingId);
+  const selectedDateRef = useRef(selectedDate);
+  const currentMonthRef = useRef(currentMonth);
+  const stepRef = useRef(step);
+  const hardRestartRef = useRef(null);
+
+  useEffect(() => {
+    bookingIdRef.current = bookingId;
+  }, [bookingId]);
+
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+  }, [selectedDate]);
+
+  useEffect(() => {
+    currentMonthRef.current = currentMonth;
+  }, [currentMonth]);
+
+  useEffect(() => {
+    stepRef.current = step;
+  }, [step]);
+
   const services = useMemo(() => {
     return (servicesProp || []).map((service) => ({
       id: service.id,
@@ -138,87 +268,18 @@ const Booking = ({ services: servicesProp = [] }) => {
         })) || [],
     }));
   }, [servicesProp]);
-  const [availableSlots, setAvailableSlots] = useState([]);
-  const [selectedDate, setSelectedDate] = useState("");
-  const [bookingId, setBookingId] = useState(null);
-  const [paymentIntentId, setPaymentIntentId] = useState(null);
-  const [paymentSignedUrl, setPaymentSignedUrl] = useState(null);
-  const [bookingPreview, setBookingPreview] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [fetchingServices, setFetchingServices] = useState(true);
-  const [servicesError, setServicesError] = useState(null);
-  const [fetchingAvailability, setFetchingAvailability] = useState(false);
-  const [fetchingSlots, setFetchingSlots] = useState(false);
-  const [paymentProofUploaded, setPaymentProofUploaded] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [calendarDates, setCalendarDates] = useState([]);
-  const [monthlyAvailability, setMonthlyAvailability] = useState({});
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [selectedVariant, setSelectedVariant] = useState(null);
-  const [confirmationError, setConfirmationError] = useState(null);
-  const [showResumePrompt, setShowResumePrompt] = useState(false);
-  const [resumeBookingData, setResumeBookingData] = useState(null);
-  const [resuming, setResuming] = useState(false);
-  const [proofPreviewUrl, setProofPreviewUrl] = useState(null);
-  const [selectedProofFile, setSelectedProofFile] = useState(null);
-  const [collapsedReview, setCollapsedReview] = useState({
-    service: false,
-    schedule: false,
-    customer: false,
-    notes: false,
-  });
-  const [modal, setModal] = useState({
-    open: false,
-    title: "",
-    message: "",
-    tone: "default",
-    actions: [],
-  });
-  const [timeLeftMs, setTimeLeftMs] = useState(null);
-  const [isExpiredLocal, setIsExpiredLocal] = useState(false);
-  const expiryHandledRef = useRef(false);
-  const [formData, setFormData] = useState({
-    service_id: "",
-    service_category_id: "",
-    service_variant_id: "",
-    booking_date: "",
-    booking_time: "",
-    full_name: "",
-    email: "",
-    phone: "",
-    facebook_link: "",
-    notes: "",
-    total_price: 0,
-    downpayment: 0,
-    duration: 0,
-  });
-  const [reviewPanelCollapsed, setReviewPanelCollapsed] = useState(true);
 
-  // for terms and conditions modal
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [hasOpenedTerms, setHasOpenedTerms] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [hasScrolledTermsToBottom, setHasScrolledTermsToBottom] =
-    useState(false);
+  const fetchingServices = servicesProp?.length === 0;
+  const servicesError = null;
 
-  // ===============================
-  // CLEANUP
-  // ===============================
+  /* ===============================
+     CLEANUP
+  =============================== */
   useEffect(() => {
     return () => {
       if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
     };
   }, [proofPreviewUrl]);
-
-  useEffect(() => {
-    if (servicesProp?.length > 0) {
-      setFetchingServices(false);
-      setServicesError(null);
-    } else {
-      setFetchingServices(true);
-    }
-  }, [servicesProp]);
 
   useEffect(() => {
     const hasOpenModal = modal.open || showResumePrompt || showTermsModal;
@@ -245,9 +306,9 @@ const Booking = ({ services: servicesProp = [] }) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [modal.open]);
 
-  // ===============================
-  // MODAL HELPERS
-  // ===============================
+  /* ===============================
+     MODAL HELPERS
+  =============================== */
   const showAlert = useCallback(
     (title, message, onConfirm = null, tone = "default") => {
       setModal({
@@ -289,9 +350,22 @@ const Booking = ({ services: servicesProp = [] }) => {
     }
   }, []);
 
-  // ===============================
-  // RESET FLOW
-  // ===============================
+  /* ===============================
+     RESET FLOW
+  =============================== */
+  const resetProofSelection = useCallback(() => {
+    setSelectedProofFile(null);
+
+    setProofPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+
+    if (paymentProofInputRef.current) {
+      paymentProofInputRef.current.value = "";
+    }
+  }, []);
+
   const resetBookingFlow = useCallback(() => {
     setBookingId(null);
     setPaymentIntentId(null);
@@ -309,26 +383,27 @@ const Booking = ({ services: servicesProp = [] }) => {
     setAcceptedTerms(false);
     setHasScrolledTermsToBottom(false);
 
+    resetProofSelection();
     clearActiveFlow();
-  }, []);
+  }, [resetProofSelection]);
 
   const hardRestart = useCallback(() => {
     resetBookingFlow();
+
     setStep(1);
     setSelectedDate("");
-    setAvailableSlots([]);
-    setMonthlyAvailability({});
     setSelectedCategory(null);
     setSelectedVariant(null);
     setResumeBookingData(null);
-    setSelectedProofFile(null);
-    setProofPreviewUrl(null);
+
     setCollapsedReview({
       service: false,
       schedule: false,
       customer: false,
       notes: false,
     });
+
+    setReviewPanelCollapsed(true);
 
     setFormData({
       service_id: "",
@@ -347,9 +422,13 @@ const Booking = ({ services: servicesProp = [] }) => {
     });
   }, [resetBookingFlow]);
 
-  // ===============================
-  // STEP GUARD
-  // ===============================
+  useEffect(() => {
+    hardRestartRef.current = hardRestart;
+  }, [hardRestart]);
+
+  /* ===============================
+     STEP GUARD
+  =============================== */
   useEffect(() => {
     if (resuming) return;
 
@@ -382,9 +461,9 @@ const Booking = ({ services: servicesProp = [] }) => {
     [isLockedAfterBookingCreated, showAlert],
   );
 
-  // ===============================
-  // RESUME BOOKING
-  // ===============================
+  /* ===============================
+     RESUME BOOKING
+  =============================== */
   const checkAndResumeBooking = useCallback(async () => {
     const savedBookingId = localStorage.getItem(LS_KEYS.bookingId);
     if (!savedBookingId) return;
@@ -394,8 +473,7 @@ const Booking = ({ services: servicesProp = [] }) => {
     try {
       const booking = await getBookingById(savedBookingId);
 
-      const finalStates = ["expired", "cancelled", "rejected", "completed"];
-      if (finalStates.includes(booking.status)) {
+      if (FINAL_BOOKING_STATES.includes(booking.status)) {
         clearActiveFlow();
         return;
       }
@@ -506,7 +584,9 @@ const Booking = ({ services: servicesProp = [] }) => {
 
       if (booking.booking_date) {
         const localDate = parseLocalDate(booking.booking_date);
-        setSelectedDate(formatLocalDate(localDate));
+        if (localDate) {
+          setSelectedDate(formatLocalDate(localDate));
+        }
       }
 
       if (booking.status === "pending_payment") {
@@ -562,9 +642,9 @@ const Booking = ({ services: servicesProp = [] }) => {
     setStep(1);
   }, [bookingPreview, paymentSignedUrl]);
 
-  // ===============================
-  // AUTO MAP CATEGORY / VARIANT
-  // ===============================
+  /* ===============================
+     AUTO MAP CATEGORY / VARIANT
+  =============================== */
   useEffect(() => {
     if (!services.length || !formData.service_id) return;
 
@@ -610,9 +690,9 @@ const Booking = ({ services: servicesProp = [] }) => {
     formData.service_variant_id,
   ]);
 
-  // ===============================
-  // POLICIES / TERMS
-  // ===============================
+  /* ===============================
+     POLICIES / TERMS
+  =============================== */
   const {
     data: policies = [],
     isLoading: policiesLoading,
@@ -625,9 +705,9 @@ const Booking = ({ services: servicesProp = [] }) => {
     refetchOnWindowFocus: false,
   });
 
-  // ===============================
-  // AVAILABILITY
-  // ===============================
+  /* ===============================
+     AVAILABILITY
+  =============================== */
   const availabilityYear = currentMonth.getFullYear();
   const availabilityMonth = currentMonth.getMonth() + 1;
 
@@ -660,27 +740,36 @@ const Booking = ({ services: servicesProp = [] }) => {
     enabled: !!formData.service_id,
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
   });
 
-  useEffect(() => {
-    setFetchingAvailability((prev) =>
-      prev === monthlyAvailabilityFetching ? prev : monthlyAvailabilityFetching,
-    );
+  const monthlyAvailability = useMemo(() => {
+    if (!formData.service_id) return {};
+    return monthlyAvailabilityData ?? {};
+  }, [formData.service_id, monthlyAvailabilityData]);
 
-    if (formData.service_id) {
-      setMonthlyAvailability(monthlyAvailabilityData ?? {});
-    } else {
-      setMonthlyAvailability({});
-      setCalendarDates([]);
-    }
-  }, [
-    formData.service_id,
-    monthlyAvailabilityData,
-    monthlyAvailabilityFetching,
-  ]);
+  const {
+    data: availableSlotsData,
+    isFetching: availableSlotsFetching,
+  } = useQuery({
+    queryKey: ["availableSlots", formData.service_id, selectedDate],
+    queryFn: async () => {
+      if (!formData.service_id || !selectedDate) return [];
+      return await getAvailableSlots(formData.service_id, selectedDate);
+    },
+    enabled: !!formData.service_id && !!selectedDate,
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
 
-  const generateCalendar = useCallback(() => {
-    if (!formData.service_id) return;
+  const availableSlots = useMemo(() => {
+    if (!formData.service_id || !selectedDate) return [];
+    return availableSlotsData ?? [];
+  }, [formData.service_id, selectedDate, availableSlotsData]);
+
+  const calendarDates = useMemo(() => {
+    if (!formData.service_id) return [];
 
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
@@ -699,6 +788,7 @@ const Booking = ({ services: servicesProp = [] }) => {
     for (let i = startDay - 1; i >= 0; i--) {
       const date = new Date(year, month - 1, prevMonthLastDay - i);
       const dateStr = formatLocalDate(date);
+
       dates.push({
         date,
         dateStr,
@@ -734,6 +824,7 @@ const Booking = ({ services: servicesProp = [] }) => {
     for (let i = 1; i <= remainingCells; i++) {
       const date = new Date(year, month + 1, i);
       const dateStr = formatLocalDate(date);
+
       dates.push({
         date,
         dateStr,
@@ -745,67 +836,57 @@ const Booking = ({ services: servicesProp = [] }) => {
       });
     }
 
-    setCalendarDates(dates);
-  }, [currentMonth, monthlyAvailability, selectedDate, formData.service_id]);
+    return dates;
+  }, [formData.service_id, currentMonth, selectedDate, monthlyAvailability]);
 
-  useEffect(() => {
-    if (formData.service_id) generateCalendar();
-  }, [formData.service_id, generateCalendar]);
+  const timeSlots = useMemo(() => {
+    if (!availableSlots.length) return [];
 
-  const { data: availableSlotsData, isFetching: availableSlotsFetching } =
-    useQuery({
-      queryKey: ["availableSlots", formData.service_id, selectedDate],
-      queryFn: async () => {
-        if (!formData.service_id || !selectedDate) return [];
-        return await getAvailableSlots(formData.service_id, selectedDate);
-      },
-      enabled: !!formData.service_id && !!selectedDate,
-      staleTime: 1000 * 30,
-      gcTime: 1000 * 60 * 5,
-    });
+    return availableSlots
+      .map((slot) => ({
+        value: slot.time,
+        display: formatDisplayTime(slot.time),
+        available: slot.is_available,
+        isSelected: formData.booking_time === slot.time,
+        slotId: slot.id,
+      }))
+      .sort((a, b) => {
+        const [hA, mA] = a.value.split(":").map(Number);
+        const [hB, mB] = b.value.split(":").map(Number);
+        return hA - hB || mA - mB;
+      });
+  }, [availableSlots, formData.booking_time]);
 
-  useEffect(() => {
-    setFetchingSlots((prev) =>
-      prev === availableSlotsFetching ? prev : availableSlotsFetching,
-    );
-
-    if (formData.service_id && selectedDate) {
-      setAvailableSlots(availableSlotsData ?? []);
-    } else {
-      setAvailableSlots([]);
-    }
-  }, [
-    formData.service_id,
-    selectedDate,
-    availableSlotsData,
-    availableSlotsFetching,
-  ]);
-
-  // ===============================
-  // REALTIME
-  // ===============================
+  /* ===============================
+     REALTIME
+  =============================== */
   useEffect(() => {
     if (!formData.service_id) return;
 
+    const serviceId = Number(formData.service_id);
+
     const invalidateAvailability = async () => {
+      const liveMonth = currentMonthRef.current;
+      const liveSelectedDate = selectedDateRef.current;
+
       await queryClient.invalidateQueries({
         queryKey: [
           "monthlyAvailability",
-          formData.service_id,
-          currentMonth.getFullYear(),
-          currentMonth.getMonth() + 1,
+          serviceId,
+          liveMonth.getFullYear(),
+          liveMonth.getMonth() + 1,
         ],
       });
 
-      if (selectedDate) {
+      if (liveSelectedDate) {
         await queryClient.invalidateQueries({
-          queryKey: ["availableSlots", formData.service_id, selectedDate],
+          queryKey: ["availableSlots", serviceId, liveSelectedDate],
         });
       }
     };
 
     const slotsChannel = supabase
-      .channel(`public-booking-slots-${formData.service_id}`)
+      .channel(`public-booking-slots-${serviceId}`)
       .on(
         "postgres_changes",
         {
@@ -816,9 +897,7 @@ const Booking = ({ services: servicesProp = [] }) => {
         async (payload) => {
           const row = payload.new || payload.old;
           if (!row) return;
-
-          const rowServiceId = Number(row.service_id);
-          if (rowServiceId !== Number(formData.service_id)) return;
+          if (Number(row.service_id) !== serviceId) return;
 
           await invalidateAvailability();
         },
@@ -826,7 +905,7 @@ const Booking = ({ services: servicesProp = [] }) => {
       .subscribe();
 
     const bookingsChannel = supabase
-      .channel(`public-booking-bookings-${formData.service_id}`)
+      .channel(`public-booking-bookings-${serviceId}`)
       .on(
         "postgres_changes",
         {
@@ -834,62 +913,64 @@ const Booking = ({ services: servicesProp = [] }) => {
           schema: "public",
           table: "bookings",
         },
-        async () => {
+        async (payload) => {
+          const row = payload.new || payload.old;
+          if (!row) return;
+          if (Number(row.service_id) !== serviceId) return;
+
           await invalidateAvailability();
 
-          if (bookingId) {
-            try {
-              const latest = await getBookingById(bookingId);
-              setBookingPreview(latest);
+          const liveBookingId = bookingIdRef.current;
+          if (!liveBookingId) return;
+          if (Number(row.id) !== Number(liveBookingId)) return;
 
-              if (latest.status === "expired" && step === 4) {
-                setIsExpiredLocal(true);
-              }
+          try {
+            const latest = await getBookingById(liveBookingId);
+            setBookingPreview(latest);
 
-              if (
-                latest.status === "pending_approval" ||
-                latest.status === "approved" ||
-                latest.status === "completed"
-              ) {
-                setStep(5);
-              }
-
-              if (
-                ["expired", "cancelled", "rejected", "completed"].includes(
-                  latest.status,
-                )
-              ) {
-                clearActiveFlow();
-
-                if (latest.status !== "completed" && step === 4) {
-                  setModal({
-                    open: true,
-                    title: "Booking No Longer Active",
-                    message:
-                      latest.status === "expired"
-                        ? "Your booking has expired. Please start a new booking."
-                        : latest.status === "cancelled"
-                          ? "This booking was cancelled."
-                          : latest.status === "rejected"
-                            ? "This booking was rejected."
-                            : "This booking is no longer active.",
-                    tone: "warning",
-                    actions: [
-                      {
-                        label: "OK",
-                        variant: "btn-primary",
-                        onClick: () => {
-                          setModal((prev) => ({ ...prev, open: false }));
-                          hardRestart();
-                        },
-                      },
-                    ],
-                  });
-                }
-              }
-            } catch (err) {
-              console.warn("Realtime booking refresh failed:", err);
+            if (latest.status === "expired" && stepRef.current === 4) {
+              setIsExpiredLocal(true);
             }
+
+            if (
+              latest.status === "pending_approval" ||
+              latest.status === "approved" ||
+              latest.status === "completed"
+            ) {
+              setStep(5);
+            }
+
+            if (FINAL_BOOKING_STATES.includes(latest.status)) {
+              clearActiveFlow();
+
+              if (latest.status !== "completed" && stepRef.current === 4) {
+                setModal({
+                  open: true,
+                  title: "Booking No Longer Active",
+                  message:
+                    latest.status === "expired"
+                      ? "Your booking has expired. Please start a new booking."
+                      : latest.status === "cancelled"
+                        ? "This booking was cancelled."
+                        : latest.status === "rejected"
+                          ? "This booking was rejected."
+                          : "This booking is no longer active.",
+                  tone: "warning",
+                  actions: [
+                    {
+                      label: "OK",
+                      variant: "btn-primary",
+                      onClick: () => {
+                        setModal((prev) => ({ ...prev, open: false }));
+                        hardRestartRef.current?.();
+                      },
+                    },
+                  ],
+                });
+              }
+            }
+          } catch (err) {
+            console.warn("Realtime booking refresh failed:", err);
           }
         },
       )
@@ -899,19 +980,11 @@ const Booking = ({ services: servicesProp = [] }) => {
       supabase.removeChannel(slotsChannel);
       supabase.removeChannel(bookingsChannel);
     };
-  }, [
-    formData.service_id,
-    selectedDate,
-    bookingId,
-    step,
-    hardRestart,
-    queryClient,
-    currentMonth,
-  ]);
+  }, [formData.service_id, queryClient]);
 
-  // ===============================
-  // COUNTDOWN
-  // ===============================
+  /* ===============================
+     COUNTDOWN
+  =============================== */
   useEffect(() => {
     if (showResumePrompt) return;
 
@@ -959,61 +1032,59 @@ const Booking = ({ services: servicesProp = [] }) => {
     return () => clearInterval(id);
   }, [bookingPreview?.expires_at, step, hardRestart, showResumePrompt]);
 
-  // ===============================
-  // NAVIGATION HELPERS
-  // ===============================
-  const prevMonth = () => {
+  /* ===============================
+     NAVIGATION HELPERS
+  =============================== */
+  const prevMonth = useCallback(() => {
     setCurrentMonth(
       (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
     );
     setSelectedDate("");
-    setAvailableSlots([]);
-    setFormData((prev) => ({ ...prev, booking_time: "" }));
-  };
+    setFormData((prev) => ({ ...prev, booking_time: "", booking_date: "" }));
+  }, []);
 
-  const nextMonth = () => {
+  const nextMonth = useCallback(() => {
     setCurrentMonth(
       (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
     );
     setSelectedDate("");
-    setAvailableSlots([]);
-    setFormData((prev) => ({ ...prev, booking_time: "" }));
-  };
+    setFormData((prev) => ({ ...prev, booking_time: "", booking_date: "" }));
+  }, []);
 
-  const goToToday = () => {
+  const goToToday = useCallback(() => {
     const today = new Date();
     setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
     setSelectedDate("");
-    setAvailableSlots([]);
-    setFormData((prev) => ({ ...prev, booking_time: "" }));
-  };
+    setFormData((prev) => ({ ...prev, booking_time: "", booking_date: "" }));
+  }, []);
 
-  // ===============================
-  // SELECT HANDLERS
-  // ===============================
-  const handleServiceSelect = (service) => {
-    resetBookingFlow();
+  /* ===============================
+     SELECT HANDLERS
+  =============================== */
+  const handleServiceSelect = useCallback(
+    (service) => {
+      resetBookingFlow();
 
-    setFormData((prev) => ({
-      ...prev,
-      service_id: service.id,
-      service_category_id: "",
-      service_variant_id: "",
-      total_price: 0,
-      downpayment: 0,
-      duration: service.duration || 0,
-      booking_date: "",
-      booking_time: "",
-    }));
+      setFormData((prev) => ({
+        ...prev,
+        service_id: service.id,
+        service_category_id: "",
+        service_variant_id: "",
+        total_price: 0,
+        downpayment: 0,
+        duration: service.duration || 0,
+        booking_date: "",
+        booking_time: "",
+      }));
 
-    setSelectedCategory(null);
-    setSelectedVariant(null);
-    setSelectedDate("");
-    setAvailableSlots([]);
-    setMonthlyAvailability({});
-  };
+      setSelectedCategory(null);
+      setSelectedVariant(null);
+      setSelectedDate("");
+    },
+    [resetBookingFlow],
+  );
 
-  const handleCategorySelect = (category) => {
+  const handleCategorySelect = useCallback((category) => {
     setSelectedCategory(category);
     setSelectedVariant(null);
 
@@ -1024,9 +1095,9 @@ const Booking = ({ services: servicesProp = [] }) => {
       total_price: 0,
       downpayment: 0,
     }));
-  };
+  }, []);
 
-  const handleVariantSelect = (variant) => {
+  const handleVariantSelect = useCallback((variant) => {
     setSelectedVariant(variant);
 
     setFormData((prev) => ({
@@ -1037,37 +1108,40 @@ const Booking = ({ services: servicesProp = [] }) => {
     }));
 
     setStep(2);
-  };
+  }, []);
 
-  const handleDateSelect = (date) => {
-    if (!date) return;
-    const dateStr = formatLocalDate(date);
+  const handleDateSelect = useCallback(
+    (date) => {
+      if (!date) return;
+      const dateStr = formatLocalDate(date);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    if (date < today || !monthlyAvailability[dateStr]) return;
+      if (date < today || !monthlyAvailability[dateStr]) return;
 
-    setSelectedDate(dateStr);
-    setFormData((prev) => ({
-      ...prev,
-      booking_date: dateStr,
-      booking_time: "",
-    }));
-  };
+      setSelectedDate(dateStr);
+      setFormData((prev) => ({
+        ...prev,
+        booking_date: dateStr,
+        booking_time: "",
+      }));
+    },
+    [monthlyAvailability],
+  );
 
-  const handleTimeSelect = (time) => {
+  const handleTimeSelect = useCallback((time) => {
     setFormData((prev) => ({ ...prev, booking_time: time }));
-  };
+  }, []);
 
-  const handleInputChange = (e) => {
+  const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  }, []);
 
-  // ===============================
-  // SELECTED OBJECTS
-  // ===============================
+  /* ===============================
+     SELECTED OBJECTS
+  =============================== */
   const selectedService = useMemo(
     () => services.find((s) => sameId(s.id, formData.service_id)),
     [services, formData.service_id],
@@ -1085,67 +1159,53 @@ const Booking = ({ services: servicesProp = [] }) => {
     );
   }, [selectedCategoryObj, formData.service_variant_id]);
 
-  const getAvailableDatesCount = () =>
-    Object.values(monthlyAvailability).filter((v) => v === true).length;
+  const getAvailableDatesCount = useCallback(
+    () => Object.values(monthlyAvailability).filter((v) => v === true).length,
+    [monthlyAvailability],
+  );
 
-  const generateTimeSlots = () => {
-    if (!availableSlots.length) return [];
+  /* ===============================
+     VALIDATION
+  =============================== */
+  const validateForm = useCallback(
+    (targetStep = step) => {
+      const errors = [];
 
-    return availableSlots
-      .map((slot) => ({
-        value: slot.time,
-        display: formatDisplayTime(slot.time),
-        available: slot.is_available,
-        isSelected: formData.booking_time === slot.time,
-        slotId: slot.id,
-      }))
-      .sort((a, b) => {
-        const [hA, mA] = a.value.split(":").map(Number);
-        const [hB, mB] = b.value.split(":").map(Number);
-        return hA - hB || mA - mB;
-      });
-  };
-
-  // ===============================
-  // VALIDATION
-  // ===============================
-  const validateForm = (targetStep = step) => {
-    const errors = [];
-
-    if (targetStep === 1) {
-      if (!formData.service_id) errors.push("Please select a service.");
-      if (!formData.service_category_id)
-        errors.push("Please select a category.");
-      if (!formData.service_variant_id) errors.push("Please select a variant.");
-    }
-
-    if (targetStep === 2) {
-      if (!formData.booking_date) errors.push("Please select a date.");
-      if (!formData.booking_time) errors.push("Please select a time slot.");
-    }
-
-    if (targetStep === 3) {
-      if (!formData.full_name.trim()) errors.push("Full name is required.");
-      if (!formData.email.trim()) errors.push("Email is required.");
-      if (!formData.phone.trim()) errors.push("Phone number is required.");
-      if (formData.email && !formData.email.includes("@")) {
-        errors.push("Please enter a valid email address.");
+      if (targetStep === 1) {
+        if (!formData.service_id) errors.push("Please select a service.");
+        if (!formData.service_category_id)
+          errors.push("Please select a category.");
+        if (!formData.service_variant_id) errors.push("Please select a variant.");
       }
-    }
 
-    if (errors.length > 0) {
-      showAlert("Validation Error", errors.join("\n"), null, "warning");
-      return false;
-    }
+      if (targetStep === 2) {
+        if (!formData.booking_date) errors.push("Please select a date.");
+        if (!formData.booking_time) errors.push("Please select a time slot.");
+      }
 
-    return true;
-  };
+      if (targetStep === 3) {
+        if (!formData.full_name.trim()) errors.push("Full name is required.");
+        if (!formData.email.trim()) errors.push("Email is required.");
+        if (!formData.phone.trim()) errors.push("Phone number is required.");
+        if (formData.email && !formData.email.includes("@")) {
+          errors.push("Please enter a valid email address.");
+        }
+      }
 
-  // ===============================
-  // STEP 3 => STEP 4
-  // CREATE BOOKING ONLY HERE
-  // ===============================
-  const handleProceedToPayment = async () => {
+      if (errors.length > 0) {
+        showAlert("Validation Error", errors.join("\n"), null, "warning");
+        return false;
+      }
+
+      return true;
+    },
+    [formData, step, showAlert],
+  );
+
+  /* ===============================
+     STEP 3 => STEP 4
+  =============================== */
+  const handleProceedToPayment = useCallback(async () => {
     if (!validateForm(3)) return;
 
     if (!hasOpenedTerms) {
@@ -1201,8 +1261,6 @@ const Booking = ({ services: servicesProp = [] }) => {
         facebook_link: formData.facebook_link,
       };
 
-      console.log("BOOKING PAYLOAD:", payload);
-
       const result = await createBooking(payload);
 
       setBookingId(result.id);
@@ -1211,7 +1269,6 @@ const Booking = ({ services: servicesProp = [] }) => {
       setStep(4);
     } catch (error) {
       console.error("Booking creation error:", error);
-      console.log("FULL BACKEND ERROR:", error.response?.data);
 
       const backendData = error.response?.data;
 
@@ -1234,139 +1291,322 @@ const Booking = ({ services: servicesProp = [] }) => {
     } finally {
       setLoading(false);
     }
-  };
-  // ===============================
-  // PAYMENT
-  // ===============================
-  const handlePaymentUpload = async (file, { silent = false } = {}) => {
-    if (!file || !bookingId) return null;
-    if (uploading) return null;
+  }, [
+    validateForm,
+    hasOpenedTerms,
+    hasScrolledTermsToBottom,
+    acceptedTerms,
+    bookingId,
+    formData,
+    showAlert,
+  ]);
 
-    if (isExpiredLocal) {
-      setModal({
-        open: true,
-        title: "Booking Expired",
-        message:
-          "This booking is already expired. Please start a new booking to continue.",
-        tone: "danger",
-        actions: [
-          {
-            label: "Start New Booking",
-            variant: "btn-primary",
-            onClick: () => {
-              setModal((prev) => ({ ...prev, open: false }));
-              hardRestart();
+  /* ===============================
+     PAYMENT
+  =============================== */
+  const handlePaymentUpload = useCallback(
+    async (file, { silent = false } = {}) => {
+      if (!file || !bookingId) return null;
+      if (uploading) return null;
+
+      if (isExpiredLocal) {
+        setModal({
+          open: true,
+          title: "Booking Expired",
+          message:
+            "This booking is already expired. Please start a new booking to continue.",
+          tone: "danger",
+          actions: [
+            {
+              label: "Start New Booking",
+              variant: "btn-primary",
+              onClick: () => {
+                setModal((prev) => ({ ...prev, open: false }));
+                hardRestart();
+              },
             },
-          },
-        ],
-      });
-      return null;
-    }
+          ],
+        });
+        return null;
+      }
 
-    if (!bookingPreview) {
-      showAlert(
-        "Error",
-        "Booking data not found. Please restart the booking process.",
-        null,
-        "danger",
-      );
-      return null;
-    }
-
-    setUploading(true);
-
-    const formDataObj = new FormData();
-    formDataObj.append("booking_id", bookingId);
-    formDataObj.append(
-      "email",
-      bookingPreview.customer_email ||
-        bookingPreview.customers?.email ||
-        bookingPreview.email ||
-        formData.email,
-    );
-    formDataObj.append("service_id", bookingPreview.service_id);
-    formDataObj.append("service_variant_id", bookingPreview.service_variant_id);
-    formDataObj.append("booking_date", bookingPreview.booking_date);
-    formDataObj.append("booking_time", bookingPreview.booking_time);
-    formDataObj.append("proof", file);
-
-    try {
-      const result = await uploadPaymentProof(formDataObj);
-
-      const intent =
-        result.payment_intent_id ||
-        result.paymentIntentId ||
-        result.intentId ||
-        result.payment_intent ||
-        null;
-
-      const signed =
-        result.signedUrl || result.signed_url || result.proof_url || null;
-
-      if (!intent) {
+      if (!bookingPreview) {
         showAlert(
-          "Upload Error",
-          "Payment intent was not returned. Please try again.",
+          "Error",
+          "Booking data not found. Please restart the booking process.",
           null,
           "danger",
         );
         return null;
       }
 
-      setPaymentIntentId(intent);
-      setPaymentSignedUrl(signed);
-      setPaymentProofUploaded(true);
+      setUploading(true);
 
-      saveActivePayment({
-        intentId: intent,
-        signedUrl: signed,
-      });
-
-      setSelectedProofFile(null);
-      setProofPreviewUrl(null);
-
-      const input = document.getElementById("payment-proof");
-      if (input) input.value = "";
+      const formDataObj = new FormData();
+      formDataObj.append("booking_id", bookingId);
+      formDataObj.append(
+        "email",
+        bookingPreview.customer_email ||
+          bookingPreview.customers?.email ||
+          bookingPreview.email ||
+          formData.email,
+      );
+      formDataObj.append("service_id", bookingPreview.service_id);
+      formDataObj.append("service_variant_id", bookingPreview.service_variant_id);
+      formDataObj.append("booking_date", bookingPreview.booking_date);
+      formDataObj.append("booking_time", bookingPreview.booking_time);
+      formDataObj.append("proof", file);
 
       try {
-        const preview = await getBookingById(bookingId);
-        setBookingPreview(preview);
-      } catch (err) {
-        console.warn("Preview refresh failed:", err);
-      }
+        const result = await uploadPaymentProof(formDataObj);
 
-      if (!silent) {
+        const intent =
+          result.payment_intent_id ||
+          result.paymentIntentId ||
+          result.intentId ||
+          result.payment_intent ||
+          null;
+
+        const signed =
+          result.signedUrl || result.signed_url || result.proof_url || null;
+
+        if (!intent) {
+          showAlert(
+            "Upload Error",
+            "Payment intent was not returned. Please try again.",
+            null,
+            "danger",
+          );
+          return null;
+        }
+
+        setPaymentIntentId(intent);
+        setPaymentSignedUrl(signed);
+        setPaymentProofUploaded(true);
+
+        saveActivePayment({
+          intentId: intent,
+          signedUrl: signed,
+        });
+
+        resetProofSelection();
+
+        try {
+          const preview = await getBookingById(bookingId);
+          setBookingPreview(preview);
+        } catch (err) {
+          console.warn("Preview refresh failed:", err);
+        }
+
+        if (!silent) {
+          showAlert(
+            "Payment Proof Uploaded",
+            "Payment proof uploaded successfully. You can now confirm your booking.",
+            null,
+            "success",
+          );
+        }
+
+        return intent;
+      } catch (error) {
+        console.error("Upload error:", error);
+
+        let errorMessage = "Upload failed. ";
+        if (error.response?.status === 413) {
+          errorMessage += "File too large (max 5MB).";
+        } else if (error.response?.status === 400) {
+          errorMessage +=
+            error.response?.data?.error ||
+            "Invalid file format. Please upload PNG, JPG, or PDF.";
+        } else {
+          errorMessage += error.response?.data?.error || error.message;
+        }
+
+        showAlert("Upload Error", errorMessage, null, "danger");
+        return null;
+      } finally {
+        setUploading(false);
+      }
+    },
+    [
+      bookingId,
+      uploading,
+      isExpiredLocal,
+      bookingPreview,
+      formData.email,
+      showAlert,
+      hardRestart,
+      resetProofSelection,
+    ],
+  );
+
+  const handleFinalConfirmation = useCallback(
+    async (intentOverride = null) => {
+      if (!bookingId) {
         showAlert(
-          "Payment Proof Uploaded",
-          "Payment proof uploaded successfully. You can now confirm your booking.",
+          "Error",
+          "Missing booking ID. Please restart booking.",
           null,
-          "success",
+          "danger",
         );
+        return;
       }
 
-      return intent;
-    } catch (error) {
-      console.error("Upload error:", error);
+      const intentToUse = intentOverride || paymentIntentId;
 
-      let errorMessage = "Upload failed. ";
-      if (error.response?.status === 413) {
-        errorMessage += "File too large (max 5MB).";
-      } else if (error.response?.status === 400) {
-        errorMessage +=
-          error.response?.data?.error ||
-          "Invalid file format. Please upload PNG, JPG, or PDF.";
-      } else {
-        errorMessage += error.response?.data?.error || error.message;
+      if (!intentToUse) {
+        showAlert(
+          "Error",
+          "Please upload payment proof first.",
+          null,
+          "warning",
+        );
+        return;
       }
 
-      showAlert("Upload Error", errorMessage, null, "danger");
-      return null;
-    } finally {
-      setUploading(false);
-    }
-  };
+      if (isExpiredLocal) {
+        setModal({
+          open: true,
+          title: "Booking Expired",
+          message:
+            "Your payment window has ended. Please start a new booking to continue.",
+          tone: "danger",
+          actions: [
+            {
+              label: "Start New Booking",
+              variant: "btn-primary",
+              onClick: () => {
+                setModal((prev) => ({ ...prev, open: false }));
+                hardRestart();
+              },
+            },
+          ],
+        });
+        return;
+      }
 
-  const handleConfirmWithUpload = async () => {
+      setConfirmationError(null);
+      setLoading(true);
+
+      try {
+        await confirmBooking(bookingId, intentToUse);
+
+        try {
+          const latest = await getBookingById(bookingId);
+          setBookingPreview(latest);
+        } catch (err) {
+          console.warn("Fetch latest booking failed:", err);
+        }
+
+        setStep(5);
+        clearActiveFlow();
+      } catch (error) {
+        console.error("Confirm error:", error);
+        const msg = error.response?.data?.error || error.message;
+
+        let errorType = "unknown";
+        let errorMessage = "An error occurred. Please try again.";
+        let showRetry = true;
+
+        if (error.response?.status === 404) {
+          errorType = "payment_not_found";
+          errorMessage = "Payment record not found. Please upload proof again.";
+          showRetry = false;
+        } else if (
+          error.response?.status === 400 ||
+          error.response?.status === 409
+        ) {
+          if (String(msg).toLowerCase().includes("expired")) {
+            errorType = "payment_expired";
+            errorMessage =
+              "Payment proof expired (30 minutes). Please restart booking.";
+            showRetry = false;
+
+            setModal({
+              open: true,
+              title: "Payment Expired",
+              message:
+                "Your 30-minute payment window has ended. Please start a new booking.",
+              tone: "danger",
+              actions: [
+                {
+                  label: "Start New Booking",
+                  variant: "btn-primary",
+                  onClick: () => {
+                    setModal((prev) => ({ ...prev, open: false }));
+                    hardRestart();
+                  },
+                },
+              ],
+            });
+          } else if (String(msg).toLowerCase().includes("slot")) {
+            errorType = "slot_taken";
+            errorMessage =
+              "That slot is no longer available. Please choose another date and time.";
+            showRetry = false;
+
+            resetBookingFlow();
+
+            setFormData((prev) => ({
+              ...prev,
+              booking_date: "",
+              booking_time: "",
+            }));
+            setSelectedDate("");
+            setStep(2);
+
+            setModal({
+              open: true,
+              title: "Slot No Longer Available",
+              message:
+                "The selected time slot has been taken. Please choose another date and time. You will need to upload payment proof again after selecting a new schedule.",
+              tone: "warning",
+              actions: [
+                {
+                  label: "Choose Another Slot",
+                  variant: "btn-primary",
+                  onClick: () => {
+                    setModal((prev) => ({ ...prev, open: false }));
+                  },
+                },
+              ],
+            });
+
+            return;
+          } else {
+            errorType = "invalid_payment";
+            errorMessage = msg || "Invalid request.";
+          }
+        } else if (error.response?.status === 500) {
+          errorType = "server_error";
+          errorMessage = "Server error. Please try again later.";
+        } else if (!navigator.onLine) {
+          errorType = "offline";
+          errorMessage = "No internet connection. Please check your network.";
+        } else {
+          errorMessage = msg || errorMessage;
+        }
+
+        setConfirmationError({
+          type: errorType,
+          message: errorMessage,
+          retry: showRetry,
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      bookingId,
+      paymentIntentId,
+      isExpiredLocal,
+      showAlert,
+      hardRestart,
+      resetBookingFlow,
+    ],
+  );
+
+  const handleConfirmWithUpload = useCallback(async () => {
     if (!bookingId) {
       showAlert(
         "Error",
@@ -1431,287 +1671,168 @@ const Booking = ({ services: servicesProp = [] }) => {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [
+    bookingId,
+    isExpiredLocal,
+    paymentProofUploaded,
+    paymentSignedUrl,
+    bookingPreview,
+    selectedProofFile,
+    showAlert,
+    hardRestart,
+    handlePaymentUpload,
+    handleFinalConfirmation,
+  ]);
 
-  const handleFinalConfirmation = async (intentOverride = null) => {
-    if (!bookingId) {
-      showAlert(
-        "Error",
-        "Missing booking ID. Please restart booking.",
-        null,
-        "danger",
-      );
-      return;
-    }
-
-    const intentToUse = intentOverride || paymentIntentId;
-
-    if (!intentToUse) {
-      showAlert("Error", "Please upload payment proof first.", null, "warning");
-      return;
-    }
-
-    if (isExpiredLocal) {
-      setModal({
-        open: true,
-        title: "Booking Expired",
-        message:
-          "Your payment window has ended. Please start a new booking to continue.",
-        tone: "danger",
-        actions: [
-          {
-            label: "Start New Booking",
-            variant: "btn-primary",
-            onClick: () => {
-              setModal((prev) => ({ ...prev, open: false }));
-              hardRestart();
-            },
-          },
-        ],
-      });
-      return;
-    }
-
-    setConfirmationError(null);
-    setLoading(true);
-
-    try {
-      await confirmBooking(bookingId, intentToUse);
-
-      try {
-        const latest = await getBookingById(bookingId);
-        setBookingPreview(latest);
-      } catch (err) {
-        console.warn("Fetch latest booking failed:", err);
-      }
-
-      setStep(5);
-      clearActiveFlow();
-    } catch (error) {
-      console.error("Confirm error:", error);
-      const msg = error.response?.data?.error || error.message;
-
-      let errorType = "unknown";
-      let errorMessage = "An error occurred. Please try again.";
-      let showRetry = true;
-
-      if (error.response?.status === 404) {
-        errorType = "payment_not_found";
-        errorMessage = "Payment record not found. Please upload proof again.";
-        showRetry = false;
-      } else if (
-        error.response?.status === 400 ||
-        error.response?.status === 409
-      ) {
-        if (String(msg).toLowerCase().includes("expired")) {
-          errorType = "payment_expired";
-          errorMessage =
-            "Payment proof expired (30 minutes). Please restart booking.";
-          showRetry = false;
-
-          setModal({
-            open: true,
-            title: "Payment Expired",
-            message:
-              "Your 30-minute payment window has ended. Please start a new booking.",
-            tone: "danger",
-            actions: [
-              {
-                label: "Start New Booking",
-                variant: "btn-primary",
-                onClick: () => {
-                  setModal((prev) => ({ ...prev, open: false }));
-                  hardRestart();
-                },
-              },
-            ],
-          });
-        } else if (String(msg).toLowerCase().includes("slot")) {
-          errorType = "slot_taken";
-          errorMessage =
-            "That slot is no longer available. Please choose another date and time.";
-          showRetry = false;
-
-          resetBookingFlow();
-
-          setFormData((prev) => ({
-            ...prev,
-            booking_date: "",
-            booking_time: "",
-          }));
-          setSelectedDate("");
-          setAvailableSlots([]);
-          setStep(2);
-
-          setModal({
-            open: true,
-            title: "Slot No Longer Available",
-            message:
-              "The selected time slot has been taken. Please choose another date and time. You will need to upload payment proof again after selecting a new schedule.",
-            tone: "warning",
-            actions: [
-              {
-                label: "Choose Another Slot",
-                variant: "btn-primary",
-                onClick: () => {
-                  setModal((prev) => ({ ...prev, open: false }));
-                },
-              },
-            ],
-          });
-
-          return;
-        } else {
-          errorType = "invalid_payment";
-          errorMessage = msg || "Invalid request.";
-        }
-      } else if (error.response?.status === 500) {
-        errorType = "server_error";
-        errorMessage = "Server error. Please try again later.";
-      } else if (!navigator.onLine) {
-        errorType = "offline";
-        errorMessage = "No internet connection. Please check your network.";
-      } else {
-        errorMessage = msg || errorMessage;
-      }
-
-      setConfirmationError({
-        type: errorType,
-        message: errorMessage,
-        retry: showRetry,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const retryConfirmation = () => {
+  const retryConfirmation = useCallback(() => {
     setConfirmationError(null);
     handleFinalConfirmation();
-  };
+  }, [handleFinalConfirmation]);
 
-  // ===============================
-  // UI HELPERS
-  // ===============================
-  const toggleReviewSection = (key) => {
+  /* ===============================
+     UI HELPERS
+  =============================== */
+  const toggleReviewSection = useCallback((key) => {
     setCollapsedReview((prev) => ({
       ...prev,
       [key]: !prev[key],
     }));
-  };
+  }, []);
 
-  const reviewSections = [
-    {
-      key: "service",
-      title: "Service",
-      summary: `${selectedService?.name || "N/A"} • ${selectedCategoryObj?.name || "N/A"} • ${selectedVariantObj?.body_part || "N/A"}`,
-      content: (
-        <div className="review-grid-mini">
-          <div className="mini-row">
-            <span>Service</span>
-            <strong>{selectedService?.name || "N/A"}</strong>
+  const reviewSections = useMemo(
+    () => [
+      {
+        key: "service",
+        title: "Service",
+        summary: `${selectedService?.name || "N/A"} • ${
+          selectedCategoryObj?.name || "N/A"
+        } • ${selectedVariantObj?.body_part || "N/A"}`,
+        content: (
+          <div className="review-grid-mini">
+            <div className="mini-row">
+              <span>Service</span>
+              <strong>{selectedService?.name || "N/A"}</strong>
+            </div>
+            <div className="mini-row">
+              <span>Category</span>
+              <strong>{selectedCategoryObj?.name || "N/A"}</strong>
+            </div>
+            <div className="mini-row">
+              <span>Variant</span>
+              <strong>
+                {selectedVariantObj?.body_part
+                  ? `${selectedVariantObj.body_part} (${selectedVariantObj.size})`
+                  : "N/A"}
+              </strong>
+            </div>
+            <div className="mini-row">
+              <span>Duration</span>
+              <strong>
+                {selectedService?.duration || 0} hour
+                {selectedService?.duration !== 1 ? "s" : ""}
+              </strong>
+            </div>
+            <div className="mini-row highlight">
+              <span>Total</span>
+              <strong>{formatCurrency(formData.total_price)}</strong>
+            </div>
+            <div className="mini-row highlight">
+              <span>Downpayment</span>
+              <strong>{formatCurrency(formData.downpayment)}</strong>
+            </div>
           </div>
-          <div className="mini-row">
-            <span>Category</span>
-            <strong>{selectedCategoryObj?.name || "N/A"}</strong>
+        ),
+      },
+      {
+        key: "schedule",
+        title: "Schedule",
+        summary: `${formData.booking_date || "No date"} • ${formatDisplayTime(
+          formData.booking_time,
+        )}`,
+        content: (
+          <div className="review-grid-mini">
+            <div className="mini-row">
+              <span>Date</span>
+              <strong>
+                {formData.booking_date
+                  ? parseLocalDate(formData.booking_date)?.toLocaleDateString(
+                      "en-PH",
+                      {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      },
+                    )
+                  : "N/A"}
+              </strong>
+            </div>
+            <div className="mini-row">
+              <span>Time</span>
+              <strong>{formatDisplayTime(formData.booking_time)}</strong>
+            </div>
           </div>
-          <div className="mini-row">
-            <span>Variant</span>
-            <strong>
-              {selectedVariantObj?.body_part
-                ? `${selectedVariantObj.body_part} (${selectedVariantObj.size})`
-                : "N/A"}
-            </strong>
+        ),
+      },
+      {
+        key: "customer",
+        title: "Your Information",
+        summary: `${formData.full_name || "No name"} • ${
+          formData.email || "No email"
+        }`,
+        content: (
+          <div className="review-grid-mini">
+            <div className="mini-row">
+              <span>Full Name</span>
+              <strong>{formData.full_name || "N/A"}</strong>
+            </div>
+            <div className="mini-row">
+              <span>Email</span>
+              <strong>{formData.email || "N/A"}</strong>
+            </div>
+            <div className="mini-row">
+              <span>Phone</span>
+              <strong>{formData.phone || "N/A"}</strong>
+            </div>
+            <div className="mini-row">
+              <span>Facebook</span>
+              <strong>{formData.facebook_link || "Not provided"}</strong>
+            </div>
           </div>
-          <div className="mini-row">
-            <span>Duration</span>
-            <strong>
-              {selectedService?.duration || 0} hour
-              {selectedService?.duration !== 1 ? "s" : ""}
-            </strong>
+        ),
+      },
+      {
+        key: "notes",
+        title: "Additional Notes",
+        summary: formData.notes?.trim()
+          ? formData.notes
+          : "No additional notes provided",
+        content: (
+          <div className="review-notes-box">
+            {formData.notes?.trim() || "No additional notes provided."}
           </div>
-          <div className="mini-row highlight">
-            <span>Total</span>
-            <strong>{formatCurrency(formData.total_price)}</strong>
-          </div>
-          <div className="mini-row highlight">
-            <span>Downpayment</span>
-            <strong>{formatCurrency(formData.downpayment)}</strong>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "schedule",
-      title: "Schedule",
-      summary: `${formData.booking_date || "No date"} • ${formatDisplayTime(formData.booking_time)}`,
-      content: (
-        <div className="review-grid-mini">
-          <div className="mini-row">
-            <span>Date</span>
-            <strong>
-              {formData.booking_date
-                ? parseLocalDate(formData.booking_date)?.toLocaleDateString(
-                    "en-PH",
-                    {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    },
-                  )
-                : "N/A"}
-            </strong>
-          </div>
-          <div className="mini-row">
-            <span>Time</span>
-            <strong>{formatDisplayTime(formData.booking_time)}</strong>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "customer",
-      title: "Your Information",
-      summary: `${formData.full_name || "No name"} • ${formData.email || "No email"}`,
-      content: (
-        <div className="review-grid-mini">
-          <div className="mini-row">
-            <span>Full Name</span>
-            <strong>{formData.full_name || "N/A"}</strong>
-          </div>
-          <div className="mini-row">
-            <span>Email</span>
-            <strong>{formData.email || "N/A"}</strong>
-          </div>
-          <div className="mini-row">
-            <span>Phone</span>
-            <strong>{formData.phone || "N/A"}</strong>
-          </div>
-          <div className="mini-row">
-            <span>Facebook</span>
-            <strong>{formData.facebook_link || "Not provided"}</strong>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "notes",
-      title: "Additional Notes",
-      summary: formData.notes?.trim()
-        ? formData.notes
-        : "No additional notes provided",
-      content: (
-        <div className="review-notes-box">
-          {formData.notes?.trim() || "No additional notes provided."}
-        </div>
-      ),
-    },
-  ];
+        ),
+      },
+    ],
+    [
+      selectedService,
+      selectedCategoryObj,
+      selectedVariantObj,
+      formData.total_price,
+      formData.downpayment,
+      formData.booking_date,
+      formData.booking_time,
+      formData.full_name,
+      formData.email,
+      formData.phone,
+      formData.facebook_link,
+      formData.notes,
+    ],
+  );
 
-  // ===============================
-  // SHARED UI
-  // ===============================
+  /* ===============================
+     MODALS
+  =============================== */
   const Modal = () => {
     if (!modal.open) return null;
 
@@ -1876,6 +1997,7 @@ const Booking = ({ services: servicesProp = [] }) => {
       document.body,
     );
   };
+
   const TermsModal = () => {
     if (!showTermsModal) return null;
 
@@ -2029,9 +2151,9 @@ const Booking = ({ services: servicesProp = [] }) => {
     );
   };
 
-  // ===============================
-  // STEP 1
-  // ===============================
+  /* ===============================
+     STEP 1
+  =============================== */
   const renderServiceSelection = () => {
     if (fetchingServices) {
       return (
@@ -2103,8 +2225,9 @@ const Booking = ({ services: servicesProp = [] }) => {
                     <img
                       src={service.image}
                       alt={service.name}
+                      loading="lazy"
                       onError={(e) => {
-                        e.target.src = `https://via.placeholder.com/300x200?text=${encodeURIComponent(
+                        e.currentTarget.src = `https://via.placeholder.com/300x200?text=${encodeURIComponent(
                           service.name,
                         )}`;
                       }}
@@ -2137,9 +2260,7 @@ const Booking = ({ services: servicesProp = [] }) => {
                         <span className="meta-icon">🏷️</span>
                         <span>
                           {service.service_categories?.length || 0} categor
-                          {service.service_categories?.length !== 1
-                            ? "ies"
-                            : "y"}
+                          {service.service_categories?.length !== 1 ? "ies" : "y"}
                         </span>
                       </div>
                     </div>
@@ -2151,6 +2272,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
           <div className="step-footer premium">
             <button
+              type="button"
               className="btn btn-secondary premium"
               onClick={() => navigate("/")}
             >
@@ -2173,6 +2295,7 @@ const Booking = ({ services: servicesProp = [] }) => {
         <div className="premium-step">
           <div className="step-header with-back">
             <button
+              type="button"
               className="back-btn premium"
               onClick={() => {
                 resetBookingFlow();
@@ -2218,17 +2341,17 @@ const Booking = ({ services: servicesProp = [] }) => {
                       <span>
                         {formatCurrency(
                           Math.min(
-                            ...(category.service_variants?.map(
-                              (v) => v.price,
-                            ) || [0]),
+                            ...(category.service_variants?.map((v) => v.price) || [
+                              0,
+                            ]),
                           ),
                         )}{" "}
                         -{" "}
                         {formatCurrency(
                           Math.max(
-                            ...(category.service_variants?.map(
-                              (v) => v.price,
-                            ) || [0]),
+                            ...(category.service_variants?.map((v) => v.price) || [
+                              0,
+                            ]),
                           ),
                         )}
                       </span>
@@ -2245,6 +2368,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
           <div className="step-footer premium">
             <button
+              type="button"
               className="btn btn-secondary premium"
               onClick={() => {
                 resetBookingFlow();
@@ -2264,6 +2388,7 @@ const Booking = ({ services: servicesProp = [] }) => {
         <div className="premium-step">
           <div className="step-header with-back">
             <button
+              type="button"
               className="back-btn premium"
               onClick={() => {
                 resetBookingFlow();
@@ -2328,6 +2453,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
           <div className="step-footer premium">
             <button
+              type="button"
               className="btn btn-secondary premium"
               onClick={() => {
                 resetBookingFlow();
@@ -2345,31 +2471,15 @@ const Booking = ({ services: servicesProp = [] }) => {
     return null;
   };
 
-  // ===============================
-  // STEP 2
-  // ===============================
+  /* ===============================
+     STEP 2
+  =============================== */
   const renderDateTimeSelection = () => {
-    const timeSlots = generateTimeSlots();
-    const monthNames = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
     return (
       <div className="premium-step">
         <div className="step-header with-back">
           <button
+            type="button"
             className="back-btn premium"
             onClick={() => {
               setStep(1);
@@ -2390,9 +2500,7 @@ const Booking = ({ services: servicesProp = [] }) => {
         <div className="selected-service-summary premium compact-summary">
           <div className="summary-header">
             <h4>Selected Service</h4>
-            <div className="price-tag">
-              {formatCurrency(formData.total_price)}
-            </div>
+            <div className="price-tag">{formatCurrency(formData.total_price)}</div>
           </div>
 
           <div className="summary-details">
@@ -2421,29 +2529,41 @@ const Booking = ({ services: servicesProp = [] }) => {
           <div className="calendar-section premium">
             <div className="calendar-header premium">
               <div className="calendar-navigation">
-                <button className="nav-btn premium" onClick={prevMonth}>
+                <button
+                  type="button"
+                  className="nav-btn premium"
+                  onClick={prevMonth}
+                >
                   <span className="nav-icon">←</span>
                   <span>Previous</span>
                 </button>
 
                 <div className="calendar-title">
                   <h3>
-                    {monthNames[currentMonth.getMonth()]}{" "}
+                    {MONTH_NAMES[currentMonth.getMonth()]}{" "}
                     {currentMonth.getFullYear()}
                   </h3>
-                  <button className="today-btn premium" onClick={goToToday}>
+                  <button
+                    type="button"
+                    className="today-btn premium"
+                    onClick={goToToday}
+                  >
                     Today
                   </button>
                 </div>
 
-                <button className="nav-btn premium" onClick={nextMonth}>
+                <button
+                  type="button"
+                  className="nav-btn premium"
+                  onClick={nextMonth}
+                >
                   <span>Next</span>
                   <span className="nav-icon">→</span>
                 </button>
               </div>
 
               <div className="weekdays premium">
-                {dayNames.map((day) => (
+                {DAY_NAMES.map((day) => (
                   <div key={day} className="weekday">
                     {day}
                   </div>
@@ -2451,7 +2571,7 @@ const Booking = ({ services: servicesProp = [] }) => {
               </div>
             </div>
 
-            {fetchingAvailability ? (
+            {monthlyAvailabilityFetching ? (
               <div className="calendar-loading premium">
                 <div className="spinner small"></div>
                 <p>Loading available dates...</p>
@@ -2465,7 +2585,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
                     return (
                       <div
-                        key={index}
+                        key={`${dateObj.dateStr}-${index}`}
                         className={`calendar-day premium ${
                           dateObj.isCurrentMonth ? "" : "other-month"
                         } ${dateObj.isPast ? "past" : ""} ${
@@ -2493,7 +2613,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
                         {!dateObj.isCurrentMonth && (
                           <div className="month-indicator">
-                            {monthNames[dateObj.date.getMonth()].slice(0, 3)}
+                            {MONTH_NAMES[dateObj.date.getMonth()].slice(0, 3)}
                           </div>
                         )}
 
@@ -2556,7 +2676,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
             {selectedDate ? (
               <>
-                {fetchingSlots ? (
+                {availableSlotsFetching ? (
                   <div className="timeslots-loading">
                     <div className="spinner small"></div>
                     <p>Loading available slots...</p>
@@ -2573,6 +2693,7 @@ const Booking = ({ services: servicesProp = [] }) => {
                       {timeSlots.map((slot) => (
                         <button
                           key={slot.slotId || slot.value}
+                          type="button"
                           className={`timeslot-btn premium ${
                             !slot.available ? "disabled" : ""
                           } ${slot.isSelected ? "selected" : ""}`}
@@ -2640,6 +2761,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
         <div className="step-footer premium">
           <button
+            type="button"
             className="btn btn-secondary premium"
             onClick={() => {
               setStep(1);
@@ -2652,6 +2774,7 @@ const Booking = ({ services: servicesProp = [] }) => {
           </button>
 
           <button
+            type="button"
             className="btn btn-primary premium"
             onClick={() => {
               if (!validateForm(2)) return;
@@ -2666,13 +2789,14 @@ const Booking = ({ services: servicesProp = [] }) => {
     );
   };
 
-  // ===============================
-  // STEP 3
-  // ===============================
+  /* ===============================
+     STEP 3
+  =============================== */
   const renderDetailsAndReview = () => (
     <div className="premium-step">
       <div className="step-header with-back">
         <button
+          type="button"
           className="back-btn premium"
           onClick={() => goBackToEditableStep(2)}
         >
@@ -2775,7 +2899,9 @@ const Booking = ({ services: servicesProp = [] }) => {
         </div>
 
         <div
-          className={`review-panel compact ${reviewPanelCollapsed ? "collapsed" : "expanded"}`}
+          className={`review-panel compact ${
+            reviewPanelCollapsed ? "collapsed" : "expanded"
+          }`}
         >
           <button
             type="button"
@@ -2794,7 +2920,9 @@ const Booking = ({ services: servicesProp = [] }) => {
             <div className="review-panel-toggle-side">
               <span className="review-chip">Editable</span>
               <span
-                className={`review-panel-arrow ${reviewPanelCollapsed ? "" : "open"}`}
+                className={`review-panel-arrow ${
+                  reviewPanelCollapsed ? "" : "open"
+                }`}
               >
                 ▾
               </span>
@@ -2907,6 +3035,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
       <div className="step-footer premium">
         <button
+          type="button"
           className="btn btn-secondary premium"
           onClick={() => goBackToEditableStep(2)}
         >
@@ -2914,6 +3043,7 @@ const Booking = ({ services: servicesProp = [] }) => {
         </button>
 
         <button
+          type="button"
           className="btn btn-primary premium"
           onClick={handleProceedToPayment}
           disabled={
@@ -2936,9 +3066,9 @@ const Booking = ({ services: servicesProp = [] }) => {
     </div>
   );
 
-  // ===============================
-  // STEP 4
-  // ===============================
+  /* ===============================
+     STEP 4
+  =============================== */
   const renderPaymentInstructions = () => {
     const countdown = formatCountdown(timeLeftMs);
 
@@ -2960,6 +3090,7 @@ const Booking = ({ services: servicesProp = [] }) => {
       <div className="premium-step">
         <div className="step-header with-back">
           <button
+            type="button"
             className="back-btn premium"
             onClick={() => setStep(3)}
             disabled={isLockedAfterBookingCreated}
@@ -2977,7 +3108,9 @@ const Booking = ({ services: servicesProp = [] }) => {
         </div>
 
         <div
-          className={`status-banner warning premium ${isExpiredLocal ? "error" : ""}`}
+          className={`status-banner warning premium ${
+            isExpiredLocal ? "error" : ""
+          }`}
         >
           <div className="status-content">
             <div className="status-indicator">
@@ -3013,6 +3146,7 @@ const Booking = ({ services: servicesProp = [] }) => {
               Please start a new booking to continue.
             </p>
             <button
+              type="button"
               className="btn btn-primary premium"
               onClick={() => {
                 setModal({
@@ -3121,6 +3255,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
             <div className="upload-area premium">
               <input
+                ref={paymentProofInputRef}
                 type="file"
                 id="payment-proof"
                 accept="image/*,.pdf"
@@ -3128,11 +3263,15 @@ const Booking = ({ services: servicesProp = [] }) => {
                   const file = e.target.files?.[0] || null;
                   setSelectedProofFile(file);
 
-                  if (file && file.type.startsWith("image/")) {
-                    setProofPreviewUrl(URL.createObjectURL(file));
-                  } else {
-                    setProofPreviewUrl(null);
-                  }
+                  setProofPreviewUrl((prev) => {
+                    if (prev) URL.revokeObjectURL(prev);
+
+                    if (file && file.type.startsWith("image/")) {
+                      return URL.createObjectURL(file);
+                    }
+
+                    return null;
+                  });
                 }}
                 disabled={uploading || hasUploadedProof || isExpiredLocal}
                 className="upload-input"
@@ -3193,14 +3332,9 @@ const Booking = ({ services: servicesProp = [] }) => {
               )}
 
               <button
+                type="button"
                 className="btn btn-outline premium upload-clear-btn"
-                onClick={() => {
-                  setSelectedProofFile(null);
-                  setProofPreviewUrl(null);
-
-                  const input = document.getElementById("payment-proof");
-                  if (input) input.value = "";
-                }}
+                onClick={resetProofSelection}
                 disabled={uploading || isExpiredLocal}
               >
                 Clear Selected File
@@ -3228,6 +3362,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
               {confirmationError.retry && (
                 <button
+                  type="button"
                   className="btn btn-small btn-primary premium"
                   onClick={retryConfirmation}
                 >
@@ -3248,6 +3383,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
         <div className="step-footer premium">
           <button
+            type="button"
             className="btn btn-secondary premium"
             disabled
             title="Details are locked after booking creation"
@@ -3256,6 +3392,7 @@ const Booking = ({ services: servicesProp = [] }) => {
           </button>
 
           <button
+            type="button"
             className="btn btn-primary premium"
             onClick={handleConfirmWithUpload}
             disabled={
@@ -3280,9 +3417,9 @@ const Booking = ({ services: servicesProp = [] }) => {
     );
   };
 
-  // ===============================
-  // STEP 5
-  // ===============================
+  /* ===============================
+     STEP 5
+  =============================== */
   const renderConfirmation = () => {
     const status = bookingPreview?.status || "pending_approval";
 
@@ -3444,6 +3581,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
         <div className="step-footer premium">
           <button
+            type="button"
             className="btn btn-primary premium"
             onClick={() => navigate("/")}
           >
@@ -3451,6 +3589,7 @@ const Booking = ({ services: servicesProp = [] }) => {
           </button>
 
           <button
+            type="button"
             className="btn btn-outline premium"
             onClick={() =>
               (window.location.href = `/booking-history?email=${encodeURIComponent(

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import Slider from "react-slick";
+import { useEffect,  useState } from "react";
+import { createPortal } from "react-dom";
 import { getAllPortfolio } from "../../backend/portfolioApi";
 
 import "slick-carousel/slick/slick-theme.css";
@@ -10,32 +10,93 @@ import "../styles/portfolio.css";
 import {
   FaArrowLeft,
   FaArrowRight,
-  FaCompress,
-  FaExpand,
   FaTimes,
 } from "react-icons/fa";
 
-const NextArrow = ({ onClick }) => (
-  <button
-    className="slider-arrow next"
-    onClick={onClick}
-    aria-label="Next slide"
-    type="button"
-  >
-    <FaArrowRight />
-  </button>
-);
+const PortfolioPreviewModal = ({
+  images,
+  title,
+  currentIndex,
+  onClose,
+  onPrev,
+  onNext,
+}) => {
+  const hasMultiple = images.length > 1;
 
-const PrevArrow = ({ onClick }) => (
-  <button
-    className="slider-arrow prev"
-    onClick={onClick}
-    aria-label="Previous slide"
-    type="button"
-  >
-    <FaArrowLeft />
-  </button>
-);
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+      if (hasMultiple && event.key === "ArrowRight") onNext();
+      if (hasMultiple && event.key === "ArrowLeft") onPrev();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [hasMultiple, onClose, onNext, onPrev]);
+
+  return createPortal(
+    <div
+      className="portfolio-preview-overlay"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title || "Portfolio image preview"}
+    >
+      <div
+        className="portfolio-preview-box"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="portfolio-preview-close"
+          onClick={onClose}
+          aria-label="Close image preview"
+        >
+          <FaTimes />
+        </button>
+
+        {hasMultiple && (
+          <>
+            <button
+              type="button"
+              className="portfolio-preview-nav portfolio-preview-prev"
+              onClick={onPrev}
+              aria-label="Previous image"
+            >
+              <FaArrowLeft />
+            </button>
+
+            <button
+              type="button"
+              className="portfolio-preview-nav portfolio-preview-next"
+              onClick={onNext}
+              aria-label="Next image"
+            >
+              <FaArrowRight />
+            </button>
+          </>
+        )}
+
+        <img
+          src={images[currentIndex]}
+          alt={`${title || "Portfolio image"} ${currentIndex + 1}`}
+        />
+
+        {hasMultiple && (
+          <div className="portfolio-preview-count">
+            {currentIndex + 1} / {images.length}
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body,
+  );
+};
 
 const Portfolio = () => {
   const {
@@ -51,79 +112,38 @@ const Portfolio = () => {
     refetchOnWindowFocus: false,
   });
 
-  const [sliderImages, setSliderImages] = useState([]);
-  const [sliderTitle, setSliderTitle] = useState("");
-  const [sliderDescription, setSliderDescription] = useState("");
-  const [isSliderOpen, setIsSliderOpen] = useState(false);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  const sliderRef = useRef(null);
+  const [previewImages, setPreviewImages] = useState([]);
+  const [previewTitle, setPreviewTitle] = useState("");
+  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
-  const openSlider = (item) => {
-    setSliderImages(item.images || []);
-    setSliderTitle(item.title || "");
-    setSliderDescription(item.description || item.content || "");
-    setCurrentSlide(0);
-    setIsSliderOpen(true);
+  const openPreview = (item, startIndex = 0) => {
+    setPreviewImages(item.images || []);
+    setPreviewTitle(item.title || "");
+    setCurrentPreviewIndex(startIndex);
+    setIsPreviewOpen(true);
   };
 
-  const closeSlider = () => {
-    setIsSliderOpen(false);
-    setIsFullscreen(false);
-    setSliderImages([]);
-    setSliderTitle("");
-    setSliderDescription("");
-    setCurrentSlide(0);
+  const closePreview = () => {
+    setIsPreviewOpen(false);
+    setPreviewImages([]);
+    setPreviewTitle("");
+    setCurrentPreviewIndex(0);
   };
 
-  useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = isSliderOpen ? "hidden" : originalOverflow;
-
-    return () => {
-      document.body.style.overflow = originalOverflow;
-    };
-  }, [isSliderOpen]);
-
-  useEffect(() => {
-    if (!isSliderOpen) return;
-
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") closeSlider();
-
-      if (sliderImages.length > 1 && sliderRef.current) {
-        if (event.key === "ArrowRight") sliderRef.current.slickNext();
-        if (event.key === "ArrowLeft") sliderRef.current.slickPrev();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isSliderOpen, sliderImages.length]);
-
-  const sliderSettings = {
-    dots: sliderImages.length > 1,
-    infinite: sliderImages.length > 1,
-    speed: 400,
-    slidesToShow: 1,
-    slidesToScroll: 1,
-    arrows: sliderImages.length > 1,
-    nextArrow: <NextArrow />,
-    prevArrow: <PrevArrow />,
-    afterChange: (index) => setCurrentSlide(index),
-    adaptiveHeight: false,
+  const prevPreview = () => {
+    setCurrentPreviewIndex((prev) =>
+      prev === 0 ? previewImages.length - 1 : prev - 1,
+    );
   };
 
-  const toggleFullscreen = () => {
-    setIsFullscreen((prev) => !prev);
-
-    setTimeout(() => {
-      sliderRef.current?.slickGoTo(currentSlide);
-    }, 50);
+  const nextPreview = () => {
+    setCurrentPreviewIndex((prev) =>
+      prev === previewImages.length - 1 ? 0 : prev + 1,
+    );
   };
 
   const totalPages = Math.ceil(portfolioItems.length / itemsPerPage);
@@ -171,7 +191,7 @@ const Portfolio = () => {
                     className={`portfolio-item ${
                       index === 0 ? "portfolio-item-featured" : ""
                     }`}
-                    onClick={() => openSlider(item)}
+                    onClick={() => openPreview(item, 0)}
                   >
                     <div className="portfolio-image-wrap">
                       <img
@@ -226,68 +246,15 @@ const Portfolio = () => {
         </div>
       </section>
 
-      {isSliderOpen && (
-        <div
-          className={`slider-modal ${isFullscreen ? "fullscreen" : ""}`}
-          role="dialog"
-          aria-modal="true"
-          aria-label={sliderTitle || "Portfolio image viewer"}
-        >
-          <div className="slider-backdrop" onClick={closeSlider} />
-
-          <div className="slider-shell">
-            <button
-              className="slider-icon-btn slider-fullscreen"
-              onClick={toggleFullscreen}
-              aria-label="Toggle fullscreen"
-              type="button"
-            >
-              {isFullscreen ? <FaCompress /> : <FaExpand />}
-            </button>
-
-            <button
-              className="slider-icon-btn slider-close"
-              onClick={closeSlider}
-              aria-label="Close viewer"
-              type="button"
-            >
-              <FaTimes />
-            </button>
-
-            <div className="slider-content">
-              <div className="slider-stage">
-                <Slider ref={sliderRef} {...sliderSettings}>
-                  {sliderImages.map((img, index) => (
-                    <div key={index} className="slider-image-wrapper">
-                      <img
-                        src={img}
-                        alt={`${sliderTitle || "Portfolio image"} ${index + 1}`}
-                        loading="lazy"
-                      />
-                    </div>
-                  ))}
-                </Slider>
-              </div>
-
-              <div className="slider-meta">
-                <div className="slider-meta-inner">
-                  <span className="slider-meta-chip">Portfolio Set</span>
-                  <h3>{sliderTitle}</h3>
-                  <p>
-                    {sliderDescription ||
-                      "This nail set is part of our featured portfolio collection."}
-                  </p>
-
-                  {sliderImages.length > 1 && (
-                    <div className="slider-count">
-                      {currentSlide + 1} / {sliderImages.length}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {isPreviewOpen && previewImages.length > 0 && (
+        <PortfolioPreviewModal
+          images={previewImages}
+          title={previewTitle}
+          currentIndex={currentPreviewIndex}
+          onClose={closePreview}
+          onPrev={prevPreview}
+          onNext={nextPreview}
+        />
       )}
     </>
   );
