@@ -563,3 +563,67 @@
     transform: none !important;
   }
 }
+
+.portfolio-preview-info {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(
+    180deg,
+    rgba(16, 12, 14, 0.18) 0%,
+    rgba(16, 12, 14, 0.72) 100%
+  );
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
+}
+
+.portfolio-preview-info h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.3;
+  color: #fff;
+}
+
+.portfolio-preview-info p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.portfolio-preview-info .portfolio-preview-count {
+  position: static;
+  transform: none;
+  margin-top: 10px;
+  width: fit-content;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  box-shadow: none;
+}
+
+@media (max-width: 576px) {
+  .portfolio-preview-info {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    padding: 12px 13px;
+    border-radius: 14px;
+  }
+
+  .portfolio-preview-info h3 {
+    font-size: 0.94rem;
+  }
+
+  .portfolio-preview-info p {
+    font-size: 0.84rem;
+    line-height: 1.5;
+  }
+}

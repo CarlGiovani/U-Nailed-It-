@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect,  useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { getAllPortfolio } from "../../backend/portfolioApi";
 
@@ -7,15 +7,12 @@ import "slick-carousel/slick/slick-theme.css";
 import "slick-carousel/slick/slick.css";
 import "../styles/portfolio.css";
 
-import {
-  FaArrowLeft,
-  FaArrowRight,
-  FaTimes,
-} from "react-icons/fa";
+import { FaArrowLeft, FaArrowRight, FaTimes } from "react-icons/fa";
 
 const PortfolioPreviewModal = ({
   images,
   title,
+  description,
   currentIndex,
   onClose,
   onPrev,
@@ -87,9 +84,17 @@ const PortfolioPreviewModal = ({
           alt={`${title || "Portfolio image"} ${currentIndex + 1}`}
         />
 
-        {hasMultiple && (
-          <div className="portfolio-preview-count">
-            {currentIndex + 1} / {images.length}
+        {(title || description || hasMultiple) && (
+          <div className="portfolio-preview-info">
+            {title && <h3>{title}</h3>}
+
+            {description && <p>{description}</p>}
+
+            {hasMultiple && (
+              <div className="portfolio-preview-count">
+                {currentIndex + 1} / {images.length}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -114,15 +119,17 @@ const Portfolio = () => {
 
   const [previewImages, setPreviewImages] = useState([]);
   const [previewTitle, setPreviewTitle] = useState("");
+  const [previewDescription, setPreviewDescription] = useState("");
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
-  const openPreview = (item, startIndex = 0) => {
+    const openPreview = (item, startIndex = 0) => {
     setPreviewImages(item.images || []);
     setPreviewTitle(item.title || "");
+    setPreviewDescription(item.description || item.content || "");
     setCurrentPreviewIndex(startIndex);
     setIsPreviewOpen(true);
   };
@@ -131,9 +138,9 @@ const Portfolio = () => {
     setIsPreviewOpen(false);
     setPreviewImages([]);
     setPreviewTitle("");
+    setPreviewDescription("");
     setCurrentPreviewIndex(0);
   };
-
   const prevPreview = () => {
     setCurrentPreviewIndex((prev) =>
       prev === 0 ? previewImages.length - 1 : prev - 1,
@@ -246,10 +253,11 @@ const Portfolio = () => {
         </div>
       </section>
 
-      {isPreviewOpen && previewImages.length > 0 && (
+           {isPreviewOpen && previewImages.length > 0 && (
         <PortfolioPreviewModal
           images={previewImages}
           title={previewTitle}
+          description={previewDescription}
           currentIndex={currentPreviewIndex}
           onClose={closePreview}
           onPrev={prevPreview}
