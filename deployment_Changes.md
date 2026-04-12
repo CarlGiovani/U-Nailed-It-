@@ -1,5 +1,5 @@
 # 🚀 Cron Job Setup (Supabase) — UNAIledIt Backend
-
+X`
 This guide explains how to enable all automated background jobs using **Supabase Cron (pg_cron + pg_net)** after deployment.
 
 ---
