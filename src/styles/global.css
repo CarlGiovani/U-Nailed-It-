@@ -1,21 +1,21 @@
 /* Copy all your global CSS here */
 :root {
-  --primary-pink: #ff69b4;
-  --light-pink: #ffb6c1;
-  --pale-pink: #fff0f5;
-  --gold: #ffd700;
-  --dark-gold: #daa520;
-  --text-dark: #333333;
-  --text-light: #666666;
+  --primary-pink: #e96aa5;
+  --light-pink: #f7bfd3;
+  --pale-pink: #fff3f8;
+  --gold: #e4c77a;
+  --dark-gold: #caa95c;
+  --text-dark: #33262d;
+  --text-light: #7a6670;
   --white: #ffffff;
-  --light-gray: #f9f9f9;
-  --border-color: #e8e8e8;
+  --light-gray: #fcf8fa;
+  --border-color: #f1dfe7;
   --success: #28a745;
   --warning: #ffc107;
   --danger: #dc3545;
-  --shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+  --shadow: 0 5px 15px rgba(233, 106, 165, 0.08);
+  --shadow-sm: 0 2px 5px rgba(233, 106, 165, 0.08);
+  --shadow-lg: 0 10px 25px rgba(233, 106, 165, 0.14);
   --radius: 10px;
   --radius-sm: 5px;
   --radius-lg: 15px;
@@ -31,6 +31,7 @@
 html {
   scroll-behavior: smooth;
 }
+
 body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   color: var(--text-dark);
@@ -39,15 +40,15 @@ body {
   background:
     radial-gradient(
       circle at 20% 10%,
-      rgba(255, 215, 0, 0.22),
+      rgba(233, 106, 165, 0.14),
       transparent 40%
     ),
     radial-gradient(
       circle at 85% 20%,
-      rgba(255, 105, 180, 0.18),
+      rgba(228, 199, 122, 0.08),
       transparent 45%
     ),
-    linear-gradient(135deg, #fdf8f2 0%, #fffaf5 40%, #fff4f8 100%);
+    linear-gradient(135deg, #fff8fb 0%, #fff5f9 42%, #fffdfb 100%);
 }
 
 html,
@@ -90,7 +91,11 @@ ul {
   position: absolute;
   width: 70px;
   height: 3px;
-  background: linear-gradient(to right, var(--primary-pink), var(--gold));
+  background: linear-gradient(
+    to right,
+    var(--primary-pink),
+    rgba(228, 199, 122, 0.7)
+  );
   bottom: -10px;
   left: 50%;
   transform: translateX(-50%);
@@ -118,7 +123,12 @@ ul {
 }
 
 .btn-primary {
-  background: linear-gradient(to right, var(--primary-pink), var(--gold));
+  background: linear-gradient(
+    to right,
+    var(--primary-pink),
+    #f08fbc 72%,
+    rgba(228, 199, 122, 0.88) 100%
+  );
   color: var(--white);
 }
 
@@ -130,7 +140,7 @@ ul {
 .btn-secondary {
   background-color: transparent;
   color: var(--primary-pink);
-  border: 2px solid var(--primary-pink);
+  border: 2px solid rgba(233, 106, 165, 0.75);
 }
 
 .btn-secondary:hover {
@@ -179,7 +189,7 @@ ul {
 }
 
 .policy-card {
-  background: var(--white);
+  background: rgba(255, 255, 255, 0.92);
   border-radius: var(--radius);
   padding: 30px;
   box-shadow: var(--shadow);
@@ -202,7 +212,7 @@ ul {
 }
 
 .policy-card i {
-  color: var(--gold);
+  color: rgba(202, 169, 92, 0.9);
 }
 
 .policy-card p {
@@ -213,7 +223,7 @@ ul {
 /* Portfolio Styles */
 .portfolio {
   padding: 80px 0;
-  background-color: var(--light-gray);
+  background: linear-gradient(180deg, #fff9fc 0%, #fffdfb 100%);
 }
 
 .portfolio-grid {
@@ -228,6 +238,7 @@ ul {
   border-radius: var(--radius);
   overflow: hidden;
   aspect-ratio: 1;
+  box-shadow: var(--shadow);
 }
 
 .portfolio-item img {
@@ -246,7 +257,7 @@ ul {
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+  background: linear-gradient(transparent, rgba(52, 27, 38, 0.82));
   padding: 20px;
   color: var(--white);
   transform: translateY(100%);
@@ -275,7 +286,7 @@ ul {
 }
 
 .promo-card {
-  background: var(--white);
+  background: rgba(255, 255, 255, 0.94);
   border-radius: var(--radius);
   padding: 30px;
   box-shadow: var(--shadow);
@@ -293,7 +304,12 @@ ul {
   position: absolute;
   top: -10px;
   right: 20px;
-  background: linear-gradient(to right, var(--primary-pink), var(--gold));
+  background: linear-gradient(
+    to right,
+    var(--primary-pink),
+    #f292be 78%,
+    rgba(228, 199, 122, 0.85)
+  );
   color: var(--white);
   padding: 5px 15px;
   border-radius: 20px;
