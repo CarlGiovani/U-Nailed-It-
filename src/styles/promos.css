@@ -102,11 +102,12 @@
   position: relative;
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.08);
   transition:
-    transform 0.3s ease,
-    box-shadow 0.3s ease,
-    border-color 0.3s ease;
+    transform 0.22s ease-out,
+    box-shadow 0.22s ease-out,
+    border-color 0.22s ease-out;
   border: 1px solid rgba(255, 255, 255, 0.78);
   transform: rotate(-0.5deg);
+  will-change: transform;
 }
 
 .note-card:nth-child(even) {
@@ -114,8 +115,8 @@
 }
 
 .note-card:hover {
-  transform: rotate(0deg) translateY(-6px);
-  box-shadow: 0 22px 45px rgba(0, 0, 0, 0.12);
+  transform: rotate(0deg) translate3d(0, -3px, 0);
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.1);
   border-color: rgba(212, 175, 55, 0.3);
 }
 
@@ -146,16 +147,17 @@
   border-radius: 20px;
   cursor: pointer;
   transition:
-    transform 0.3s ease,
-    box-shadow 0.3s ease,
-    border-color 0.3s ease;
+    transform 0.2s ease-out,
+    box-shadow 0.2s ease-out,
+    border-color 0.2s ease-out;
   border: 1px solid rgba(255, 255, 255, 0.6);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
+  will-change: transform;
 }
 
 .note-image-grid img:hover {
-  transform: scale(1.03);
-  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.1);
+  transform: scale(1.015);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
   border-color: var(--portfolio-gold, #d4af37);
 }
 
@@ -200,14 +202,15 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  animation: promoFadeIn 0.22s ease;
+  animation: promoFadeIn 0.16s ease-out;
 }
 
 .promo-preview-box {
   position: relative;
   max-width: min(920px, 94vw);
   max-height: 90vh;
-  animation: promoZoomIn 0.25s ease;
+  animation: promoZoomIn 0.18s ease-out;
+  will-change: transform, opacity;
 }
 
 .promo-preview-box img {
@@ -235,13 +238,13 @@
   cursor: pointer;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
   transition:
-    transform 0.22s ease,
-    background 0.22s ease,
-    color 0.22s ease;
+    transform 0.18s ease-out,
+    background 0.18s ease-out,
+    color 0.18s ease-out;
 }
 
 .promo-preview-close:hover {
-  transform: scale(1.08);
+  transform: scale(1.04);
   background: var(--primary-pink);
   color: #fff;
 }
@@ -257,7 +260,7 @@
 
 @keyframes promoZoomIn {
   from {
-    transform: scale(0.92);
+    transform: scale(0.97);
     opacity: 0;
   }
   to {
@@ -331,10 +334,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .note-card,
+  .note-card:hover,
   .note-card img,
+  .note-card img:hover,
   .promo-preview-overlay,
   .promo-preview-box,
-  .promo-preview-close {
+  .promo-preview-close,
+  .promo-preview-close:hover {
     transition: none !important;
     animation: none !important;
     transform: none !important;

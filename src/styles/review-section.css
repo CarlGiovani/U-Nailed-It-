@@ -134,16 +134,17 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(12px);
   transition:
-    transform 0.28s ease,
-    box-shadow 0.28s ease,
-    border-color 0.28s ease;
+    transform 0.2s ease-out,
+    box-shadow 0.2s ease-out,
+    border-color 0.2s ease-out;
   isolation: isolate;
+  will-change: transform;
 }
 
 .review-card:hover {
-  transform: translateY(-8px);
+  transform: translate3d(0, -4px, 0);
   box-shadow:
-    0 26px 64px rgba(255, 105, 180, 0.14),
+    0 22px 52px rgba(255, 105, 180, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.78);
   border-color: rgba(255, 105, 180, 0.18);
 }
@@ -265,14 +266,15 @@
   object-fit: cover;
   display: block;
   transition:
-    transform 0.4s ease,
-    filter 0.35s ease;
+    transform 0.22s ease-out,
+    filter 0.22s ease-out;
   border-radius: 20px;
+  will-change: transform;
 }
 
 .review-image:hover img {
-  transform: scale(1.05);
-  filter: brightness(0.84);
+  transform: scale(1.02);
+  filter: brightness(0.9);
 }
 
 .review-image-overlay {
@@ -291,12 +293,12 @@
   font-weight: 700;
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
   transition:
-    transform 0.25s ease,
-    background 0.25s ease;
+    transform 0.18s ease-out,
+    background 0.18s ease-out;
 }
 
 .review-image:hover .review-image-overlay {
-  transform: translateY(-2px);
+  transform: translate3d(0, -2px, 0);
   background: #fff;
 }
 
@@ -329,19 +331,19 @@
   cursor: pointer;
   box-shadow: 0 12px 28px rgba(255, 105, 180, 0.08);
   transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease,
-    background 0.25s ease,
-    color 0.25s ease,
-    border-color 0.25s ease;
+    transform 0.18s ease-out,
+    box-shadow 0.18s ease-out,
+    background 0.18s ease-out,
+    color 0.18s ease-out,
+    border-color 0.18s ease-out;
 }
 
 .pagination-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
+  transform: translate3d(0, -2px, 0);
   color: #fff;
   border-color: transparent;
   background: linear-gradient(135deg, #ff8ac0 0%, #f5b301 100%);
-  box-shadow: 0 18px 34px rgba(255, 105, 180, 0.22);
+  box-shadow: 0 16px 28px rgba(255, 105, 180, 0.18);
 }
 
 .pagination-btn:disabled {
@@ -435,13 +437,13 @@
   cursor: pointer;
   z-index: 5;
   transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease;
+    transform 0.18s ease-out,
+    box-shadow 0.18s ease-out;
 }
 
 .reviews-slider-arrow:hover {
-  transform: translateY(-50%) scale(1.05);
-  box-shadow: 0 14px 28px rgba(255, 105, 180, 0.18);
+  transform: translateY(-50%) scale(1.03);
+  box-shadow: 0 12px 24px rgba(255, 105, 180, 0.16);
 }
 
 .reviews-slider-arrow.prev {
@@ -466,14 +468,15 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  animation: reviewFadeIn 0.22s ease;
+  animation: reviewFadeIn 0.16s ease-out;
 }
 
 .review-preview-box {
   position: relative;
   max-width: min(920px, 94vw);
   max-height: 90vh;
-  animation: reviewZoomIn 0.25s ease;
+  animation: reviewZoomIn 0.18s ease-out;
+  will-change: transform, opacity;
 }
 
 .review-preview-box img {
@@ -501,13 +504,13 @@
   cursor: pointer;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
   transition:
-    transform 0.22s ease,
-    background 0.22s ease,
-    color 0.22s ease;
+    transform 0.18s ease-out,
+    background 0.18s ease-out,
+    color 0.18s ease-out;
 }
 
 .review-preview-close:hover {
-  transform: scale(1.08);
+  transform: scale(1.04);
   background: var(--primary-pink);
   color: #fff;
 }
@@ -523,7 +526,7 @@
 
 @keyframes reviewZoomIn {
   from {
-    transform: scale(0.92);
+    transform: scale(0.97);
     opacity: 0;
   }
   to {
@@ -615,5 +618,26 @@
 
   .reviews-slider-arrow {
     display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .review-card,
+  .review-card:hover,
+  .review-image img,
+  .review-image:hover img,
+  .review-image-overlay,
+  .review-image:hover .review-image-overlay,
+  .pagination-btn,
+  .pagination-btn:hover:not(:disabled),
+  .reviews-slider-arrow,
+  .reviews-slider-arrow:hover,
+  .review-preview-overlay,
+  .review-preview-box,
+  .review-preview-close,
+  .review-preview-close:hover {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
   }
 }

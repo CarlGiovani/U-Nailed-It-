@@ -237,7 +237,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: heroLogoFloat 5.5s ease-in-out infinite;
+  animation: heroLogoFloat 7s ease-in-out infinite;
+  will-change: transform;
 }
 
 .hero-logo-wrap::before {
@@ -255,7 +256,8 @@
   );
   filter: blur(26px);
   z-index: -2;
-  animation: heroGlowPulse 4.5s ease-in-out infinite;
+  animation: heroGlowPulse 6s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 .hero-logo-wrap::after {
@@ -278,7 +280,8 @@
   display: block;
   filter: drop-shadow(0 20px 34px rgba(255, 105, 180, 0.14))
     drop-shadow(0 10px 20px rgba(212, 175, 55, 0.12));
-  animation: heroLogoBreath 5.5s ease-in-out infinite;
+  animation: heroLogoBreath 7s ease-in-out infinite;
+  will-change: transform;
 }
 
 /* ======================================================
@@ -290,6 +293,7 @@
   border-radius: 50%;
   pointer-events: none;
   z-index: 1;
+  will-change: transform;
 }
 
 .hero-orb-1 {
@@ -299,7 +303,7 @@
   height: 15px;
   background: linear-gradient(135deg, #ff9fc7, #ffd36e);
   box-shadow: 0 10px 24px rgba(255, 105, 180, 0.16);
-  animation: floatOrbOne 5s ease-in-out infinite;
+  animation: floatOrbOne 7.2s ease-in-out infinite;
 }
 
 .hero-orb-2 {
@@ -309,7 +313,7 @@
   height: 11px;
   background: linear-gradient(135deg, #fff0a8, #ffb3cc);
   box-shadow: 0 10px 24px rgba(212, 175, 55, 0.16);
-  animation: floatOrbTwo 6s ease-in-out infinite;
+  animation: floatOrbTwo 8s ease-in-out infinite;
 }
 
 .hero-orb-3 {
@@ -319,7 +323,7 @@
   height: 13px;
   background: linear-gradient(135deg, #ffc6da, #ffffff);
   box-shadow: 0 10px 20px rgba(255, 182, 193, 0.14);
-  animation: floatOrbThree 5.8s ease-in-out infinite;
+  animation: floatOrbThree 7.6s ease-in-out infinite;
 }
 
 .hero-orb-4 {
@@ -329,7 +333,7 @@
   height: 17px;
   background: linear-gradient(135deg, #ffd36e, #ff9fc7);
   box-shadow: 0 12px 26px rgba(255, 105, 180, 0.14);
-  animation: floatOrbFour 6.3s ease-in-out infinite;
+  animation: floatOrbFour 8.4s ease-in-out infinite;
 }
 
 .hero-sparkle {
@@ -341,7 +345,8 @@
   background: radial-gradient(circle, #fff 0%, rgba(255, 255, 255, 0.08) 72%);
   box-shadow: 0 0 16px rgba(255, 255, 255, 0.75);
   pointer-events: none;
-  animation: sparkleTwinkle 3.4s ease-in-out infinite;
+  animation: sparkleTwinkle 4.6s ease-in-out infinite;
+  will-change: opacity;
 }
 
 .hero-sparkle.sparkle-1 {
@@ -383,6 +388,7 @@
   letter-spacing: 0.07em;
   text-transform: uppercase;
   white-space: nowrap;
+  will-change: transform;
 }
 
 .hero-chip::before {
@@ -394,13 +400,13 @@
 .hero-chip-top {
   top: 14%;
   right: 4%;
-  animation: heroChipFloatTop 4.8s ease-in-out infinite;
+  animation: heroChipFloatTop 7s ease-in-out infinite;
 }
 
 .hero-chip-bottom {
   bottom: 12%;
   left: 4%;
-  animation: heroChipFloatBottom 5.2s ease-in-out infinite;
+  animation: heroChipFloatBottom 7.6s ease-in-out infinite;
 }
 
 /* ======================================================
@@ -409,57 +415,59 @@
 
 .hero-reveal {
   opacity: 0;
-  transform: translateY(24px);
+  transform: translate3d(0, 16px, 0);
   transition:
-    opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.45s ease-out,
+    transform 0.45s ease-out;
+  will-change: transform, opacity;
 }
 
 .hero-show {
   opacity: 1;
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
 }
 
 .fade-up {
   opacity: 0;
-  transform: translateY(18px);
-  animation: fadeUp 0.75s forwards;
+  transform: translate3d(0, 14px, 0);
+  animation: fadeUp 0.45s ease-out forwards;
+  will-change: transform, opacity;
 }
 
 .delay-1 {
-  animation-delay: 0.1s;
+  animation-delay: 0.08s;
 }
 
 .delay-2 {
-  animation-delay: 0.2s;
+  animation-delay: 0.16s;
 }
 
 .delay-3 {
-  animation-delay: 0.3s;
+  animation-delay: 0.24s;
 }
 
 .delay-4 {
-  animation-delay: 0.4s;
+  animation-delay: 0.32s;
 }
 
 .delay-5 {
-  animation-delay: 0.5s;
+  animation-delay: 0.4s;
 }
 
 @keyframes fadeUp {
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes heroLogoFloat {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translateY(-10px);
+    transform: translate3d(0, -6px, 0);
   }
 }
 
@@ -469,18 +477,18 @@
     transform: scale(1);
   }
   50% {
-    transform: scale(1.02);
+    transform: scale(1.01);
   }
 }
 
 @keyframes heroGlowPulse {
   0%,
   100% {
-    transform: scale(0.95);
-    opacity: 0.72;
+    transform: scale(0.97);
+    opacity: 0.78;
   }
   50% {
-    transform: scale(1.06);
+    transform: scale(1.02);
     opacity: 1;
   }
 }
@@ -488,72 +496,70 @@
 @keyframes floatOrbOne {
   0%,
   100% {
-    transform: translateY(0) translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translateY(-10px) translateX(5px);
+    transform: translate3d(0, -5px, 0);
   }
 }
 
 @keyframes floatOrbTwo {
   0%,
   100% {
-    transform: translateY(0) translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translateY(8px) translateX(-6px);
+    transform: translate3d(0, 5px, 0);
   }
 }
 
 @keyframes floatOrbThree {
   0%,
   100% {
-    transform: translateY(0) translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translateY(-8px) translateX(6px);
+    transform: translate3d(0, -4px, 0);
   }
 }
 
 @keyframes floatOrbFour {
   0%,
   100% {
-    transform: translateY(0) translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translateY(10px) translateX(-4px);
+    transform: translate3d(0, 5px, 0);
   }
 }
 
 @keyframes heroChipFloatTop {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translateY(-6px);
+    transform: translate3d(0, -4px, 0);
   }
 }
 
 @keyframes heroChipFloatBottom {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translateY(7px);
+    transform: translate3d(0, 4px, 0);
   }
 }
 
 @keyframes sparkleTwinkle {
   0%,
   100% {
-    opacity: 0.35;
-    transform: scale(0.85);
+    opacity: 0.4;
   }
   50% {
-    opacity: 1;
-    transform: scale(1.18);
+    opacity: 0.92;
   }
 }
 
@@ -823,6 +829,7 @@
   .hero-reveal,
   .fade-up,
   .hero-logo-wrap,
+  .hero-logo-wrap::before,
   .hero-logo-wrap img,
   .hero-orb,
   .hero-sparkle,
