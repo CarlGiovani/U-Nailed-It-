@@ -4,8 +4,8 @@ import { logAction } from "../../services/Audit_Service/auditService.js";
 import sendEmail from "../../services/Email_Feature/emailService.js";
 import { bookingApprovedTemplate } from "../../templates/emails/bookingApproved.js";
 import { bookingCompletedTemplate } from "../../templates/emails/bookingCompletedTemplate.js";
-import { bookingSubmittedTemplate } from "../../templates/emails/bookingSubmitted.js";
 import { bookingRejectedTemplate } from "../../templates/emails/bookingRejected.js";
+import { bookingSubmittedTemplate } from "../../templates/emails/bookingSubmitted.js";
 
 dotenv.config();
 
@@ -27,7 +27,6 @@ export const createBooking = async (req, res) => {
   try {
     const newBooking = await booking.createBookingWithCustomer(req.body);
 
-    // ADMIN NOTIF + GMAIL
     await createAdminNotifAndSendGmail({
       type: "booking",
       title: "New Booking",
@@ -36,6 +35,7 @@ export const createBooking = async (req, res) => {
       related_entity: "bookings",
       related_id: newBooking.id,
     });
+
     res.status(201).json(newBooking);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -74,6 +74,12 @@ export const confirmBooking = async (req, res) => {
       payment_intent_id,
     );
 
+    const FRONTEND_PENDING_CANCEL_URL =
+      process.env.FRONTEND_PENDING_CANCEL_URL ||
+      "http://localhost:5173/cancel-pending";
+
+    const pendingCancelLink = `${FRONTEND_PENDING_CANCEL_URL}?token=${updatedBooking.pending_cancel_token}`;
+
     if (updatedBooking.customer_email) {
       await sendEmail({
         to: updatedBooking.customer_email,
@@ -81,6 +87,9 @@ export const confirmBooking = async (req, res) => {
         html: bookingSubmittedTemplate({
           name: updatedBooking.customer_name || "Customer",
           service: updatedBooking.services?.name || "Selected Service",
+          serviceDate: updatedBooking.booking_date,
+          serviceTime: updatedBooking.booking_time,
+          cancelLink: pendingCancelLink,
         }),
       });
     }
@@ -169,11 +178,11 @@ export const approveBooking = async (req, res) => {
   try {
     const result = await booking.approveBooking(req.params.id);
 
-    // Lagay ko sa env aferd ko ma-deploy tas tago sa env
     const FRONTEND_CANCEL_URL =
       process.env.FRONTEND_CANCEL_URL || "http://localhost:5173/cancel";
 
     const cancelLink = `${FRONTEND_CANCEL_URL}?token=${result.cancel_token}`;
+
     if (result.customer_email) {
       await sendEmail({
         to: result.customer_email,
@@ -187,7 +196,7 @@ export const approveBooking = async (req, res) => {
         }),
       });
     }
-    // AUDIT LOG
+
     await logAction({
       admin_id: req.user?.id || null,
       action: "approve_booking",
@@ -237,18 +246,19 @@ export const rejectBooking = async (req, res) => {
 };
 
 /* ==========================================
-   PUBLIC: cancel booking
-   TODO: Sa cancellation dapat mag notif sa admin (pwede email or dashboard notification) para malaman nila na may nag cancel ng booking.
+   PUBLIC: cancel approved booking by token
 ========================================== */
 export const cancelBooking = async (req, res) => {
   try {
     const { token } = req.query;
     const { reason } = req.body;
-    if (!token)
+
+    if (!token) {
       return res.status(400).json({ error: "Cancellation token is required" });
+    }
+
     const result = await booking.cancelBookingByToken(token, reason);
 
-    //ADMIN NOTIFICATION + EMAIL
     await createAdminNotifAndSendGmail({
       type: "booking",
       title: "Booking Cancelled",
@@ -265,10 +275,75 @@ export const cancelBooking = async (req, res) => {
 };
 
 /* ==========================================
+   PUBLIC: cancel pending approval booking
+   PATCH /bookings/:id/cancel-pending
+   NOTE: kept temporarily while transitioning to email-token flow
+========================================== */
+export const cancelPendingApprovalBooking = async (req, res) => {
+  try {
+    const { reason, customer_email } = req.body;
+
+    const result = await booking.cancelPendingApprovalBookingById(
+      req.params.id,
+      reason,
+      customer_email,
+    );
+
+    await createAdminNotifAndSendGmail({
+      type: "booking",
+      title: "Booking Cancelled",
+      message: `${result.customer_name || "A customer"} cancelled their booking while pending approval.`,
+      link: `/bookings?bookingId=${result.id}&status=cancelled`,
+      related_entity: "bookings",
+      related_id: result.id,
+    });
+
+    return res.json(result);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+};
+
+
+/* ==========================================
+   PUBLIC: cancel pending approval booking by token
+   PUT /bookings/cancel-pending?token=...
+========================================== */
+export const cancelPendingApprovalBookingByToken = async (req, res) => {
+  try {
+    const { token } = req.query;
+    const { reason } = req.body;
+
+    if (!token) {
+      return res
+        .status(400)
+        .json({ error: "Pending cancellation token is required" });
+    }
+
+    const result = await booking.cancelPendingApprovalBookingByToken(
+      token,
+      reason,
+    );
+
+    await createAdminNotifAndSendGmail({
+      type: "booking",
+      title: "Booking Cancelled",
+      message: `${result.customer_name || "A customer"} cancelled their booking while pending approval.`,
+      link: `/bookings?bookingId=${result.id}&status=cancelled`,
+      related_entity: "bookings",
+      related_id: result.id,
+    });
+
+    return res.json(result);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+};
+
+/* ==========================================
    ADMIN: complete booking
    PATCH /bookings/:id/complete
 ========================================== */
-
 export const completeBooking = async (req, res) => {
   try {
     const result = await booking.completeBooking(req.params.id);
@@ -292,7 +367,6 @@ export const completeBooking = async (req, res) => {
       });
     }
 
-    // AUDIT LOG
     await logAction({
       admin_id: req.user?.id || null,
       action: "complete_booking",

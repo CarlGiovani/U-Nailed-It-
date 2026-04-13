@@ -11,14 +11,23 @@ const router = express.Router();
 // Step 1: create booking (pending_payment)
 router.post("/", BookingController.createBooking);
 
+// Cancel approved booking by token
+router.put("/cancel", BookingController.cancelBooking);
+
 // Review page: fetch booking details by id
 router.get("/:id", BookingController.getBookingById);
 
 // Confirm button: confirm THIS booking using payment_intent_id
 router.post("/:id/confirm", BookingController.confirmBooking);
 
-// Cancel booking
-router.put("/cancel", BookingController.cancelBooking);
+// Temporary pending approval cancel-by-id route
+router.patch(
+  "/:id/cancel-pending",
+  BookingController.cancelPendingApprovalBooking,
+);
+
+
+router.put("/cancel-pending", BookingController.cancelPendingApprovalBookingByToken);
 
 /* =========================
    ADMIN

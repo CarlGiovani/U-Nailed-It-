@@ -3,6 +3,7 @@ export const bookingSubmittedTemplate = ({
   service = "your service",
   serviceDate = "",
   serviceTime = "",
+  cancelLink = "#",
 }) => `
 <!DOCTYPE html>
 <html>
@@ -110,17 +111,66 @@ export const bookingSubmittedTemplate = ({
                   background:#fafafa;
                   border-left:4px solid #C9A24D;
                   border-radius:12px;
+                  margin-bottom:22px;
+                  border:1px solid #eee;
+                "
+              >
+                <tr>
+                  <td style="padding:16px; font-size:14px; line-height:1.7;">
+                    ⏳ Please allow some time for us to review your request.
+                    You will receive another email once your booking is approved or declined.
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Cancellation Notice -->
+              <table width="100%" cellpadding="0" cellspacing="0"
+                style="
+                  background:#fafafa;
+                  border-left:4px solid #E8A1B2;
+                  border-radius:12px;
                   margin-bottom:26px;
                   border:1px solid #eee;
                 "
               >
                 <tr>
-                  <td style="padding:16px; font-size:14px;">
-                    ⏳ Please allow some time for us to review your request.  
-                    You will receive another email once your booking is approved or declined.
+                  <td style="padding:16px; font-size:14px; line-height:1.7;">
+                    If you need to cancel while your booking is still pending approval,
+                    you may use the button below.
                   </td>
                 </tr>
               </table>
+
+              <!-- Cancel Button -->
+              <table align="center" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+                <tr>
+                  <td style="background:#C9A24D; border-radius:30px;">
+                    <a
+                      href="${cancelLink}"
+                      style="
+                        display:inline-block;
+                        padding:14px 30px;
+                        color:#111111;
+                        font-size:14px;
+                        font-weight:bold;
+                        letter-spacing:0.6px;
+                        text-decoration:none;
+                        font-family:Arial, Helvetica, sans-serif;
+                      "
+                    >
+                      Cancel Pending Booking
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 18px 0; font-size:12px; color:#666; text-align:center;">
+                If the button does not work, copy and paste this link into your browser:
+              </p>
+
+              <p style="margin:0 0 22px 0; font-size:12px; color:#666; text-align:center; word-break:break-all;">
+                ${cancelLink}
+              </p>
 
               <p style="margin:0; font-size:14px; color:#444;">
                 Thank you for choosing UNailedit — we’ll be in touch soon 💖

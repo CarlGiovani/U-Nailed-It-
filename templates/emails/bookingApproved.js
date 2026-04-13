@@ -115,7 +115,7 @@ export const bookingApprovedTemplate = ({
               >
                 <tr>
                   <td style="padding:16px; font-size:14px;">
-                    ⏰ You may cancel your booking within <b>24 hours</b>.
+                    ⏰ You may cancel your booking up to <b>24 hours</b> before the appointment.
                   </td>
                 </tr>
               </table>

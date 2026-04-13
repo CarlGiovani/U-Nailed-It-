@@ -314,11 +314,14 @@ export const createBookingWithPaymentIntent = async (intentId) => {
 
   // 6) Confirm booking
   //    IMPORTANT: the DB unique index is what prevents double booking here.
+  const pendingCancelToken = crypto.randomUUID();
+
   const { data: updatedBooking, error: updateErr } = await supabase
     .from("bookings")
     .update({
       status: "pending_approval",
       proof_payment_path: intent.proof_path,
+      pending_cancel_token: pendingCancelToken,
     })
     .eq("id", intent.booking_id)
     .eq("status", "pending_payment")
@@ -347,6 +350,7 @@ export const createBookingWithPaymentIntent = async (intentId) => {
       .update({
         status: "pending_payment",
         proof_payment_path: null,
+        pending_cancel_token: null,
       })
       .eq("id", intent.booking_id)
       .eq("status", "pending_approval");
@@ -491,6 +495,7 @@ export const approveBooking = async (id) => {
       status: "approved",
       approved_at: new Date(),
       cancel_token: cancelToken,
+      pending_cancel_token: null,
     })
     .eq("id", id)
     .eq("status", "pending_approval")
@@ -537,7 +542,7 @@ export const approveBooking = async (id) => {
 export const rejectBooking = async (id) => {
   const { data: updated, error } = await supabase
     .from("bookings")
-    .update({ status: "rejected" })
+    .update({ status: "rejected", pending_cancel_token: null })
     .eq("id", id)
     .eq("status", "pending_approval")
     .select("booking_date, booking_time")
@@ -599,10 +604,6 @@ export const cancelBookingByToken = async (token, reason) => {
     throw new Error("Only approved bookings can be cancelled");
   }
 
-  if (!booking.approved_at) {
-    throw new Error("Booking approval time is missing");
-  }
-
   const now = new Date();
 
   const appointmentDateTime = new Date(
@@ -613,11 +614,12 @@ export const cancelBookingByToken = async (token, reason) => {
     throw new Error("Cannot cancel past appointments");
   }
 
-  const approvedTime = new Date(booking.approved_at);
-  const diffHours = (now - approvedTime) / (1000 * 60 * 60);
+  const hoursBeforeAppointment = (appointmentDateTime - now) / (1000 * 60 * 60);
 
-  if (diffHours > 24) {
-    throw new Error("Cancellation period expired (24 hours)");
+  if (hoursBeforeAppointment < 24) {
+    throw new Error(
+      "Cancellation is only allowed up to 24 hours before the appointment",
+    );
   }
 
   const { data: cancelled, error: cancelError } = await supabase
@@ -664,6 +666,170 @@ export const cancelBookingByToken = async (token, reason) => {
 
   return fullBooking;
 };
+
+/* ==========================================
+   PUBLIC: cancel pending approval booking by id
+   - only pending_approval
+   - then safe unblock if no other active bookings
+========================================== */
+export const cancelPendingApprovalBookingById = async (
+  bookingId,
+  reason,
+  customerEmail,
+) => {
+  const id = Number(bookingId);
+  if (!id) throw new Error("Invalid booking id");
+
+  const { data: booking, error } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !booking) {
+    throw new Error("Booking not found");
+  }
+
+  if (booking.status !== "pending_approval") {
+    throw new Error("Only pending approval bookings can be cancelled");
+  }
+
+  const now = new Date();
+
+  const appointmentDateTime = new Date(
+    `${booking.booking_date}T${booking.booking_time}`,
+  );
+
+  if (appointmentDateTime <= now) {
+    throw new Error("Cannot cancel past appointments");
+  }
+
+  if (
+    customerEmail &&
+    booking.customer_email &&
+    booking.customer_email.toLowerCase() !== customerEmail.toLowerCase()
+  ) {
+    throw new Error("Booking verification failed");
+  }
+
+  const { data: cancelled, error: cancelError } = await supabase
+    .from("bookings")
+    .update({
+      status: "cancelled",
+      cancelled_at: now.toISOString(),
+      cancellation_reason: reason || null,
+    })
+    .eq("id", id)
+    .eq("status", "pending_approval")
+    .select("id")
+    .single();
+
+  if (cancelError) throw new Error(cancelError.message);
+
+  await safeUnblockGlobalIfNoActiveBooking(
+    booking.booking_date,
+    booking.booking_time,
+  );
+
+  const { data: fullBooking, error: fetchError } = await supabase
+    .from("bookings")
+    .select(
+      `
+      *,
+      services (
+        id,
+        name
+      ),
+      customers (
+        id,
+        full_name,
+        email
+      )
+    `,
+    )
+    .eq("id", cancelled.id)
+    .single();
+
+  if (fetchError) throw new Error(fetchError.message);
+
+  return fullBooking;
+};
+
+
+/* ==========================================
+   PUBLIC: cancel pending approval booking by token
+   - only pending_approval
+   - then safe unblock if no other active bookings
+========================================== */
+export const cancelPendingApprovalBookingByToken = async (token, reason) => {
+  const { data: booking, error } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("pending_cancel_token", token)
+    .single();
+
+  if (error || !booking) {
+    throw new Error("Invalid or expired pending cancellation link");
+  }
+
+  if (booking.status !== "pending_approval") {
+    throw new Error("Only pending approval bookings can be cancelled");
+  }
+
+  const now = new Date();
+  const appointmentDateTime = new Date(
+    `${booking.booking_date}T${booking.booking_time}`,
+  );
+
+  if (appointmentDateTime <= now) {
+    throw new Error("Cannot cancel past appointments");
+  }
+
+  const { data: cancelled, error: cancelError } = await supabase
+    .from("bookings")
+    .update({
+      status: "cancelled",
+      cancelled_at: now.toISOString(),
+      cancellation_reason: reason || null,
+      pending_cancel_token: null,
+    })
+    .eq("id", booking.id)
+    .eq("status", "pending_approval")
+    .eq("pending_cancel_token", token)
+    .select("id")
+    .single();
+
+  if (cancelError) throw new Error(cancelError.message);
+
+  await safeUnblockGlobalIfNoActiveBooking(
+    booking.booking_date,
+    booking.booking_time,
+  );
+
+  const { data: fullBooking, error: fetchError } = await supabase
+    .from("bookings")
+    .select(
+      `
+      *,
+      services (
+        id,
+        name
+      ),
+      customers (
+        id,
+        full_name,
+        email
+      )
+    `,
+    )
+    .eq("id", cancelled.id)
+    .single();
+
+  if (fetchError) throw new Error(fetchError.message);
+
+  return fullBooking;
+};
+
 
 /* ==========================================
    PUBLIC: Get booking details by ID (Review page)
