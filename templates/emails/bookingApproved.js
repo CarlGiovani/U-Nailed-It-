@@ -143,11 +143,13 @@ export const bookingApprovedTemplate = ({
                 </tr>
               </table>
 
-              <p style="margin:22px 0 0 0; font-size:12px; color:#666;">
-                <br />
-                <span style="word-break:break-all;">${cancelLink} remove during deployment"</span>
+             <p style="margin:22px 0 0 0; font-size:12px; color:#666; text-align:center;">
+                If the button does not work, copy and paste this link into your browser:
               </p>
 
+              <p style="margin:8px 0 0 0; font-size:12px; color:#666; text-align:center; word-break:break-all;">
+                ${cancelLink}
+              </p>
             </td>
           </tr>
 
