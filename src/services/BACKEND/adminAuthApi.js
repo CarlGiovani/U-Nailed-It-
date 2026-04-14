@@ -99,3 +99,47 @@ export const deleteCurrentAdminAccount = async () => {
   const res = await api.delete("/auth/adminProfile");
   return res.data;
 };
+
+/* =========================
+   GET EMAIL SETTINGS
+========================= */
+export const getEmailSettings = async () => {
+  const res = await api.get("/email-settings");
+  return res.data;
+};
+
+/* =========================
+   UPDATE EMAIL SETTINGS
+========================= */
+export const updateEmailSettings = async ({
+  sender_name,
+  email_user,
+  email_app_password,
+}) => {
+  const res = await api.put("/email-settings", {
+    sender_name,
+    email_user,
+    email_app_password,
+  });
+
+  return res.data;
+};
+
+/* =========================
+   TEST EMAIL SETTINGS
+========================= */
+export const testEmailSettings = async ({
+  sender_name,
+  email_user,
+  email_app_password,
+  test_to,
+}) => {
+  const res = await api.post("/email-settings/test", {
+    sender_name,
+    email_user,
+    email_app_password,
+    test_to,
+  });
+
+  return res.data;
+};

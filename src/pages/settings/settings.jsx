@@ -7,8 +7,11 @@ import {
   deleteCurrentAdminAccount,
   getAdminProfileById,
   getAllAdmins,
+  getEmailSettings,
+  testEmailSettings,
   updateCurrentAdminProfile,
-} from "../../services/BACKEND/adminAuthApi";
+  updateEmailSettings,
+} from "../../services/BACKEND/adminAuthApi.js";
 import "../../styles/settings.css";
 
 const ITEMS_PER_PAGE = 6;
@@ -54,10 +57,19 @@ const Settings = () => {
     password: "",
   });
 
+  const [emailSettingsForm, setEmailSettingsForm] = useState({
+    sender_name: "",
+    email_user: "",
+    email_app_password: "",
+    test_to: "",
+  });
+
   const [editLoading, setEditLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [createAdminLoading, setCreateAdminLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [emailSettingsLoading, setEmailSettingsLoading] = useState(false);
+  const [emailTestLoading, setEmailTestLoading] = useState(false);
 
   const [editMessage, setEditMessage] = useState("");
   const [editError, setEditError] = useState("");
@@ -68,6 +80,11 @@ const Settings = () => {
   const [createMessage, setCreateMessage] = useState("");
   const [createError, setCreateError] = useState("");
 
+  const [emailSettingsMessage, setEmailSettingsMessage] = useState("");
+  const [emailSettingsError, setEmailSettingsError] = useState("");
+  const [emailTestMessage, setEmailTestMessage] = useState("");
+  const [emailTestError, setEmailTestError] = useState("");
+
   const [pageError, setPageError] = useState("");
 
   const [adminSearch, setAdminSearch] = useState("");
@@ -76,11 +93,13 @@ const Settings = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showEmailAppPassword, setShowEmailAppPassword] = useState(false);
 
   const [sectionOpen, setSectionOpen] = useState({
     profile: true,
     edit: true,
     password: false,
+    emailSettings: true,
     admins: true,
     createAdmin: false,
     danger: false,
@@ -158,13 +177,15 @@ const Settings = () => {
         setPageRefreshing(true);
       }
 
-      const [profileRes, adminsRes] = await Promise.all([
+      const [profileRes, adminsRes, emailSettingsRes] = await Promise.all([
         getAdminProfileById(),
         getAllAdmins(),
+        getEmailSettings(),
       ]);
 
       const profile = profileRes?.profile || null;
       const admins = adminsRes?.admins || [];
+      const emailConfig = emailSettingsRes?.data || null;
 
       setAdminProfile(profile);
       setAllAdmins(admins);
@@ -173,10 +194,20 @@ const Settings = () => {
         full_name: profile?.full_name || "",
         username: profile?.username || "",
       });
+
+      setEmailSettingsForm((prev) => ({
+        ...prev,
+        sender_name: emailConfig?.sender_name || "",
+        email_user: emailConfig?.email_user || "",
+        email_app_password: "",
+        test_to: profile?.email || "",
+      }));
     } catch (err) {
       console.error("Failed to load settings data:", err);
       setPageError(
-        err?.response?.data?.error || "Failed to load settings data."
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Failed to load settings data."
       );
       setAdminProfile(null);
       setAllAdmins([]);
@@ -217,6 +248,14 @@ const Settings = () => {
   const handleCreateAdminChange = useCallback((e) => {
     const { name, value } = e.target;
     setCreateAdminForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }, []);
+
+  const handleEmailSettingsChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setEmailSettingsForm((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -264,7 +303,9 @@ const Settings = () => {
 
         setAllAdmins((prev) =>
           prev.map((admin) =>
-            admin.id === updatedProfile.id ? { ...admin, ...updatedProfile } : admin
+            admin.id === updatedProfile.id
+              ? { ...admin, ...updatedProfile }
+              : admin
           )
         );
 
@@ -280,7 +321,11 @@ const Settings = () => {
         window.dispatchEvent(new Event("admin-user-updated"));
       } catch (err) {
         console.error("Failed to update profile:", err);
-        setEditError(err?.response?.data?.error || "Failed to update profile.");
+        setEditError(
+          err?.response?.data?.error ||
+            err?.response?.data?.message ||
+            "Failed to update profile."
+        );
       } finally {
         setEditLoading(false);
       }
@@ -315,7 +360,9 @@ const Settings = () => {
       } catch (err) {
         console.error("Failed to change password:", err);
         setPasswordError(
-          err?.response?.data?.error || "Failed to change password."
+          err?.response?.data?.error ||
+            err?.response?.data?.message ||
+            "Failed to change password."
         );
       } finally {
         setPasswordLoading(false);
@@ -359,7 +406,9 @@ const Settings = () => {
       } catch (err) {
         console.error("Failed to create admin account:", err);
         setCreateError(
-          err?.response?.data?.error || "Failed to create admin account."
+          err?.response?.data?.error ||
+            err?.response?.data?.message ||
+            "Failed to create admin account."
         );
       } finally {
         setCreateAdminLoading(false);
@@ -367,6 +416,81 @@ const Settings = () => {
     },
     [createAdminForm, fetchSettingsData]
   );
+
+  const handleSaveEmailSettings = useCallback(
+    async (e) => {
+      e.preventDefault();
+
+      setEmailSettingsMessage("");
+      setEmailSettingsError("");
+      setEmailTestMessage("");
+      setEmailTestError("");
+
+      try {
+        setEmailSettingsLoading(true);
+
+        const payload = {
+          sender_name: emailSettingsForm.sender_name.trim(),
+          email_user: emailSettingsForm.email_user.trim(),
+          email_app_password: emailSettingsForm.email_app_password.trim(),
+        };
+
+        const res = await updateEmailSettings(payload);
+
+        setEmailSettingsMessage(
+          res?.message || "Email settings updated successfully."
+        );
+
+        setEmailSettingsForm((prev) => ({
+          ...prev,
+          sender_name: payload.sender_name,
+          email_user: payload.email_user,
+          email_app_password: "",
+        }));
+      } catch (err) {
+        console.error("Failed to update email settings:", err);
+        setEmailSettingsError(
+          err?.response?.data?.message ||
+            err?.response?.data?.error ||
+            "Failed to update email settings."
+        );
+      } finally {
+        setEmailSettingsLoading(false);
+      }
+    },
+    [emailSettingsForm]
+  );
+
+  const handleTestEmailSettings = useCallback(async () => {
+    setEmailTestMessage("");
+    setEmailTestError("");
+    setEmailSettingsMessage("");
+    setEmailSettingsError("");
+
+    try {
+      setEmailTestLoading(true);
+
+      const payload = {
+        sender_name: emailSettingsForm.sender_name.trim(),
+        email_user: emailSettingsForm.email_user.trim(),
+        email_app_password: emailSettingsForm.email_app_password.trim(),
+        test_to: emailSettingsForm.test_to.trim(),
+      };
+
+      const res = await testEmailSettings(payload);
+
+      setEmailTestMessage(res?.message || "Test email sent successfully.");
+    } catch (err) {
+      console.error("Failed to send test email:", err);
+      setEmailTestError(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Failed to send test email."
+      );
+    } finally {
+      setEmailTestLoading(false);
+    }
+  }, [emailSettingsForm]);
 
   const proceedDeleteMyAccount = useCallback(async () => {
     try {
@@ -395,7 +519,10 @@ const Settings = () => {
       setFeedbackModal({
         open: true,
         title: "Delete Failed",
-        message: err?.response?.data?.error || "Failed to delete your account.",
+        message:
+          err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Failed to delete your account.",
         type: "error",
       });
     } finally {
@@ -481,15 +608,17 @@ const Settings = () => {
             <div className="settings-topbar-copy">
               <h1>Settings</h1>
               <p>
-                Manage your admin profile, security, and administrator access
-                with a cleaner, more compact workspace.
+                Manage your admin profile, security, email notifications, and
+                administrator access with a cleaner, more compact workspace.
               </p>
             </div>
           </div>
 
           {pageError && <div className="settings-alert error">{pageError}</div>}
           {pageRefreshing && (
-            <div className="settings-alert info">Refreshing admin data...</div>
+            <div className="settings-alert info">
+              Refreshing settings data...
+            </div>
           )}
 
           <section className="settings-hero-card">
@@ -736,6 +865,151 @@ const Settings = () => {
                           disabled={passwordLoading}
                         >
                           {passwordLoading ? "Updating..." : "Update Password"}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+              </section>
+
+              <section className="settings-card compact-card">
+                <button
+                  type="button"
+                  className="section-toggle"
+                  onClick={() => toggleSection("emailSettings")}
+                >
+                  <div>
+                    <h3>Email Notification Sender</h3>
+                    <p>Manage the Gmail account used for automated notifications</p>
+                  </div>
+                  <span>{sectionOpen.emailSettings ? "−" : "+"}</span>
+                </button>
+
+                {sectionOpen.emailSettings && (
+                  <div className="section-content">
+                    <div className="email-settings-intro">
+                      <div className="email-settings-badge">Gmail Sender</div>
+                      <p className="card-note">
+                        This email account will be used for booking confirmations,
+                        reminders, cancellations, and other automated notifications.
+                        App Password is only needed when changing or reconnecting
+                        the sender email.
+                      </p>
+                    </div>
+
+                    {emailSettingsError && (
+                      <div className="settings-alert error">
+                        {emailSettingsError}
+                      </div>
+                    )}
+                    {emailSettingsMessage && (
+                      <div className="settings-alert success">
+                        {emailSettingsMessage}
+                      </div>
+                    )}
+                    {emailTestError && (
+                      <div className="settings-alert error">
+                        {emailTestError}
+                      </div>
+                    )}
+                    {emailTestMessage && (
+                      <div className="settings-alert success">
+                        {emailTestMessage}
+                      </div>
+                    )}
+
+                    <form className="settings-form" onSubmit={handleSaveEmailSettings}>
+                      <div className="compact-two-grid">
+                        <div className="form-group">
+                          <label htmlFor="sender_name">Sender Name</label>
+                          <input
+                            id="sender_name"
+                            type="text"
+                            name="sender_name"
+                            value={emailSettingsForm.sender_name}
+                            onChange={handleEmailSettingsChange}
+                            placeholder="Enter sender display name"
+                            required
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="email_user">Gmail Address</label>
+                          <input
+                            id="email_user"
+                            type="email"
+                            name="email_user"
+                            value={emailSettingsForm.email_user}
+                            onChange={handleEmailSettingsChange}
+                            placeholder="Enter sender Gmail address"
+                            required
+                          />
+                        </div>
+
+                        <div className="form-group form-group-full">
+                          <label htmlFor="email_app_password">App Password</label>
+                          <div className="password-input-wrap">
+                            <input
+                              id="email_app_password"
+                              type={showEmailAppPassword ? "text" : "password"}
+                              name="email_app_password"
+                              value={emailSettingsForm.email_app_password}
+                              onChange={handleEmailSettingsChange}
+                              placeholder="Enter new Gmail App Password only if updating"
+                            />
+                            <button
+                              type="button"
+                              className="password-toggle"
+                              onClick={() =>
+                                setShowEmailAppPassword((prev) => !prev)
+                              }
+                            >
+                              {showEmailAppPassword ? "Hide" : "Show"}
+                            </button>
+                          </div>
+                          <small className="field-helper">
+                            Leave this blank if you want to keep the currently
+                            saved App Password.
+                          </small>
+                        </div>
+
+                        <div className="form-group form-group-full">
+                          <label htmlFor="test_to">Test Recipient Email</label>
+                          <input
+                            id="test_to"
+                            type="email"
+                            name="test_to"
+                            value={emailSettingsForm.test_to}
+                            onChange={handleEmailSettingsChange}
+                            placeholder="Enter email to receive a test message"
+                          />
+                          <small className="field-helper">
+                            Use this to verify the sender before relying on live
+                            customer notifications.
+                          </small>
+                        </div>
+                      </div>
+
+                      <div className="email-settings-actions">
+                        <button
+                          type="submit"
+                          className="settings-btn primary"
+                          disabled={emailSettingsLoading}
+                        >
+                          {emailSettingsLoading
+                            ? "Saving..."
+                            : "Save Email Settings"}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="settings-btn ghost"
+                          onClick={handleTestEmailSettings}
+                          disabled={emailTestLoading}
+                        >
+                          {emailTestLoading
+                            ? "Sending Test..."
+                            : "Send Test Email"}
                         </button>
                       </div>
                     </form>
