@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
+
 export const bookingCompletedTemplate = ({
   name = "Customer",
   service = "your service",
@@ -31,7 +32,7 @@ export const bookingCompletedTemplate = ({
           "
         >
 
-          <!-- Gradient Header -->
+          <!-- HEADER -->
           <tr>
             <td
               style="
@@ -54,7 +55,7 @@ export const bookingCompletedTemplate = ({
             </td>
           </tr>
 
-          <!-- Content -->
+          <!-- CONTENT -->
           <tr>
             <td style="padding:36px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
 
@@ -74,15 +75,15 @@ export const bookingCompletedTemplate = ({
               ></div>
 
               <p style="margin:0 0 12px 0; font-size:15px;">
-                Hi <b>${name}</b>,
+                Hello <b>${name}</b>,
               </p>
 
               <p style="margin:0 0 22px 0; font-size:15px; line-height:1.7; color:#333;">
                 Your appointment for <b>${service}</b> has been completed.
-                We’d love to hear about your experience ✨
+                We hope you enjoyed your experience with us.
               </p>
 
-              <!-- Booking Summary -->
+              <!-- DETAILS -->
               <table width="100%" cellpadding="0" cellspacing="0"
                 style="
                   background:#FFF6F8;
@@ -99,37 +100,42 @@ export const bookingCompletedTemplate = ({
                     </p>
                     <p style="margin:6px 0; font-size:14px;"><b>Service:</b> ${service}</p>
                     <p style="margin:6px 0; font-size:14px;"><b>Date:</b> ${date}</p>
-                    <p style="margin:6px 0; font-size:14px;"><b>Time:</b> ${time}</p>
+                    <p style="margin:6px 0; font-size:14px;"><b>Time:</b> ${time} (Local Time)</p>
+                    <p style="margin:6px 0; font-size:14px;"><b>Status:</b> Completed</p>
                   </td>
                 </tr>
               </table>
 
-              <!-- Review Note -->
+              <!-- REVIEW NOTE -->
               <table width="100%" cellpadding="0" cellspacing="0"
                 style="
                   background:#fafafa;
                   border-left:4px solid #C9A24D;
                   border-radius:12px;
-                  margin-bottom:26px;
+                  margin-bottom:22px;
                   border:1px solid #eee;
                 "
               >
                 <tr>
-                  <td style="padding:16px; font-size:14px;">
-                    ⭐ Your feedback helps us improve and grow.
+                  <td style="padding:16px; font-size:14px; line-height:1.8; color:#333;">
+                    ⭐ Your feedback helps us improve our service and provide a better experience for future customers.
                   </td>
                 </tr>
               </table>
 
-              <!-- Review CTA Button -->
-              <table align="center" cellpadding="0" cellspacing="0">
+              <p style="margin:0 0 22px 0; font-size:14px; line-height:1.7; color:#444;">
+                If you have a moment, we would really appreciate it if you could share your experience by leaving a review using the button below.
+              </p>
+
+              <!-- CTA -->
+              <table align="center" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
                 <tr>
-                  <td style="background:#E8A1B2; border-radius:30px;">
+                  <td style="background:#C9A24D; border-radius:30px;">
                     <a
                       href="${reviewLink}"
                       style="
                         display:inline-block;
-                        padding:14px 32px;
+                        padding:14px 30px;
                         color:#111111;
                         font-size:14px;
                         font-weight:bold;
@@ -144,15 +150,22 @@ export const bookingCompletedTemplate = ({
                 </tr>
               </table>
 
-              <p style="margin:22px 0 0 0; font-size:12px; color:#666;">
-                This review link can only be used once.<br />
-                <span style="word-break:break-all;">${reviewLink}</span>
+              <p style="margin:0 0 18px 0; font-size:12px; color:#666; text-align:center;">
+                This review link can only be used once. If the button does not work, copy and paste this link into your browser:
+              </p>
+
+              <p style="margin:0 0 22px 0; font-size:12px; color:#666; text-align:center; word-break:break-all;">
+                ${reviewLink}
+              </p>
+
+              <p style="margin:0; font-size:14px; color:#444;">
+                Thank you for choosing UNailedit — we hope to see you again soon 💖
               </p>
 
             </td>
           </tr>
 
-          <!-- Footer -->
+          <!-- FOOTER -->
           <tr>
             <td
               align="center"

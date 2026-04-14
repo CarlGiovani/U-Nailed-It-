@@ -19,179 +19,92 @@ export const bookingSubmittedTemplate = ({
       <td align="center">
 
         <table width="600" cellpadding="0" cellspacing="0"
-          style="
-            max-width:600px;
-            width:100%;
-            border-radius:18px;
-            overflow:hidden;
-            background:#ffffff;
-            box-shadow:0 12px 35px rgba(0,0,0,0.15);
-          "
+          style="max-width:600px; width:100%; border-radius:18px; overflow:hidden; background:#ffffff; box-shadow:0 12px 35px rgba(0,0,0,0.15);"
         >
 
-          <!-- Gradient Header (Pink → Gold) -->
+          <!-- HEADER -->
           <tr>
-            <td
-              style="
-                padding:20px;
-                text-align:center;
-                background: linear-gradient(to right, #E8A1B2, #C9A24D);
-              "
-            >
-              <span
-                style="
-                  font-family:Arial, Helvetica, sans-serif;
-                  font-size:13px;
-                  letter-spacing:2px;
-                  font-weight:bold;
-                  color:#111111;
-                "
-              >
-                BOOKING SUBMITTED
+            <td style="padding:20px; text-align:center; background: linear-gradient(to right, #E8A1B2, #C9A24D);">
+              <span style="font-size:13px; letter-spacing:2px; font-weight:bold; color:#111;">
+                BOOKING RECEIVED
               </span>
             </td>
           </tr>
 
-          <!-- Content -->
+          <!-- CONTENT -->
           <tr>
-            <td style="padding:36px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+            <td style="padding:36px; font-family:Arial; color:#111;">
 
-              <!-- Headline -->
               <h2 style="margin:0 0 8px 0; font-size:28px;">
                 <span style="color:#E8A1B2;">Booking</span>
-                <span style="color:#111111;">Submitted</span>
+                <span style="color:#111;">Submitted</span> 💅
               </h2>
 
-              <!-- Gold underline -->
-              <div
-                style="
-                  width:70px;
-                  height:4px;
-                  background:#C9A24D;
-                  border-radius:10px;
-                  margin:0 0 18px 0;
-                "
-              ></div>
+              <div style="width:70px; height:4px; background:#C9A24D; border-radius:10px; margin-bottom:18px;"></div>
 
-              <p style="margin:0 0 12px 0; font-size:15px;">
-                Hi <b>${name}</b>,
+              <p>Hello <b>${name}</b>,</p>
+
+              <p style="line-height:1.7; color:#333;">
+                Your booking request for <b>${service}</b> has been successfully submitted and is currently under review.
               </p>
 
-              <p style="margin:0 0 22px 0; font-size:15px; line-height:1.7; color:#333;">
-                Your booking for <b>${service}</b> has been successfully submitted
-                and is currently awaiting approval.
-              </p>
-
-              <!-- Booking Details -->
-              <table width="100%" cellpadding="0" cellspacing="0"
-                style="
-                  background:#FFF6F8;
-                  border-left:4px solid #E8A1B2;
-                  border-radius:14px;
-                  margin:0 0 22px 0;
-                  border:1px solid #f1d7dd;
-                "
-              >
+              <!-- DETAILS -->
+              <table width="100%" style="background:#FFF6F8; border-left:4px solid #E8A1B2; border-radius:14px; margin:20px 0; border:1px solid #f1d7dd;">
                 <tr>
                   <td style="padding:18px;">
-                    <p style="margin:0 0 10px 0; font-size:13px; letter-spacing:1px; color:#7a4a57;">
-                      BOOKING DETAILS
-                    </p>
-                    <p style="margin:6px 0; font-size:14px;"><b>Service:</b> ${service}</p>
-                    ${serviceDate ? `<p style="margin:6px 0; font-size:14px;"><b>Date:</b> ${serviceDate}</p>` : ``}
-                    ${serviceTime ? `<p style="margin:6px 0; font-size:14px;"><b>Time:</b> ${serviceTime}</p>` : ``}
-                    <p style="margin:6px 0; font-size:14px;"><b>Status:</b> Pending Approval</p>
+                    <p style="font-size:13px; color:#7a4a57;">BOOKING DETAILS</p>
+                    <p><b>Service:</b> ${service}</p>
+                    ${serviceDate ? `<p><b>Date:</b> ${serviceDate}</p>` : ``}
+                    ${serviceTime ? `<p><b>Time:</b> ${serviceTime} (Local Time)</p>` : ``}
+                    <p><b>Status:</b> Pending Approval</p>
                   </td>
                 </tr>
               </table>
 
-              <!-- Info box -->
-              <table width="100%" cellpadding="0" cellspacing="0"
-                style="
-                  background:#fafafa;
-                  border-left:4px solid #C9A24D;
-                  border-radius:12px;
-                  margin-bottom:22px;
-                  border:1px solid #eee;
-                "
-              >
+              <!-- INFO -->
+              <table width="100%" style="background:#fafafa; border-left:4px solid #C9A24D; border-radius:12px; margin-bottom:20px;">
                 <tr>
-                  <td style="padding:16px; font-size:14px; line-height:1.7;">
-                    ⏳ Please allow some time for us to review your request.
-                    You will receive another email once your booking is approved or declined.
+                  <td style="padding:16px;">
+                    ⏳ Please allow some time for us to review your request.<br><br>
+                    You will receive another email once your booking has been approved or declined.
                   </td>
                 </tr>
               </table>
 
-              <!-- Cancellation Notice -->
-              <table width="100%" cellpadding="0" cellspacing="0"
-                style="
-                  background:#fafafa;
-                  border-left:4px solid #E8A1B2;
-                  border-radius:12px;
-                  margin-bottom:26px;
-                  border:1px solid #eee;
-                "
-              >
+              <!-- CANCEL INFO -->
+              <table width="100%" style="background:#fafafa; border-left:4px solid #E8A1B2; border-radius:12px; margin-bottom:24px;">
                 <tr>
-                  <td style="padding:16px; font-size:14px; line-height:1.7;">
-                    If you need to cancel while your booking is still pending approval,
-                    you may use the button below.
+                  <td style="padding:16px;">
+                    If your plans change, you may cancel your booking while it is still pending approval.
                   </td>
                 </tr>
               </table>
 
-              <!-- Cancel Button -->
-              <table align="center" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
-                <tr>
-                  <td style="background:#C9A24D; border-radius:30px;">
-                    <a
-                      href="${cancelLink}"
-                      style="
-                        display:inline-block;
-                        padding:14px 30px;
-                        color:#111111;
-                        font-size:14px;
-                        font-weight:bold;
-                        letter-spacing:0.6px;
-                        text-decoration:none;
-                        font-family:Arial, Helvetica, sans-serif;
-                      "
-                    >
-                      Cancel Pending Booking
-                    </a>
-                  </td>
-                </tr>
-              </table>
+              <!-- BUTTON -->
+              <div style="text-align:center;">
+                <a href="${cancelLink}" style="background:#C9A24D; padding:14px 30px; border-radius:30px; text-decoration:none; color:#111; font-weight:bold;">
+                  Cancel My Booking
+                </a>
+              </div>
 
-              <p style="margin:0 0 18px 0; font-size:12px; color:#666; text-align:center;">
-                If the button does not work, copy and paste this link into your browser:
+              <p style="font-size:12px; text-align:center; margin-top:20px;">
+                If the button does not work, copy and paste this link:
               </p>
 
-              <p style="margin:0 0 22px 0; font-size:12px; color:#666; text-align:center; word-break:break-all;">
+              <p style="font-size:12px; text-align:center; word-break:break-all;">
                 ${cancelLink}
               </p>
 
-              <p style="margin:0; font-size:14px; color:#444;">
+              <p style="color:#444;">
                 Thank you for choosing UNailedit — we’ll be in touch soon 💖
               </p>
 
             </td>
           </tr>
 
-          <!-- Footer -->
           <tr>
-            <td
-              align="center"
-              style="
-                padding:18px;
-                font-size:11px;
-                color:#888;
-                background:#fafafa;
-                font-family:Arial, Helvetica, sans-serif;
-              "
-            >
-              © ${new Date().getFullYear()} UNailedit by Alliyah. All rights reserved.
+            <td align="center" style="padding:18px; font-size:11px; color:#888;">
+              © ${new Date().getFullYear()} UNailedit by Alliyah
             </td>
           </tr>
 

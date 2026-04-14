@@ -28,7 +28,7 @@ export const bookingRejectedTemplate = ({
           "
         >
 
-          <!-- Gradient Header (same colorway) -->
+          <!-- HEADER -->
           <tr>
             <td
               style="
@@ -51,17 +51,17 @@ export const bookingRejectedTemplate = ({
             </td>
           </tr>
 
-          <!-- Content -->
+          <!-- CONTENT -->
           <tr>
             <td style="padding:36px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
 
-              <!-- Headline -->
+              <!-- HEADLINE -->
               <h2 style="margin:0 0 8px 0; font-size:28px;">
                 <span style="color:#E8A1B2;">Booking</span>
-                <span style="color:#111111;">Rejected</span>
+                <span style="color:#111111;">Not Available</span> 💔
               </h2>
 
-              <!-- Gold underline -->
+              <!-- UNDERLINE -->
               <div
                 style="
                   width:70px;
@@ -73,15 +73,15 @@ export const bookingRejectedTemplate = ({
               ></div>
 
               <p style="margin:0 0 12px 0; font-size:15px;">
-                Hi <b>${name}</b>,
+                Hello <b>${name}</b>,
               </p>
 
               <p style="margin:0 0 22px 0; font-size:15px; line-height:1.7; color:#333;">
-                Thank you for your interest in <b>${service}</b>.  
-                Unfortunately, we’re unable to accommodate your booking at this time.
+                Thank you for your interest in <b>${service}</b>.<br><br>
+                Unfortunately, we’re unable to accommodate your booking for the selected schedule at this time.
               </p>
 
-              <!-- Booking Details -->
+              <!-- DETAILS -->
               <table width="100%" cellpadding="0" cellspacing="0"
                 style="
                   background:#FFF6F8;
@@ -98,36 +98,42 @@ export const bookingRejectedTemplate = ({
                     </p>
                     <p style="margin:6px 0; font-size:14px;"><b>Service:</b> ${service}</p>
                     ${serviceDate ? `<p style="margin:6px 0; font-size:14px;"><b>Date:</b> ${serviceDate}</p>` : ``}
-                    ${serviceTime ? `<p style="margin:6px 0; font-size:14px;"><b>Time:</b> ${serviceTime}</p>` : ``}
+                    ${serviceTime ? `<p style="margin:6px 0; font-size:14px;"><b>Time:</b> ${serviceTime} (Local Time)</p>` : ``}
+                    <p style="margin:6px 0; font-size:14px;"><b>Status:</b> Rejected</p>
                   </td>
                 </tr>
               </table>
 
-              <!-- Reassurance box -->
+              <!-- REASSURANCE -->
               <table width="100%" cellpadding="0" cellspacing="0"
                 style="
                   background:#fafafa;
                   border-left:4px solid #C9A24D;
                   border-radius:12px;
-                  margin-bottom:26px;
+                  margin-bottom:22px;
                   border:1px solid #eee;
                 "
               >
                 <tr>
-                  <td style="padding:16px; font-size:14px;">
-                    ✨ You’re welcome to book another date or service that fits your schedule.
+                  <td style="padding:16px; font-size:14px; line-height:1.8; color:#333;">
+                    ✨ You’re welcome to choose another available date or service that fits your schedule.
                   </td>
                 </tr>
               </table>
 
+              <!-- CLOSING -->
+              <p style="margin:0 0 22px 0; font-size:14px; line-height:1.7; color:#444;">
+                We truly appreciate your understanding and hope to serve you soon.
+              </p>
+
               <p style="margin:0; font-size:14px; color:#444;">
-                We truly appreciate your understanding and hope to see you soon.
+                Thank you for choosing UNailedit 💖
               </p>
 
             </td>
           </tr>
 
-          <!-- Footer -->
+          <!-- FOOTER -->
           <tr>
             <td
               align="center"
@@ -150,4 +156,3 @@ export const bookingRejectedTemplate = ({
 </body>
 </html>
 `;
-
