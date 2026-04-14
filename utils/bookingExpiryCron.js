@@ -1,45 +1,34 @@
 import cron from "node-cron";
-import supabase from "./supabaseClient.js";
-
-let isRunning = false;
+import supabase from "../utils/supabaseClient.js";
 
 export const scheduleBookingExpiry = () => {
   cron.schedule("* * * * *", async () => {
-    if (isRunning) return;
-    isRunning = true;
-
-    console.log("[CRON] Running booking expiry cleanup...");
-
-    const now = new Date().toISOString();
-
     try {
-      const { error: bookingErr } = await supabase
-        .from("bookings")
-        .update({ status: "expired" })
-        .eq("status", "pending_payment")
-        .lt("expires_at", now)
-        .select("id");
+      const now = new Date();
+      const phDate = now.toLocaleDateString("en-CA", {
+        timeZone: "Asia/Manila",
+      });
+      const phTime = now.toLocaleTimeString("en-US", {
+        timeZone: "Asia/Manila",
+        hour12: false,
+      });
 
-      if (bookingErr) {
-        console.error("Expire bookings error:", bookingErr.message);
-      }
+      console.log(
+        `[CRON BLOCK] Started | Date: ${phDate} | Current Time: ${phTime}`,
+      );
+      console.log("[CRON] Running booking expiry cleanup...");
 
-      const { error: intentErr } = await supabase
-        .from("payment_intents")
-        .update({ status: "expired" })
-        .eq("status", "pending")
-        .lt("expires_at", now)
-        .select("id");
+      const { data, error } = await supabase.rpc("expire_pending_bookings");
 
-      if (intentErr) {
-        console.error("Expire intents error:", intentErr.message);
+      if (error) {
+        console.error("Expire bookings error:", error.message);
+      } else {
+        console.log(`[CRON] Expired bookings: ${data}`);
       }
 
       console.log("[CRON] Booking expiry cleanup done");
     } catch (err) {
-      console.error("[CRON ERROR - booking expiry]", err);
-    } finally {
-      isRunning = false;
+      console.error("[CRON] Unexpected error:", err.message);
     }
   });
 };

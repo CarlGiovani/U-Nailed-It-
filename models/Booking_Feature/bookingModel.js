@@ -489,20 +489,33 @@ export const updateBookingStatus = async (id, status) => {
 ========================================== */
 export const approveBooking = async (id) => {
   const cancelToken = crypto.randomUUID();
+
   const { data: updated, error } = await supabase
     .from("bookings")
     .update({
       status: "approved",
-      approved_at: new Date(),
+      approved_at: new Date().toISOString(),
       cancel_token: cancelToken,
       pending_cancel_token: null,
     })
     .eq("id", id)
     .eq("status", "pending_approval")
     .select()
-    .single();
+    .maybeSingle();
 
-  if (error || !updated) throw new Error("Booking cannot be approved");
+  console.log("[approveBooking] id:", id);
+  console.log("[approveBooking] updated:", updated);
+  console.log("[approveBooking] error:", error);
+
+  if (error) {
+    throw new Error(`Approve failed: ${error.message}`);
+  }
+
+  if (!updated) {
+    throw new Error(
+      "Approve failed: no booking row was updated. Possible RLS/policy issue or stale booking state.",
+    );
+  }
 
   const { data, error: fetchError } = await supabase
     .from("bookings")
@@ -528,9 +541,11 @@ export const approveBooking = async (id) => {
     `,
     )
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
   if (fetchError) throw new Error(fetchError.message);
+  if (!data) throw new Error("Approved booking not found after update");
+
   return filterSelectedVariant(data);
 };
 
@@ -542,13 +557,28 @@ export const approveBooking = async (id) => {
 export const rejectBooking = async (id) => {
   const { data: updated, error } = await supabase
     .from("bookings")
-    .update({ status: "rejected", pending_cancel_token: null })
+    .update({
+      status: "rejected",
+      pending_cancel_token: null,
+    })
     .eq("id", id)
     .eq("status", "pending_approval")
     .select("booking_date, booking_time")
-    .single();
+    .maybeSingle();
 
-  if (error || !updated) throw new Error("Booking cannot be rejected");
+  console.log("[rejectBooking] id:", id);
+  console.log("[rejectBooking] updated:", updated);
+  console.log("[rejectBooking] error:", error);
+
+  if (error) {
+    throw new Error(`Reject failed: ${error.message}`);
+  }
+
+  if (!updated) {
+    throw new Error(
+      "Reject failed: no booking row was updated. Possible RLS/policy issue or stale booking state.",
+    );
+  }
 
   await safeUnblockGlobalIfNoActiveBooking(
     updated.booking_date,
@@ -579,9 +609,11 @@ export const rejectBooking = async (id) => {
     `,
     )
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
   if (fetchError) throw new Error(fetchError.message);
+  if (!data) throw new Error("Rejected booking not found after update");
+
   return filterSelectedVariant(data);
 };
 
@@ -755,7 +787,6 @@ export const cancelPendingApprovalBookingById = async (
   return fullBooking;
 };
 
-
 /* ==========================================
    PUBLIC: cancel pending approval booking by token
    - only pending_approval
@@ -766,9 +797,11 @@ export const cancelPendingApprovalBookingByToken = async (token, reason) => {
     .from("bookings")
     .select("*")
     .eq("pending_cancel_token", token)
-    .single();
+    .maybeSingle();
 
-  if (error || !booking) {
+  if (error) throw new Error(error.message);
+
+  if (!booking) {
     throw new Error("Invalid or expired pending cancellation link");
   }
 
@@ -797,9 +830,15 @@ export const cancelPendingApprovalBookingByToken = async (token, reason) => {
     .eq("status", "pending_approval")
     .eq("pending_cancel_token", token)
     .select("id")
-    .single();
+    .maybeSingle();
 
   if (cancelError) throw new Error(cancelError.message);
+
+  if (!cancelled) {
+    throw new Error(
+      "This booking can no longer be cancelled. It may have already been updated.",
+    );
+  }
 
   await safeUnblockGlobalIfNoActiveBooking(
     booking.booking_date,
@@ -822,14 +861,14 @@ export const cancelPendingApprovalBookingByToken = async (token, reason) => {
       )
     `,
     )
-    .eq("id", cancelled.id)
-    .single();
+    .eq("id", booking.id)
+    .maybeSingle();
 
   if (fetchError) throw new Error(fetchError.message);
+  if (!fullBooking) throw new Error("Cancelled booking not found");
 
   return fullBooking;
 };
-
 
 /* ==========================================
    PUBLIC: Get booking details by ID (Review page)

@@ -1,17 +1,53 @@
 # 🚀 Cron Job Setup (Supabase) — UNAIledIt Backend
-X`
-This guide explains how to enable all automated background jobs using **Supabase Cron (pg_cron + pg_net)** after deployment.
+
+This guide explains how to enable all automated background jobs using **Supabase Cron** (`pg_cron` + `pg_net`) after deployment.
 
 ---
 
-## ⚠️ IMPORTANT BEFORE RUNNING
+## ⚠️ Important Before Running
 
 Make sure:
 
-* ✅ Backend is already **deployed (Render)**
-* ✅ Replace all URLs with your **actual deployed API URL**
-* ✅ Secrets are correct and match your `.env`
-* ✅ Endpoints are already tested via Postman
+- ✅ Backend is already **deployed** (e.g. Render)
+- ✅ All cron job endpoints are **tested via Postman**
+- ✅ Replace all URLs with your **actual deployed API URL**
+- ✅ All cron secrets match your backend `.env`
+- ✅ Local cron is **disabled in production** (important)
+
+---
+
+## ⚙️ Backend Implementation Note
+
+All cron endpoints use **Supabase RPC / Postgres functions** instead of direct table updates.
+
+### Benefits:
+
+- ✅ No Row-Level Security (RLS) issues
+- ✅ Faster execution
+- ✅ Safer database operations
+- ✅ Cleaner backend code
+
+### RPC Functions Used
+
+| Endpoint                   | Function                    |
+| -------------------------- | --------------------------- |
+| `/api/jobs/booking-expiry` | `expire_pending_bookings()` |
+| `/api/jobs/slot-block`     | `block_past_today_slots()`  |
+| `/api/jobs/slot-cleanup`   | `cleanup_old_slots()`       |
+
+---
+
+## 🔐 Required Environment Variables
+
+Add these to your backend `.env`:
+
+```
+CRON_SECRET_BOOKING_EXPIRY=your_booking_expiry_secret
+CRON_SECRET_BLOCK=your_slot_block_secret
+CRON_SECRET_CLEANUP=your_slot_cleanup_secret
+CRON_SECRET_REMINDER=your_booking_reminder_secret
+ENABLE_LOCAL_CRON=false
+```
 
 ---
 
@@ -25,9 +61,9 @@ select cron.schedule(
   '*/5 * * * *',
   $$
   select net.http_post(
-    url := 'https://unailedit-api.onrender.com/api/jobs/send-booking-reminders',
+    url := 'https://your-api-url.com/api/jobs/send-booking-reminders',
     headers := jsonb_build_object(
-      'Authorization', 'Bearer unailedit_reminder_secret_2026',
+      'Authorization', 'Bearer YOUR_CRON_SECRET_REMINDER',
       'Content-Type', 'application/json'
     )
   );
@@ -41,8 +77,8 @@ select cron.schedule(
 
 Automatically expires:
 
-* `bookings` (pending_payment)
-* `payment_intents` (pending)
+- bookings (`pending_payment → expired`)
+- payment_intents (`pending → expired`)
 
 ```sql
 select cron.schedule(
@@ -50,9 +86,9 @@ select cron.schedule(
   '* * * * *',
   $$
   select net.http_post(
-    url := 'https://unailedit-api.onrender.com/api/jobs/booking-expiry',
+    url := 'https://your-api-url.com/api/jobs/booking-expiry',
     headers := jsonb_build_object(
-      'Authorization', 'Bearer unailedit_booking_x9K2pL7sQ4mN8vR1_2026',
+      'Authorization', 'Bearer YOUR_CRON_SECRET_BOOKING_EXPIRY',
       'Content-Type', 'application/json'
     )
   );
@@ -72,9 +108,9 @@ select cron.schedule(
   '*/5 * * * *',
   $$
   select net.http_post(
-    url := 'https://unailedit-api.onrender.com/api/jobs/slot-block',
+    url := 'https://your-api-url.com/api/jobs/slot-block',
     headers := jsonb_build_object(
-      'Authorization', 'Bearer unailedit_block_x7P9mL2kQ5zR8vT1_2026',
+      'Authorization', 'Bearer YOUR_CRON_SECRET_BLOCK',
       'Content-Type', 'application/json'
     )
   );
@@ -88,7 +124,8 @@ select cron.schedule(
 
 Deletes past slots without active bookings.
 
-> ⚠️ Uses UTC timezone → `0 16 * * *` = **12:00 AM Asia/Manila**
+> Supabase uses UTC
+> `0 16 * * *` = **12:00 AM Asia/Manila**
 
 ```sql
 select cron.schedule(
@@ -96,9 +133,9 @@ select cron.schedule(
   '0 16 * * *',
   $$
   select net.http_post(
-    url := 'https://unailedit-api.onrender.com/api/jobs/slot-cleanup',
+    url := 'https://your-api-url.com/api/jobs/slot-cleanup',
     headers := jsonb_build_object(
-      'Authorization', 'Bearer unailedit_cleanup_k8P3mL7qR2vT9xN_2026',
+      'Authorization', 'Bearer YOUR_CRON_SECRET_CLEANUP',
       'Content-Type', 'application/json'
     )
   );
@@ -108,25 +145,65 @@ select cron.schedule(
 
 ---
 
-## 🔧 Additional Deployment Checklist
+## 🧪 Manual Testing (IMPORTANT)
 
-After deployment, make sure to:
+Test endpoints before enabling cron.
 
-* 🔁 Replace all **frontend URLs** (Admin + Website) in `.env`
-* 📧 Update **email transporter** to use a business Gmail account
-* 🔐 Ensure all cron secrets are properly set in `.env`
+### Example:
+
+```
+POST https://your-api-url.com/api/jobs/booking-expiry
+Authorization: Bearer YOUR_SECRET
+```
+
+Test all:
+
+- `/booking-expiry`
+- `/slot-block`
+- `/slot-cleanup`
+- `/send-booking-reminders`
+
+---
+
+## ⚠️ Disable Local Cron in Production
+
+To prevent duplicate jobs:
+
+```js
+if (process.env.ENABLE_LOCAL_CRON === "true") {
+  startLocalCron();
+}
+```
+
+Set in production:
+
+```
+ENABLE_LOCAL_CRON=false
+```
+
+---
+
+## 🔧 Deployment Checklist
+
+- ✅ Backend deployed
+- ✅ RPC functions exist in Supabase
+- ✅ Endpoints tested (Postman)
+- ✅ Secrets match `.env`
+- ✅ Frontend URLs updated
+- ✅ Email system configured
+- ✅ Local cron disabled
 
 ---
 
 ## 🔍 Monitoring Cron Jobs
 
-Check registered jobs:
+### View jobs:
 
 ```sql
 select * from cron.job;
 ```
 
-Check execution logs:
+### View logs:
 
 ```sql
 select * from cron.job_run_details
@@ -137,10 +214,11 @@ order by start_time desc;
 
 ## 🧠 Notes
 
-* Supabase Cron runs in **UTC timezone**
-* Avoid duplicate cron execution (disable local cron in production)
-* Each job uses a **separate secret for better security**
-* Jobs are triggered via **HTTP endpoints (backend-controlled)**
+- Supabase Cron runs in **UTC**
+- Jobs trigger backend endpoints via HTTP
+- Backend handles logic securely
+- RPC handles database operations
+- Avoid running both local + Supabase cron at the same time
 
 ---
 
@@ -148,10 +226,10 @@ order by start_time desc;
 
 | Job              | Schedule     | Status |
 | ---------------- | ------------ | ------ |
-| Booking Reminder | Every 5 min  | ✅      |
-| Booking Expiry   | Every minute | ✅      |
-| Slot Block       | Every 5 min  | ✅      |
-| Slot Cleanup     | Daily        | ✅      |
+| Booking Reminder | Every 5 min  | ✅     |
+| Booking Expiry   | Every minute | ✅     |
+| Slot Block       | Every 5 min  | ✅     |
+| Slot Cleanup     | Daily        | ✅     |
 
 ---
 
@@ -159,7 +237,15 @@ order by start_time desc;
 
 You now have a **fully automated, production-ready cron system** powered by:
 
-* Supabase (scheduler)
-* Backend API (logic execution)
+- Supabase (scheduler)
+- Backend API (execution)
+- RPC functions (safe DB operations)
 
 ---
+
+🔥 Your system is now:
+
+- scalable
+- secure
+- optimized
+- production-ready

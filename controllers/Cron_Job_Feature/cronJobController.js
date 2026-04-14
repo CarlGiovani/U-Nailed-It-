@@ -1,5 +1,4 @@
 import supabase from "../../utils/supabaseClient.js";
-import formatLocalDate from "../../utils/dateFormatter.js";
 
 let isRunning = false;
 
@@ -21,37 +20,17 @@ export const runBookingExpiryManually = async (req, res) => {
 
     console.log("[JOB] Running booking expiry cleanup...");
 
-    const now = new Date().toISOString();
+    const { data, error } = await supabase.rpc("expire_pending_bookings");
 
-    const { data: expiredBookings, error: bookingErr } = await supabase
-      .from("bookings")
-      .update({ status: "expired" })
-      .eq("status", "pending_payment")
-      .lt("expires_at", now)
-      .select("id");
+    if (error) throw error;
 
-    if (bookingErr) {
-      throw bookingErr;
-    }
-
-    const { data: expiredIntents, error: intentErr } = await supabase
-      .from("payment_intents")
-      .update({ status: "expired" })
-      .eq("status", "pending")
-      .lt("expires_at", now)
-      .select("id");
-
-    if (intentErr) {
-      throw intentErr;
-    }
-
-    console.log("[JOB] Booking expiry cleanup done");
+    console.log("[JOB] Booking expiry cleanup done", data);
 
     return res.status(200).json({
       success: true,
       message: "Booking expiry cleanup done",
-      expiredBookings: expiredBookings?.length || 0,
-      expiredIntents: expiredIntents?.length || 0,
+      expiredBookings: data?.expired_bookings || 0,
+      expiredIntents: data?.expired_intents || 0,
     });
   } catch (err) {
     console.error("[JOB ERROR - booking expiry]", err);
@@ -84,32 +63,20 @@ export const runSlotBlockJob = async (req, res) => {
 
     isBlockRunning = true;
 
-    const now = new Date();
-    const todayStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
-    const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+    console.log("[CRON] Slot block started...");
 
-    console.log(
-      `[CRON] Slot block started | Date: ${todayStr} | Time: ${currentTime}`,
-    );
-
-    const { data: updatedSlots, error } = await supabase
-      .from("calendar_slots")
-      .update({ is_available: false })
-      .eq("date", todayStr)
-      .lt("time", currentTime)
-      .eq("is_available", true)
-      .select("id, time");
+    const { data, error } = await supabase.rpc("block_past_today_slots");
 
     if (error) throw error;
 
-    console.log(
-      `[CRON] Slot block done | blocked: ${updatedSlots?.length || 0}`,
-    );
+    console.log("[CRON] Slot block done", data);
 
     return res.status(200).json({
       success: true,
       message: "Slot block job executed",
-      blocked: updatedSlots?.length || 0,
+      date: data?.date || null,
+      time: data?.time || null,
+      blocked: data?.blocked || 0,
     });
   } catch (err) {
     console.error("[CRON ERROR - slot block]", err);
@@ -141,59 +108,21 @@ export const runSlotCleanupJob = async (req, res) => {
 
     isCleanupRunning = true;
 
-    const now = new Date();
-    const todayStr = formatLocalDate(now);
+    console.log("[CRON] Slot cleanup started...");
 
-    console.log(
-      `[CRON] Slot cleanup started | Date: ${todayStr} | Time: ${now.toLocaleTimeString()}`,
-    );
+    const { data, error } = await supabase.rpc("cleanup_old_slots");
 
-    const { data: pastSlots, error: pastError } = await supabase
-      .from("calendar_slots")
-      .select("id, date, time")
-      .lt("date", todayStr);
+    if (error) throw error;
 
-    if (pastError) throw pastError;
-
-    const totalPastSlots = pastSlots?.length || 0;
-    let deletedCount = 0;
-    let keptCount = 0;
-
-    for (const slot of pastSlots || []) {
-      const { data: booking, error: bookingError } = await supabase
-        .from("bookings")
-        .select("id")
-        .eq("booking_date", slot.date)
-        .eq("booking_time", slot.time)
-        .in("status", ["pending_approval", "approved", "completed"])
-        .maybeSingle();
-
-      if (bookingError) throw bookingError;
-
-      if (!booking) {
-        const { error: deleteError } = await supabase
-          .from("calendar_slots")
-          .delete()
-          .eq("id", slot.id);
-
-        if (deleteError) throw deleteError;
-
-        deletedCount++;
-      } else {
-        keptCount++;
-      }
-    }
-
-    console.log(
-      `[CRON] Slot cleanup done | checked: ${totalPastSlots} | deleted: ${deletedCount} | kept: ${keptCount}`,
-    );
+    console.log("[CRON] Slot cleanup done", data);
 
     return res.status(200).json({
       success: true,
       message: "Slot cleanup job executed",
-      checked: totalPastSlots,
-      deleted: deletedCount,
-      kept: keptCount,
+      date: data?.date || null,
+      checked: data?.checked || 0,
+      deleted: data?.deleted || 0,
+      kept: data?.kept || 0,
     });
   } catch (err) {
     console.error("[CRON ERROR - slot cleanup]", err);

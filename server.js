@@ -20,6 +20,8 @@ import reviewsRoutes from "./routes/Review_Feature/reviewsRoutes.js";
 import servicesRouter from "./routes/Services_Feature/serviceRoutes.js";
 import testEmailRoutes from "./routes/testEmail.js";
 
+import { scheduleBookingExpiry } from "./utils/bookingExpiryCron.js";
+import { scheduleSlotCleanup } from "./utils/slotCron.js";
 dotenv.config();
 
 const app = express();
@@ -65,8 +67,8 @@ app.use("/api", bookingRemindersRoutes);
 app.use("/api/jobs", jobRoutes);
 
 // START CRON JOBS LOCAL for serverless
-// scheduleSlotCleanup();
-// scheduleBookingExpiry();
+scheduleSlotCleanup();
+scheduleBookingExpiry();
 
 // START SERVER
 app.listen(PORT, () => {
