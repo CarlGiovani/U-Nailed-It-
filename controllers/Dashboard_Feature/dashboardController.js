@@ -18,3 +18,41 @@ export const getSystemExportData = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const blockCustomer = async (req, res) => {
+  try {
+    const { email, name, reason, cancelCount } = req.body;
+
+    const data = await dashboardService.blockCustomer({
+      email,
+      name,
+      reason,
+      cancelCount,
+      adminId: req.user?.id || null,
+    });
+
+    res.json({
+      message: "Customer blocked successfully",
+      data,
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const unblockCustomer = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const data = await dashboardService.unblockCustomer({
+      email,
+    });
+
+    res.json({
+      message: "Customer unblocked successfully",
+      data,
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};

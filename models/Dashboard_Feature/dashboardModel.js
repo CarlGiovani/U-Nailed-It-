@@ -1,9 +1,7 @@
 import supabase from "../../utils/supabaseClient.js";
 
 const RECENT_BOOKING_STATUSES = ["pending_approval", "approved", "completed"];
-
 const TOTAL_BOOKING_STATUSES = ["approved", "completed"];
-
 const REVENUE_STATUS = "completed";
 
 /* ===============================
@@ -148,7 +146,61 @@ export const getRecentBookings = async () => {
   return data || [];
 };
 
+/* ===============================
+   BLOCK CUSTOMER BY EMAIL
+=============================== */
+export const blockCustomerByEmail = async ({ email, reason, adminId }) => {
+  if (!email) {
+    throw new Error("Email is required");
+  }
 
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const { data, error } = await supabase
+    .from("customers")
+    .update({
+      is_blocked: true,
+      blocked_reason: reason || "Blocked by admin",
+      blocked_at: new Date().toISOString(),
+      blocked_by: adminId || null,
+    })
+    .eq("email", normalizedEmail)
+    .select("*")
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Customer not found");
+
+  return data;
+};
+
+/* ===============================
+   UNBLOCK CUSTOMER BY EMAIL
+=============================== */
+export const unblockCustomerByEmail = async ({ email }) => {
+  if (!email) {
+    throw new Error("Email is required");
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const { data, error } = await supabase
+    .from("customers")
+    .update({
+      is_blocked: false,
+      blocked_reason: null,
+      blocked_at: null,
+      blocked_by: null,
+    })
+    .eq("email", normalizedEmail)
+    .select("*")
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Customer not found");
+
+  return data;
+};
 
 export const getSystemExportData = async () => {
   const [
