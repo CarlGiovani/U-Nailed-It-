@@ -19,6 +19,7 @@ import portfolioRoutes from "./routes/portfolio_Feature/portfolioRoutes.js";
 import reviewsRoutes from "./routes/Review_Feature/reviewsRoutes.js";
 import servicesRouter from "./routes/Services_Feature/serviceRoutes.js";
 import testEmailRoutes from "./routes/testEmail.js";
+import emailSettingsRoutes from "./routes/Email_Settings_Feature/emailSettingsRoutes.js"
 
 import { scheduleBookingExpiry } from "./utils/bookingExpiryCron.js";
 import { scheduleSlotCleanup } from "./utils/slotCron.js";
@@ -65,6 +66,7 @@ app.use("/api/audit", auditRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api", bookingRemindersRoutes);
 app.use("/api/jobs", jobRoutes);
+app.use("/api/email-settings" , emailSettingsRoutes);
 
 // START CRON JOBS LOCAL for serverless
 scheduleSlotCleanup();
