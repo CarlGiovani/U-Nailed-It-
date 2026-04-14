@@ -62,9 +62,37 @@ export const createBookingWithCustomer = async (bookingData) => {
     facebook_link,
   } = bookingData;
 
+  const normalizedEmail = String(email || "")
+    .trim()
+    .toLowerCase();
+
+  if (!normalizedEmail) {
+    throw new Error("Email is required");
+  }
+
+  /* ==========================================
+     BLOCKED EMAIL CHECK
+  ========================================== */
+  const { data: blockedCustomer, error: blockedCheckError } = await supabase
+    .from("customers")
+    .select("id, full_name, email, is_blocked, blocked_reason")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (blockedCheckError) {
+    throw new Error(blockedCheckError.message);
+  }
+
+  if (blockedCustomer?.is_blocked) {
+    throw new Error(
+      blockedCustomer.blocked_reason ||
+        "This email is currently restricted from making new bookings due to repeated cancellations.",
+    );
+  }
+
   const customer = await getOrCreateCustomer({
     full_name,
-    email,
+    email: normalizedEmail,
     phone,
     facebook_link,
   });
@@ -111,7 +139,7 @@ export const createBookingWithCustomer = async (bookingData) => {
       .from("bookings")
       .update({
         customer_name: full_name,
-        customer_email: email,
+        customer_email: normalizedEmail,
         customer_phone: phone,
         customer_facebook_link: facebook_link,
         service_variant_id: service_variant_id || null,
@@ -175,7 +203,7 @@ export const createBookingWithCustomer = async (bookingData) => {
       {
         customer_id: customer.id,
         customer_name: full_name,
-        customer_email: email,
+        customer_email: normalizedEmail,
         customer_phone: phone,
         customer_facebook_link: facebook_link,
         service_id,

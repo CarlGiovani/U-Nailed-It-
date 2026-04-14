@@ -42,10 +42,10 @@ export const blockCustomer = async (req, res) => {
 
 export const unblockCustomer = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { customer_id } = req.body;
 
     const data = await dashboardService.unblockCustomer({
-      email,
+      customer_id,
     });
 
     res.json({

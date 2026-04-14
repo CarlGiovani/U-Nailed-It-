@@ -154,9 +154,10 @@ export const blockCustomerByEmail = async ({ email, reason, adminId }) => {
     throw new Error("Email is required");
   }
 
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = String(email).trim().toLowerCase();
 
-  const { data, error } = await supabase
+  // exact match first
+  let { data, error } = await supabase
     .from("customers")
     .update({
       is_blocked: true,
@@ -169,7 +170,28 @@ export const blockCustomerByEmail = async ({ email, reason, adminId }) => {
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("Customer not found");
+
+  // fallback: case-insensitive match
+  if (!data) {
+    const fallback = await supabase
+      .from("customers")
+      .update({
+        is_blocked: true,
+        blocked_reason: reason || "Blocked by admin",
+        blocked_at: new Date().toISOString(),
+        blocked_by: adminId || null,
+      })
+      .ilike("email", normalizedEmail)
+      .select("*")
+      .maybeSingle();
+
+    if (fallback.error) throw new Error(fallback.error.message);
+    data = fallback.data;
+  }
+
+  if (!data) {
+    throw new Error("Customer not found");
+  }
 
   return data;
 };
@@ -177,13 +199,7 @@ export const blockCustomerByEmail = async ({ email, reason, adminId }) => {
 /* ===============================
    UNBLOCK CUSTOMER BY EMAIL
 =============================== */
-export const unblockCustomerByEmail = async ({ email }) => {
-  if (!email) {
-    throw new Error("Email is required");
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-
+export const unblockCustomerById = async ({ customer_id }) => {
   const { data, error } = await supabase
     .from("customers")
     .update({
@@ -192,8 +208,8 @@ export const unblockCustomerByEmail = async ({ email }) => {
       blocked_at: null,
       blocked_by: null,
     })
-    .eq("email", normalizedEmail)
-    .select("*")
+    .eq("id", customer_id)
+    .select()
     .maybeSingle();
 
   if (error) throw new Error(error.message);
@@ -201,7 +217,6 @@ export const unblockCustomerByEmail = async ({ email }) => {
 
   return data;
 };
-
 export const getSystemExportData = async () => {
   const [
     bookingsRes,

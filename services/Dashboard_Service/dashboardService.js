@@ -58,8 +58,8 @@ export const blockCustomer = async ({
   return blockedCustomer;
 };
 
-export const unblockCustomer = async ({ email }) => {
-  return await dashboard.unblockCustomerByEmail({
-    email,
+export const unblockCustomer = async ({ customer_id }) => {
+  return await dashboard.unblockCustomerById({
+    customer_id,
   });
 };
