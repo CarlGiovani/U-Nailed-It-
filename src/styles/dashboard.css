@@ -1409,3 +1409,981 @@ body.dark .admin-btn-secondary:hover:not(:disabled) {
     font-size: 11px;
   }
 }
+
+/* ======================================================
+   DASHBOARD ACTION FEEDBACK
+====================================================== */
+
+.dashboard-action-banner {
+  max-width: 100%;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 105, 180, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 105, 180, 0.08);
+  color: #9d174d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ======================================================
+   MOST CANCELLED CUSTOMERS
+====================================================== */
+
+.most-cancelled {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  padding: 20px;
+  border-radius: 22px;
+}
+
+.most-cancelled-desktop {
+  display: block;
+}
+
+.most-cancelled-mobile {
+  display: none;
+}
+
+.most-cancelled-scroll {
+  max-height: 460px;
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.most-cancelled-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.most-cancelled-scroll::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 999px;
+}
+
+.most-cancelled-scroll::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 999px;
+}
+
+.most-cancelled-scroll::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.admin-table-wide {
+  min-width: 1080px;
+}
+
+.cancel-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: linear-gradient(
+    135deg,
+    rgba(212, 175, 55, 0.15),
+    rgba(255, 105, 180, 0.12)
+  );
+  color: #7c5b00;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.reason-cell {
+  min-width: 220px;
+  white-space: normal !important;
+  line-height: 1.55;
+}
+
+.risk-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.risk-badge.normal {
+  background: #eff8ff;
+  color: #175cd3;
+  border-color: #b2ddff;
+}
+
+.risk-badge.warning {
+  background: #fffaeb;
+  color: #b54708;
+  border-color: #fedf89;
+}
+
+.risk-badge.danger {
+  background: #fff1f3;
+  color: #be123c;
+  border-color: #fbcfe8;
+}
+
+.risk-badge.blocked {
+  background: #fef3f2;
+  color: #d92d20;
+  border-color: #fecdca;
+}
+
+.admin-btn-inline {
+  min-width: 110px;
+  min-height: 40px;
+  padding: 10px 14px;
+  font-size: 13px;
+  border-radius: 12px;
+}
+
+.admin-btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.22);
+  color: #ffffff;
+}
+
+.admin-btn-danger:hover:not(:disabled) {
+  box-shadow: 0 16px 28px rgba(239, 68, 68, 0.28);
+}
+
+.cancelled-mobile-card {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+}
+
+.cancelled-mobile-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cancelled-mobile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cancelled-mobile-actions {
+  margin-top: 14px;
+  display: flex;
+  width: 100%;
+}
+
+.cancelled-mobile-actions .admin-btn {
+  width: 100%;
+}
+
+/* ======================================================
+   DARK MODE ADDITIONS
+====================================================== */
+
+body.dark .dashboard-action-banner {
+  border-color: rgba(255, 105, 180, 0.22);
+  background: rgba(255, 105, 180, 0.1);
+  color: #f9a8d4;
+}
+
+body.dark .cancel-count-badge {
+  background: linear-gradient(
+    135deg,
+    rgba(212, 175, 55, 0.18),
+    rgba(255, 105, 180, 0.16)
+  );
+  color: #f5d76e;
+}
+
+body.dark .risk-badge.normal {
+  background: rgba(23, 92, 211, 0.16);
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.24);
+}
+
+body.dark .risk-badge.warning {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fcd34d;
+  border-color: rgba(252, 211, 77, 0.22);
+}
+
+body.dark .risk-badge.danger {
+  background: rgba(244, 63, 94, 0.14);
+  color: #fda4af;
+  border-color: rgba(253, 164, 175, 0.2);
+}
+
+body.dark .risk-badge.blocked {
+  background: rgba(239, 68, 68, 0.14);
+  color: #fca5a5;
+  border-color: rgba(252, 165, 165, 0.2);
+}
+
+body.dark .cancelled-mobile-card {
+  border-color: #2b2b2b;
+  background: #1f1f1f;
+}
+
+body.dark .most-cancelled-scroll::-webkit-scrollbar-track {
+  background: #202020;
+}
+
+body.dark .most-cancelled-scroll::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+body.dark .most-cancelled-scroll::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* ======================================================
+   RESPONSIVE ADDITIONS
+====================================================== */
+
+@media (max-width: 768px) {
+  .most-cancelled {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .most-cancelled-desktop {
+    display: none;
+  }
+
+  .most-cancelled-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .cancelled-mobile-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .cancelled-mobile-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .cancelled-mobile-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-btn-inline {
+    min-width: 96px;
+    min-height: 38px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-action-banner {
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+
+  .most-cancelled {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .cancelled-mobile-card {
+    padding: 12px;
+  }
+
+  .risk-badge {
+    min-height: 28px;
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  .cancel-count-badge {
+    min-width: 34px;
+    min-height: 28px;
+    font-size: 11px;
+  }
+}
+
+/* ======================================================
+   MOST CANCELLED MOBILE - MATCH RECENT BOOKINGS STYLE
+====================================================== */
+
+.cancelled-booking-mobile-card {
+  border-radius: 18px;
+  border: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+}
+
+.cancelled-booking-mobile-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cancelled-mobile-actions-clean {
+  margin-top: 14px;
+  display: flex;
+  width: 100%;
+}
+
+.cancelled-mobile-actions-clean .admin-btn {
+  width: 100%;
+}
+
+.cancelled-booking-mobile-card .booking-mobile-field p {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.cancelled-booking-mobile-card .risk-badge {
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .most-cancelled {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .most-cancelled-desktop {
+    display: none;
+  }
+
+  .most-cancelled-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .cancelled-booking-mobile-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .cancelled-booking-mobile-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .cancelled-mobile-actions-clean {
+    margin-top: 12px;
+  }
+
+  .cancelled-mobile-actions-clean .admin-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cancelled-booking-mobile-card {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .cancelled-booking-mobile-card .booking-mobile-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .cancelled-booking-mobile-card .booking-mobile-id {
+    font-size: 13px;
+  }
+
+  .cancelled-booking-mobile-card .booking-mobile-label {
+    font-size: 10px;
+  }
+
+  .cancelled-booking-mobile-card .booking-mobile-field p {
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .cancelled-mobile-actions-clean .admin-btn {
+    min-height: 42px;
+    font-size: 12px;
+  }
+}
+
+/* ======================================================
+   DARK MODE SUPPORT
+====================================================== */
+
+body.dark .cancelled-booking-mobile-card {
+  border-color: #2b2b2b;
+  background: #1f1f1f;
+}
+
+/* ======================================================
+   MOST CANCELLED TABLE - SAME STYLE AS RECENT BOOKINGS
+====================================================== */
+
+.admin-table-most-cancelled {
+  width: 100%;
+  min-width: 1080px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #ffffff;
+}
+
+.most-cancelled-scroll {
+  max-height: 420px;
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.most-cancelled-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.most-cancelled-scroll::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 999px;
+}
+
+.most-cancelled-scroll::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 999px;
+}
+
+.most-cancelled-scroll::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.cancel-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 30px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: linear-gradient(
+    135deg,
+    rgba(212, 175, 55, 0.14),
+    rgba(255, 105, 180, 0.12)
+  );
+  color: #8a6b00;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.reason-cell {
+  min-width: 220px;
+  max-width: 260px;
+  white-space: normal !important;
+  line-height: 1.5;
+}
+
+.admin-btn-inline {
+  min-width: 92px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.admin-btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.22);
+  color: #ffffff;
+}
+
+.admin-btn-danger:hover:not(:disabled) {
+  box-shadow: 0 16px 28px rgba(239, 68, 68, 0.28);
+}
+
+/* ======================================================
+   MOBILE - MAKE IT MATCH RECENT BOOKINGS
+====================================================== */
+
+@media (max-width: 768px) {
+  .most-cancelled {
+    padding: 16px;
+    overflow: hidden;
+  }
+
+  .most-cancelled-desktop {
+    display: block;
+  }
+
+  .most-cancelled-scroll,
+  .most-cancelled .table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .most-cancelled-scroll {
+    max-height: 320px;
+  }
+
+  .most-cancelled-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .most-cancelled-scroll::-webkit-scrollbar-thumb {
+    background: #d4af37;
+    border-radius: 999px;
+  }
+
+  .admin-table-most-cancelled {
+    width: max-content;
+    min-width: 980px;
+  }
+
+  .admin-table-most-cancelled th,
+  .admin-table-most-cancelled td {
+    padding: 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .reason-cell {
+    min-width: 220px;
+    max-width: 220px;
+    white-space: normal !important;
+  }
+
+  .admin-btn-inline {
+    min-width: 86px;
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+
+  .cancel-count-badge {
+    min-width: 32px;
+    min-height: 28px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .most-cancelled {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .admin-table-most-cancelled {
+    min-width: 920px;
+  }
+
+  .admin-table-most-cancelled th,
+  .admin-table-most-cancelled td {
+    padding: 10px;
+    font-size: 11px;
+  }
+
+  .admin-btn-inline {
+    min-width: 78px;
+    min-height: 34px;
+    font-size: 10px;
+  }
+
+  .cancel-count-badge {
+    min-width: 30px;
+    min-height: 26px;
+    font-size: 10px;
+  }
+}
+
+/* ======================================================
+   DARK MODE
+====================================================== */
+
+body.dark .admin-table-most-cancelled {
+  background: #1f1f1f;
+}
+
+body.dark .most-cancelled-scroll::-webkit-scrollbar-track {
+  background: #202020;
+}
+
+body.dark .most-cancelled-scroll::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+body.dark .most-cancelled-scroll::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+body.dark .cancel-count-badge {
+  background: linear-gradient(
+    135deg,
+    rgba(212, 175, 55, 0.18),
+    rgba(255, 105, 180, 0.16)
+  );
+  color: #f5d76e;
+}
+
+/* ======================================================
+   CUSTOM DASHBOARD MODAL
+====================================================== */
+
+.dashboard-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.dashboard-modal {
+  width: 100%;
+  max-width: 560px;
+  border-radius: 24px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.22);
+  overflow: hidden;
+  animation: dashboardModalIn 0.22s ease;
+}
+
+.dashboard-modal-sm {
+  max-width: 480px;
+}
+
+@keyframes dashboardModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.dashboard-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid #eef2f7;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 249, 251, 0.95) 100%
+  );
+}
+
+.dashboard-modal-header h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.dashboard-modal-header p {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dashboard-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.dashboard-modal-close:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.dashboard-modal-close:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.dashboard-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 24px;
+}
+
+.dashboard-modal-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid #eef2f7;
+  border-radius: 16px;
+  background: #fafafa;
+}
+
+.dashboard-modal-info strong,
+.dashboard-modal-info p {
+  margin: 0;
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.dashboard-modal-label {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.dashboard-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-modal-field label {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dashboard-modal-field textarea {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  padding: 14px 16px;
+  border: 1px solid #dbe3ec;
+  border-radius: 16px;
+  outline: none;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  line-height: 1.6;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.dashboard-modal-field textarea:focus {
+  border-color: rgba(212, 175, 55, 0.75);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.12);
+}
+
+.dashboard-modal-warning {
+  padding: 14px 16px;
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  border-radius: 16px;
+  background: rgba(239, 68, 68, 0.06);
+  color: #b42318;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.dashboard-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0 24px 24px;
+}
+
+.dashboard-modal-actions .admin-btn {
+  min-width: 140px;
+}
+
+/* ======================================================
+   DARK MODE - MODAL
+====================================================== */
+
+body.dark .dashboard-modal {
+  border-color: #2b2b2b;
+  background: #1f1f1f;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+body.dark .dashboard-modal-header {
+  border-bottom-color: #2f2f2f;
+  background: linear-gradient(
+    180deg,
+    rgba(35, 35, 35, 1) 0%,
+    rgba(29, 29, 29, 0.98) 100%
+  );
+}
+
+body.dark .dashboard-modal-header h3,
+body.dark .dashboard-modal-info strong,
+body.dark .dashboard-modal-info p,
+body.dark .dashboard-modal-field label {
+  color: #f9fafb;
+}
+
+body.dark .dashboard-modal-header p,
+body.dark .dashboard-modal-label {
+  color: #a1a1aa;
+}
+
+body.dark .dashboard-modal-close {
+  border-color: #3a3a3a;
+  background: #262626;
+  color: #d4d4d8;
+}
+
+body.dark .dashboard-modal-close:hover:not(:disabled) {
+  background: #2d2d2d;
+  border-color: #4b5563;
+}
+
+body.dark .dashboard-modal-info {
+  border-color: #2f2f2f;
+  background: #252525;
+}
+
+body.dark .dashboard-modal-field textarea {
+  border-color: #3a3a3a;
+  background: #262626;
+  color: #f9fafb;
+}
+
+body.dark .dashboard-modal-field textarea:focus {
+  border-color: rgba(212, 175, 55, 0.8);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
+}
+
+body.dark .dashboard-modal-warning {
+  border-color: rgba(248, 113, 113, 0.22);
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+/* ======================================================
+   RESPONSIVE - MODAL
+====================================================== */
+
+@media (max-width: 768px) {
+  .dashboard-modal-overlay {
+    padding: 14px;
+    align-items: flex-end;
+  }
+
+  .dashboard-modal,
+  .dashboard-modal-sm {
+    max-width: 100%;
+    border-radius: 22px 22px 18px 18px;
+  }
+
+  .dashboard-modal-header {
+    padding: 18px 18px 14px;
+  }
+
+  .dashboard-modal-header h3 {
+    font-size: 19px;
+  }
+
+  .dashboard-modal-header p {
+    font-size: 12px;
+  }
+
+  .dashboard-modal-body {
+    gap: 14px;
+    padding: 16px 18px;
+  }
+
+  .dashboard-modal-info {
+    padding: 12px 14px;
+    border-radius: 14px;
+  }
+
+  .dashboard-modal-field textarea {
+    min-height: 96px;
+    padding: 12px 14px;
+    border-radius: 14px;
+  }
+
+  .dashboard-modal-warning {
+    padding: 12px 14px;
+    border-radius: 14px;
+    font-size: 13px;
+  }
+
+  .dashboard-modal-actions {
+    flex-direction: column-reverse;
+    padding: 0 18px 18px;
+  }
+
+  .dashboard-modal-actions .admin-btn {
+    width: 100%;
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-modal-overlay {
+    padding: 10px;
+  }
+
+  .dashboard-modal,
+  .dashboard-modal-sm {
+    border-radius: 20px 20px 16px 16px;
+  }
+
+  .dashboard-modal-header {
+    padding: 16px 16px 12px;
+  }
+
+  .dashboard-modal-header h3 {
+    font-size: 18px;
+  }
+
+  .dashboard-modal-body {
+    padding: 14px 16px;
+  }
+
+  .dashboard-modal-actions {
+    padding: 0 16px 16px;
+  }
+
+  .dashboard-modal-close {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    font-size: 20px;
+  }
+}
