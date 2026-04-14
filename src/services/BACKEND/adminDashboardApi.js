@@ -19,10 +19,12 @@ export const getSystemExportData = async () => {
 /* ===============================
    ADMIN: BLOCK CUSTOMER
 ================================= */
-export const blockCustomer = async ({ email, reason }) => {
+export const blockCustomer = async ({ email, name, reason, cancelCount }) => {
   const res = await api.patch("/dashboard/customers/block", {
     email,
+    name,
     reason,
+    cancelCount,
   });
   return res.data;
 };
@@ -30,9 +32,9 @@ export const blockCustomer = async ({ email, reason }) => {
 /* ===============================
    ADMIN: UNBLOCK CUSTOMER
 ================================= */
-export const unblockCustomer = async ({ email }) => {
+export const unblockCustomer = async ({ customer_id }) => {
   const res = await api.patch("/dashboard/customers/unblock", {
-    email,
+    customer_id,
   });
   return res.data;
 };

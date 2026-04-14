@@ -26,6 +26,7 @@ import {
   unblockCustomer,
 } from "../../services/BACKEND/adminDashboardApi";
 import "../../styles/dashboard.css";
+
 const ITEMS_PER_PAGE = 5;
 const MOST_CANCELLED_PER_PAGE = 5;
 const DASHBOARD_QUERY_KEY = ["admin-dashboard"];
@@ -61,6 +62,7 @@ const fetchDashboardData = async () => {
 
 const Dashboard = () => {
   const queryClient = useQueryClient();
+
   const [currentPage, setCurrentPage] = useState(1);
   const [cancelledPage, setCancelledPage] = useState(1);
   const [exportingPDF, setExportingPDF] = useState(false);
@@ -143,7 +145,6 @@ const Dashboard = () => {
       const email = String(customer?.email || "")
         .trim()
         .toLowerCase();
-
       if (!email) return;
       map.set(email, customer);
     });
@@ -151,90 +152,95 @@ const Dashboard = () => {
     return map;
   }, [customers]);
 
-  const mostCancelledCustomers = useMemo(() => {
-    const grouped = {};
+const mostCancelledCustomers = useMemo(() => {
+  const grouped = {};
 
-    allBookings.forEach((booking) => {
-      if (booking?.status !== "cancelled") return;
+  allBookings.forEach((booking) => {
+    if (booking?.status !== "cancelled") return;
 
-      const rawEmail =
-        booking?.customer_email || booking?.customers?.email || "";
+    const rawEmail = booking?.customer_email || booking?.customers?.email || "";
+    const email = String(rawEmail).trim().toLowerCase();
+    if (!email) return;
 
-      const email = String(rawEmail).trim().toLowerCase();
-      if (!email) return;
+    const linkedCustomer = customerMap.get(email);
 
-      const linkedCustomer = customerMap.get(email);
+    if (!grouped[email]) {
+      grouped[email] = {
+        id: linkedCustomer?.id || null,
+        email,
+        full_name:
+          booking?.customer_name ||
+          booking?.customers?.full_name ||
+          linkedCustomer?.full_name ||
+          "Unknown Customer",
+        phone:
+          booking?.customer_phone ||
+          booking?.customers?.phone ||
+          linkedCustomer?.phone ||
+          "N/A",
+        facebook_link:
+          booking?.customer_facebook_link ||
+          booking?.customers?.facebook_link ||
+          linkedCustomer?.facebook_link ||
+          "",
+        cancel_count: 0,
+        latest_cancelled_at:
+          booking?.cancelled_at ||
+          booking?.updated_at ||
+          booking?.created_at ||
+          "",
+        latest_reason: booking?.cancellation_reason || "No reason provided",
+        is_blocked: Boolean(linkedCustomer?.is_blocked),
+        blocked_reason: linkedCustomer?.blocked_reason || "",
+      };
+    }
 
-      if (!grouped[email]) {
-        grouped[email] = {
-          email,
-          full_name:
-            booking?.customer_name ||
-            booking?.customers?.full_name ||
-            linkedCustomer?.full_name ||
-            "Unknown Customer",
-          phone:
-            booking?.customer_phone ||
-            booking?.customers?.phone ||
-            linkedCustomer?.phone ||
-            "N/A",
-          facebook_link:
-            booking?.customer_facebook_link ||
-            booking?.customers?.facebook_link ||
-            linkedCustomer?.facebook_link ||
-            "",
-          cancel_count: 0,
-          latest_cancelled_at:
-            booking?.cancelled_at ||
-            booking?.updated_at ||
-            booking?.created_at ||
-            "",
-          latest_reason: booking?.cancellation_reason || "No reason provided",
-          is_blocked: Boolean(linkedCustomer?.is_blocked),
-          blocked_reason: linkedCustomer?.blocked_reason || "",
-        };
+    grouped[email].cancel_count += 1;
+
+    const bookingCancelledAt =
+      booking?.cancelled_at ||
+      booking?.updated_at ||
+      booking?.created_at ||
+      "";
+
+    if (
+      bookingCancelledAt &&
+      (!grouped[email].latest_cancelled_at ||
+        new Date(bookingCancelledAt) >
+          new Date(grouped[email].latest_cancelled_at))
+    ) {
+      grouped[email].latest_cancelled_at = bookingCancelledAt;
+    }
+
+    if (booking?.cancellation_reason) {
+      grouped[email].latest_reason = booking.cancellation_reason;
+    }
+
+    if (linkedCustomer) {
+      grouped[email].id = linkedCustomer?.id || null;
+      grouped[email].is_blocked = Boolean(linkedCustomer?.is_blocked);
+      grouped[email].blocked_reason = linkedCustomer?.blocked_reason || "";
+      grouped[email].full_name =
+        linkedCustomer?.full_name || grouped[email].full_name;
+      grouped[email].phone = linkedCustomer?.phone || grouped[email].phone;
+      grouped[email].facebook_link =
+        linkedCustomer?.facebook_link || grouped[email].facebook_link;
+    }
+  });
+
+  return Object.values(grouped)
+    .sort((a, b) => {
+      if (b.cancel_count !== a.cancel_count) {
+        return b.cancel_count - a.cancel_count;
       }
 
-      grouped[email].cancel_count += 1;
-
-      const bookingCancelledAt =
-        booking?.cancelled_at ||
-        booking?.updated_at ||
-        booking?.created_at ||
-        "";
-
-      if (
-        bookingCancelledAt &&
-        (!grouped[email].latest_cancelled_at ||
-          new Date(bookingCancelledAt) >
-            new Date(grouped[email].latest_cancelled_at))
-      ) {
-        grouped[email].latest_cancelled_at = bookingCancelledAt;
-      }
-
-      if (booking?.cancellation_reason) {
-        grouped[email].latest_reason = booking.cancellation_reason;
-      }
-
-      if (linkedCustomer) {
-        grouped[email].is_blocked = Boolean(linkedCustomer?.is_blocked);
-        grouped[email].blocked_reason = linkedCustomer?.blocked_reason || "";
-      }
-    });
-
-    return Object.values(grouped)
-      .sort((a, b) => {
-        if (b.cancel_count !== a.cancel_count) {
-          return b.cancel_count - a.cancel_count;
-        }
-
-        return (
-          new Date(b.latest_cancelled_at || 0).getTime() -
-          new Date(a.latest_cancelled_at || 0).getTime()
-        );
-      })
-      .slice(0, 20);
-  }, [allBookings, customerMap]);
+      return (
+        new Date(b.latest_cancelled_at || 0).getTime() -
+        new Date(a.latest_cancelled_at || 0).getTime()
+      );
+    })
+    .slice(0, 20);
+}, [allBookings, customerMap]);
 
   const invalidateDashboard = () => {
     if (debounceTimeoutRef.current) {
@@ -479,7 +485,9 @@ const Dashboard = () => {
     try {
       await blockCustomer({
         email,
+        name: selectedCustomer?.full_name,
         reason: blockReason?.trim() || "Too many cancellations",
+        cancelCount: selectedCustomer?.cancel_count || 0,
       });
 
       setActionMessage(`Blocked ${email} successfully.`);
@@ -498,13 +506,19 @@ const Dashboard = () => {
   };
 
   const handleUnblockCustomer = async () => {
+    const customerId = selectedCustomer?.id;
     const email = selectedCustomer?.email;
-    if (!email) return;
+
+    if (!customerId) {
+      setActionMessage("Missing customer ID. Please refresh and try again.");
+      return;
+    }
 
     setActionLoadingEmail(email);
 
     try {
-      await unblockCustomer({ email });
+      await unblockCustomer({ customer_id: customerId });
+
       setActionMessage(`Unblocked ${email} successfully.`);
       closeUnblockModal();
       await queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEY });
@@ -1679,6 +1693,7 @@ const Dashboard = () => {
               </div>
               <span>{mostCancelledCustomers.length} customers</span>
             </div>
+
             <div className="table-card table-card-elevated most-cancelled-desktop">
               <div className="table-wrapper most-cancelled-scroll">
                 <table className="admin-table admin-table-most-cancelled">
@@ -1696,71 +1711,64 @@ const Dashboard = () => {
                   </thead>
 
                   <tbody>
-                    {paginatedCancelledCustomers.length > 0 ? (
-                      paginatedCancelledCustomers.map((customer) => {
-                        const isBusy = actionLoadingEmail === customer.email;
+  {paginatedCancelledCustomers.length > 0 ? (
+  paginatedCancelledCustomers.map((customer) => {
+    const isBusy = actionLoadingEmail === customer.email;
+    const hasLinkedCustomerId = Boolean(customer?.id);
 
-                        return (
-                          <tr key={customer.email}>
-                            <td>{customer.full_name || "N/A"}</td>
-                            <td>{customer.email || "N/A"}</td>
-                            <td>{customer.phone || "N/A"}</td>
-                            <td>
-                              <span className="cancel-count-badge">
-                                {customer.cancel_count}
-                              </span>
-                            </td>
-                            <td>
-                              {formatDateTime(customer.latest_cancelled_at)}
-                            </td>
-                            <td>
-                              <span
-                                className={getRiskBadgeClass(
-                                  customer.cancel_count,
-                                  customer.is_blocked,
-                                )}
-                              >
-                                {getRiskLabel(
-                                  customer.cancel_count,
-                                  customer.is_blocked,
-                                )}
-                              </span>
-                            </td>
-                            <td className="reason-cell">
-                              {customer.is_blocked
-                                ? customer.blocked_reason || "Blocked by admin"
-                                : customer.latest_reason ||
-                                  "No reason provided"}
-                            </td>
-                            <td>
-                              {customer.is_blocked ? (
-                                <button
-                                  className="admin-btn admin-btn-secondary admin-btn-inline"
-                                  onClick={() => openUnblockModal(customer)}
-                                  disabled={isBusy}
-                                >
-                                  {isBusy ? "Unblocking..." : "Unblock"}
-                                </button>
-                              ) : (
-                                <button
-                                  className="admin-btn admin-btn-danger admin-btn-inline"
-                                 onClick={() => openBlockModal(customer)}
-                                  disabled={isBusy}
-                                >
-                                  {isBusy ? "Blocking..." : "Block"}
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan="8" className="empty-state">
-                          No cancelled booking records found.
-                        </td>
-                      </tr>
-                    )}
+    return (
+      <tr key={customer.email}>
+        <td>{customer.full_name || "N/A"}</td>
+        <td>{customer.email || "N/A"}</td>
+        <td>{customer.phone || "N/A"}</td>
+        <td>
+          <span className="cancel-count-badge">{customer.cancel_count}</span>
+        </td>
+        <td>{formatDateTime(customer.latest_cancelled_at)}</td>
+        <td>
+          <span
+            className={getRiskBadgeClass(
+              customer.cancel_count,
+              customer.is_blocked,
+            )}
+          >
+            {getRiskLabel(customer.cancel_count, customer.is_blocked)}
+          </span>
+        </td>
+        <td className="reason-cell">
+          {customer.is_blocked
+            ? customer.blocked_reason || "Blocked by admin"
+            : customer.latest_reason || "No reason provided"}
+        </td>
+        <td>
+          {customer.is_blocked ? (
+            <button
+              className="admin-btn admin-btn-secondary admin-btn-inline"
+              onClick={() => openUnblockModal(customer)}
+              disabled={isBusy || !hasLinkedCustomerId}
+            >
+              {isBusy ? "Unblocking..." : "Unblock"}
+            </button>
+          ) : (
+            <button
+              className="admin-btn admin-btn-danger admin-btn-inline"
+              onClick={() => openBlockModal(customer)}
+              disabled={isBusy || !hasLinkedCustomerId}
+            >
+              {isBusy ? "Blocking..." : "Block"}
+            </button>
+          )}
+        </td>
+      </tr>
+    );
+  })
+) : (
+  <tr>
+    <td colSpan="8" className="empty-state">
+      No cancelled booking records found.
+    </td>
+  </tr>
+)}
                   </tbody>
                 </table>
               </div>
@@ -1788,12 +1796,10 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-            {blockModalOpen && (
+
+      {blockModalOpen && (
         <div className="dashboard-modal-overlay" onClick={closeBlockModal}>
-          <div
-            className="dashboard-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="dashboard-modal" onClick={(e) => e.stopPropagation()}>
             <div className="dashboard-modal-header">
               <div>
                 <h3>Block Customer</h3>
