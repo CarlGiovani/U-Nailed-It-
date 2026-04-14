@@ -1,11 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
@@ -748,20 +742,18 @@ const Booking = ({ services: servicesProp = [] }) => {
     return monthlyAvailabilityData ?? {};
   }, [formData.service_id, monthlyAvailabilityData]);
 
-  const {
-    data: availableSlotsData,
-    isFetching: availableSlotsFetching,
-  } = useQuery({
-    queryKey: ["availableSlots", formData.service_id, selectedDate],
-    queryFn: async () => {
-      if (!formData.service_id || !selectedDate) return [];
-      return await getAvailableSlots(formData.service_id, selectedDate);
-    },
-    enabled: !!formData.service_id && !!selectedDate,
-    staleTime: 1000 * 30,
-    gcTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: false,
-  });
+  const { data: availableSlotsData, isFetching: availableSlotsFetching } =
+    useQuery({
+      queryKey: ["availableSlots", formData.service_id, selectedDate],
+      queryFn: async () => {
+        if (!formData.service_id || !selectedDate) return [];
+        return await getAvailableSlots(formData.service_id, selectedDate);
+      },
+      enabled: !!formData.service_id && !!selectedDate,
+      staleTime: 1000 * 30,
+      gcTime: 1000 * 60 * 5,
+      refetchOnWindowFocus: false,
+    });
 
   const availableSlots = useMemo(() => {
     if (!formData.service_id || !selectedDate) return [];
@@ -1175,7 +1167,8 @@ const Booking = ({ services: servicesProp = [] }) => {
         if (!formData.service_id) errors.push("Please select a service.");
         if (!formData.service_category_id)
           errors.push("Please select a category.");
-        if (!formData.service_variant_id) errors.push("Please select a variant.");
+        if (!formData.service_variant_id)
+          errors.push("Please select a variant.");
       }
 
       if (targetStep === 2) {
@@ -1281,11 +1274,19 @@ const Booking = ({ services: servicesProp = [] }) => {
             .join("\n")
         : null;
 
-      const errorMessage =
+      const rawErrorMessage =
         backendData?.error ||
         formattedErrors ||
         error.message ||
         "Something went wrong while creating your booking.";
+
+      const normalizedErrorMessage = String(rawErrorMessage).toLowerCase();
+
+      const errorMessage =
+        normalizedErrorMessage.includes("restricted") ||
+        normalizedErrorMessage.includes("blocked")
+          ? "This email is currently restricted from making new bookings. Please contact support if you believe this is a mistake."
+          : rawErrorMessage;
 
       showAlert("Unable to Continue", errorMessage, null, "danger");
     } finally {
@@ -1352,7 +1353,10 @@ const Booking = ({ services: servicesProp = [] }) => {
           formData.email,
       );
       formDataObj.append("service_id", bookingPreview.service_id);
-      formDataObj.append("service_variant_id", bookingPreview.service_variant_id);
+      formDataObj.append(
+        "service_variant_id",
+        bookingPreview.service_variant_id,
+      );
       formDataObj.append("booking_date", bookingPreview.booking_date);
       formDataObj.append("booking_time", bookingPreview.booking_time);
       formDataObj.append("proof", file);
@@ -2260,7 +2264,9 @@ const Booking = ({ services: servicesProp = [] }) => {
                         <span className="meta-icon">🏷️</span>
                         <span>
                           {service.service_categories?.length || 0} categor
-                          {service.service_categories?.length !== 1 ? "ies" : "y"}
+                          {service.service_categories?.length !== 1
+                            ? "ies"
+                            : "y"}
                         </span>
                       </div>
                     </div>
@@ -2341,17 +2347,17 @@ const Booking = ({ services: servicesProp = [] }) => {
                       <span>
                         {formatCurrency(
                           Math.min(
-                            ...(category.service_variants?.map((v) => v.price) || [
-                              0,
-                            ]),
+                            ...(category.service_variants?.map(
+                              (v) => v.price,
+                            ) || [0]),
                           ),
                         )}{" "}
                         -{" "}
                         {formatCurrency(
                           Math.max(
-                            ...(category.service_variants?.map((v) => v.price) || [
-                              0,
-                            ]),
+                            ...(category.service_variants?.map(
+                              (v) => v.price,
+                            ) || [0]),
                           ),
                         )}
                       </span>
@@ -2500,7 +2506,9 @@ const Booking = ({ services: servicesProp = [] }) => {
         <div className="selected-service-summary premium compact-summary">
           <div className="summary-header">
             <h4>Selected Service</h4>
-            <div className="price-tag">{formatCurrency(formData.total_price)}</div>
+            <div className="price-tag">
+              {formatCurrency(formData.total_price)}
+            </div>
           </div>
 
           <div className="summary-details">

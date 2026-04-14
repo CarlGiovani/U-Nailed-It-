@@ -60,9 +60,24 @@ const AboutUs = () => {
             </div>
 
             <p className="owner-bio">
-              Hi, I’m Alliyah — your nail artist. I’m passionate about creating
-              clean, detailed, and high-quality nail sets that help every client
-              feel confident, polished, and cared for.
+              Hi, I’m Alliyah — your nail artist! I’m 21 years old and
+              passionate about creating high quality, detailed and clean nails.
+              Aside from nail artistry, I also love the arts from portrait
+              drawing to canvas painting using oil or acrylic. During my senior
+              high school years, I took the Visual Arts and Multimedia Arts
+              track, which helped me strengthen my creativity and attention to
+              detail. Before entering the nail industry, I used to do hair and
+              makeup services as a sideline. I graduated from the University of
+              Makati with a course in Customer Service in Communication, and I
+              was also a student artist and former member of the University of
+              Makati Chorale. Today, I’ve turned my creative passion into a
+              full-time business, helping clients express their individuality
+              and confidence through beautiful, high-quality nails. I’ve taken
+              three professional nail enhancement courses such as Nail Art,
+              Soft-Gel Extensions, and Hard/Builder Gel which helped me grow my
+              passion and skills in the nail industry. These experiences shaped
+              me into the professional nail artist I am today, and I’m proud to
+              be a member of Nail Artists Philippines!
             </p>
 
             <p className="owner-bio">

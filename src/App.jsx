@@ -65,6 +65,7 @@ function App() {
         <Route path="/booking" element={<BookingPage services={services} />} />
         <Route path="/review" element={<ReviewPage />} />
         <Route path="/cancel" element={<CancelBookingPage />} />
+        <Route path="/cancel-pending" element={<CancelBookingPage />} />
       </Routes>
     </BrowserRouter>
   );

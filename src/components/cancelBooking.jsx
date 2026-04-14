@@ -1,12 +1,18 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { cancelBookingPerToken } from "../../backend/bookingApi";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  cancelBookingPerToken,
+  cancelPendingApprovalBookingByToken,
+} from "../../backend/bookingApi";
 import "../styles/cancelBooking.css";
 
 const CancelBookingPage = () => {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
+
   const token = searchParams.get("token");
+  const isPendingCancelPage = location.pathname.includes("cancel-pending");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -23,6 +29,26 @@ const CancelBookingPage = () => {
     price_concern: "Price concern",
     other: "Other",
   };
+
+  const pageTitle = isPendingCancelPage
+    ? "Cancel Pending Booking?"
+    : "Cancel Booking?";
+
+  const pageNote = isPendingCancelPage
+    ? "This will cancel your booking request while it is still pending approval."
+    : "This will release your reserved appointment slot.";
+
+  const invalidLinkMessage = isPendingCancelPage
+    ? "This pending cancellation link is invalid or missing a token."
+    : "This cancellation link is invalid or missing a token.";
+
+  const genericErrorMessage = isPendingCancelPage
+    ? "Pending cancellation failed or link expired."
+    : "Cancellation failed or link expired.";
+
+  const successMessage = isPendingCancelPage
+    ? "Your pending booking request has been successfully cancelled."
+    : "Your appointment has been successfully cancelled.";
 
   const handleCancelBooking = async () => {
     if (!token) {
@@ -49,15 +75,14 @@ const CancelBookingPage = () => {
       setLoading(true);
       setError(null);
 
-      const data = await cancelBookingPerToken(token, finalReason);
+      const data = isPendingCancelPage
+        ? await cancelPendingApprovalBookingByToken(token, finalReason)
+        : await cancelBookingPerToken(token, finalReason);
+
       setBooking(data);
       setCancelled(true);
     } catch (err) {
-      setError(
-        err.response?.data?.error ||
-          err.message ||
-          "Cancellation failed or link expired.",
-      );
+      setError(err.response?.data?.error || err.message || genericErrorMessage);
     } finally {
       setLoading(false);
     }
@@ -70,7 +95,7 @@ const CancelBookingPage = () => {
           <div className="cancel-error">
             <h2>Invalid Link ❌</h2>
             <div className="cancel-divider"></div>
-            <p>This cancellation link is invalid or missing a token.</p>
+            <p>{invalidLinkMessage}</p>
 
             <button
               className="cancel-btn primary"
@@ -83,13 +108,11 @@ const CancelBookingPage = () => {
 
         {token && !cancelled && (
           <div className="cancel-confirm">
-            <h2>Cancel Booking?</h2>
+            <h2>{pageTitle}</h2>
             <div className="cancel-divider"></div>
 
-            <p>Are you sure you want to cancel your booking?</p>
-            <p className="cancel-note">
-              This will release your reserved appointment slot.
-            </p>
+            <p>Are you sure you want to continue?</p>
+            <p className="cancel-note">{pageNote}</p>
 
             <div className="cancel-form-group">
               <label htmlFor="reasonCode" className="cancel-label">
@@ -166,7 +189,7 @@ const CancelBookingPage = () => {
             <h2>Booking Cancelled 💔</h2>
             <div className="cancel-divider"></div>
 
-            <p>Your appointment has been successfully cancelled.</p>
+            <p>{successMessage}</p>
 
             <div className="booking-info">
               <h3>Cancelled Appointment</h3>

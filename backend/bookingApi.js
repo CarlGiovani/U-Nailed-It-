@@ -17,7 +17,7 @@ export const uploadPaymentProof = async (formData) => {
   const res = await api.post("/payments/upload", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
-  return res.data; // dapat may payment_intent_id
+  return res.data;
 };
 
 // CONFIRM BOOKING (Step 3) - PER BOOKING ID
@@ -28,10 +28,33 @@ export const confirmBooking = async (bookingId, paymentIntentId) => {
   return res.data;
 };
 
-// CANCEL BOOKING public - PER TOKEN
-export const cancelBookingPerToken = async (token , reason) => {
+// CANCEL APPROVED BOOKING - PER TOKEN
+export const cancelBookingPerToken = async (token, reason) => {
   const res = await api.put(
-    `/bookings/cancel?token=${encodeURIComponent(token)}`, {reason}
+    `/bookings/cancel?token=${encodeURIComponent(token)}`,
+    { reason },
   );
+  return res.data;
+};
+
+// CANCEL PENDING APPROVAL BOOKING - PER TOKEN
+export const cancelPendingApprovalBookingByToken = async (token, reason) => {
+  const res = await api.put(
+    `/bookings/cancel-pending?token=${encodeURIComponent(token)}`,
+    { reason },
+  );
+  return res.data;
+};
+
+// TEMPORARY: CANCEL PENDING APPROVAL BOOKING - PER BOOKING ID
+export const cancelPendingApprovalBooking = async (
+  bookingId,
+  reason,
+  customerEmail,
+) => {
+  const res = await api.patch(`/bookings/${bookingId}/cancel-pending`, {
+    reason,
+    customer_email: customerEmail,
+  });
   return res.data;
 };
