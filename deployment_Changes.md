@@ -143,8 +143,42 @@ select cron.schedule(
 );
 ```
 
+## 📊 5. Monthly Report Cron (1st Day of Every Month)
+
+Generates the previous month report and emails it to all admins.
+
+```sql
+select cron.schedule(
+  'monthly-report-job',
+  '10 0 1 * *',
+  $$
+  select net.http_post(
+    url := 'https://your-api-url.com/api/jobs/generate-monthly-report',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer YOUR_CRON_SECRET_MONTHLY_REPORT',
+      'Content-Type', 'application/json'
+    )
+  );
+  $$
+);
+
+
 ---
 
+# Verdict
+## Yes:
+**nasama mo na ang cron for monthly report**
+
+## Pero ayusin mo itong 6 things:
+- code block formatting
+- hardcoded secret
+- missing env variable
+- route name consistency
+- manual testing list
+- final status table
+- RPC statement wording
+
+Kapag gusto mo, aayusin ko na mismo yung **buong README mo into final polished version**.
 ## 🧪 Manual Testing (IMPORTANT)
 
 Test endpoints before enabling cron.
@@ -152,9 +186,11 @@ Test endpoints before enabling cron.
 ### Example:
 
 ```
+
 POST https://your-api-url.com/api/jobs/booking-expiry
 Authorization: Bearer YOUR_SECRET
-```
+
+````
 
 Test all:
 
@@ -173,7 +209,7 @@ To prevent duplicate jobs:
 if (process.env.ENABLE_LOCAL_CRON === "true") {
   startLocalCron();
 }
-```
+````
 
 Set in production:
 
