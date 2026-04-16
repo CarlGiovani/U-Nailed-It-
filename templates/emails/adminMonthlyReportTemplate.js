@@ -9,7 +9,7 @@ export const adminMonthlyReportTemplate = ({
   totalCustomers = 0,
   totalReviews = 0,
   topServices = [],
-  openLink = "",
+  comparison = null,
 }) => {
   const serviceRows = topServices.length
     ? topServices
@@ -30,6 +30,78 @@ export const adminMonthlyReportTemplate = ({
         </td>
       </tr>
     `;
+
+  const growthBadge = (value) => {
+    const sign = value > 0 ? "+" : "";
+    const color = value > 0 ? "#1f8f4e" : value < 0 ? "#c0392b" : "#555";
+    return `<span style="font-weight:bold;color:${color};">${sign}${Number(
+      value || 0,
+    ).toFixed(1)}%</span>`;
+  };
+
+  const comparisonSection = comparison
+    ? `
+      <h3 style="margin:0 0 14px 0; font-size:20px;">Growth vs ${comparison.previousLabel}</h3>
+
+      <table
+        width="100%"
+        cellpadding="0"
+        cellspacing="0"
+        style="
+          border-collapse:collapse;
+          margin:0 0 26px 0;
+          border:1px solid #eee;
+        "
+      >
+        <thead>
+          <tr>
+            <th style="padding:10px; border:1px solid #eee; background:#fff6f8;">Metric</th>
+            <th style="padding:10px; border:1px solid #eee; background:#fff6f8;">Current</th>
+            <th style="padding:10px; border:1px solid #eee; background:#fff6f8;">Previous</th>
+            <th style="padding:10px; border:1px solid #eee; background:#fff6f8;">Growth</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:10px;border:1px solid #eee;">Bookings</td>
+            <td style="padding:10px;border:1px solid #eee;">${totalBookings}</td>
+            <td style="padding:10px;border:1px solid #eee;">${comparison.previousTotalBookings}</td>
+            <td style="padding:10px;border:1px solid #eee;">${growthBadge(comparison.bookingsGrowth)}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px;border:1px solid #eee;">Revenue</td>
+            <td style="padding:10px;border:1px solid #eee;">PHP ${Number(totalRevenue || 0).toLocaleString()}</td>
+            <td style="padding:10px;border:1px solid #eee;">PHP ${Number(comparison.previousTotalRevenue || 0).toLocaleString()}</td>
+            <td style="padding:10px;border:1px solid #eee;">${growthBadge(comparison.revenueGrowth)}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px;border:1px solid #eee;">Completed</td>
+            <td style="padding:10px;border:1px solid #eee;">${completedBookings}</td>
+            <td style="padding:10px;border:1px solid #eee;">${comparison.previousCompletedBookings}</td>
+            <td style="padding:10px;border:1px solid #eee;">${growthBadge(comparison.completedGrowth)}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px;border:1px solid #eee;">Cancelled</td>
+            <td style="padding:10px;border:1px solid #eee;">${cancelledBookings}</td>
+            <td style="padding:10px;border:1px solid #eee;">${comparison.previousCancelledBookings}</td>
+            <td style="padding:10px;border:1px solid #eee;">${growthBadge(comparison.cancelledGrowth)}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px;border:1px solid #eee;">Customers</td>
+            <td style="padding:10px;border:1px solid #eee;">${totalCustomers}</td>
+            <td style="padding:10px;border:1px solid #eee;">${comparison.previousTotalCustomers}</td>
+            <td style="padding:10px;border:1px solid #eee;">${growthBadge(comparison.customersGrowth)}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px;border:1px solid #eee;">Reviews</td>
+            <td style="padding:10px;border:1px solid #eee;">${totalReviews}</td>
+            <td style="padding:10px;border:1px solid #eee;">${comparison.previousTotalReviews}</td>
+            <td style="padding:10px;border:1px solid #eee;">${growthBadge(comparison.reviewsGrowth)}</td>
+          </tr>
+        </tbody>
+      </table>
+    `
+    : "";
 
   return `
 <!DOCTYPE html>
@@ -140,6 +212,8 @@ export const adminMonthlyReportTemplate = ({
                 </tr>
               </table>
 
+              ${comparisonSection}
+
               <h3 style="margin:0 0 14px 0; font-size:20px;">Top Services</h3>
 
               <table
@@ -163,34 +237,6 @@ export const adminMonthlyReportTemplate = ({
                   ${serviceRows}
                 </tbody>
               </table>
-
-              ${
-                openLink
-                  ? `
-              <table align="center" cellpadding="0" cellspacing="0" style="margin-top:14px;">
-                <tr>
-                  <td style="background:#C9A24D; border-radius:30px;">
-                    <a
-                      href="${openLink}"
-                      style="
-                        display:inline-block;
-                        padding:14px 28px;
-                        color:#111111;
-                        font-size:14px;
-                        font-weight:bold;
-                        letter-spacing:0.4px;
-                        text-decoration:none;
-                        font-family:Arial, Helvetica, sans-serif;
-                      "
-                    >
-                      Open Admin Dashboard
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              `
-                  : ""
-              }
 
               <p style="margin:24px 0 0 0; font-size:13px; color:#666; line-height:1.7;">
                 This report was automatically generated by the UNAILEDIT system.

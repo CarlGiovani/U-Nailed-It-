@@ -1,12 +1,19 @@
 import { getAllAdmins } from "../../models/Admin_Gmail_Notif_Feature/adminGmailNotifModel.js";
 import * as monthlyReportModel from "../../models/Reports_Feature/monthlyReportModel.js";
 import { adminMonthlyReportTemplate } from "../../templates/emails/adminMonthlyReportTemplate.js";
+import { generateMonthlyReportPdf } from "../../utils/generateMonthlyReportPDF.js";
 import { supabaseAdmin } from "../../utils/supabaseClient.js";
 import sendEmail from "../Email_Feature/emailService.js";
 
+const formatDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const getPreviousMonthRange = () => {
   const now = new Date();
-
   const firstDayCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const lastDayPreviousMonth = new Date(firstDayCurrentMonth - 1);
   const firstDayPreviousMonth = new Date(
@@ -14,13 +21,6 @@ const getPreviousMonthRange = () => {
     lastDayPreviousMonth.getMonth(),
     1,
   );
-
-  const formatDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
 
   return {
     report_month: lastDayPreviousMonth.getMonth() + 1,
@@ -32,6 +32,27 @@ const getPreviousMonthRange = () => {
       year: "numeric",
     }),
   };
+};
+
+const getMonthBeforeRange = (currentPeriod) => {
+  const date = new Date(currentPeriod.period_start);
+
+  const firstDayPrev = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+  const lastDayPrev = new Date(date.getFullYear(), date.getMonth(), 0);
+
+  return {
+    period_start: formatDate(firstDayPrev),
+    period_end: formatDate(lastDayPrev),
+    label: firstDayPrev.toLocaleString("en-US", {
+      month: "long",
+      year: "numeric",
+    }),
+  };
+};
+
+const getGrowth = (current, previous) => {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return Number((((current - previous) / previous) * 100).toFixed(1));
 };
 
 const buildTopServices = (bookings = []) => {
@@ -93,6 +114,7 @@ const createAdminNotifications = async ({
 
 export const generateMonthlyReport = async () => {
   const period = getPreviousMonthRange();
+  const previousPeriod = getMonthBeforeRange(period);
 
   const existing = await monthlyReportModel.getMonthlyReportByPeriod({
     report_month: period.report_month,
@@ -107,7 +129,16 @@ export const generateMonthlyReport = async () => {
     };
   }
 
-  const [bookings, revenueLogs, customers, reviews] = await Promise.all([
+  const [
+    bookings,
+    revenueLogs,
+    customers,
+    reviews,
+    prevBookings,
+    prevRevenueLogs,
+    prevCustomers,
+    prevReviews,
+  ] = await Promise.all([
     monthlyReportModel.getMonthlyBookings({
       startDate: period.period_start,
       endDate: period.period_end,
@@ -123,6 +154,23 @@ export const generateMonthlyReport = async () => {
     monthlyReportModel.getMonthlyReviews({
       startDate: period.period_start,
       endDate: period.period_end,
+    }),
+
+    monthlyReportModel.getPreviousMonthBookings({
+      startDate: previousPeriod.period_start,
+      endDate: previousPeriod.period_end,
+    }),
+    monthlyReportModel.getPreviousMonthRevenueLogs({
+      startDate: previousPeriod.period_start,
+      endDate: previousPeriod.period_end,
+    }),
+    monthlyReportModel.getPreviousMonthCustomers({
+      startDate: previousPeriod.period_start,
+      endDate: previousPeriod.period_end,
+    }),
+    monthlyReportModel.getPreviousMonthReviews({
+      startDate: previousPeriod.period_start,
+      endDate: previousPeriod.period_end,
     }),
   ]);
 
@@ -141,6 +189,27 @@ export const generateMonthlyReport = async () => {
   const totalReviews = reviews.length;
   const topServices = buildTopServices(bookings);
 
+  const prevTotalBookings = prevBookings.length;
+  const prevCompletedBookings = prevBookings.filter(
+    (item) => item.status === "completed",
+  ).length;
+  const prevCancelledBookings = prevBookings.filter(
+    (item) => item.status === "cancelled",
+  ).length;
+  const prevTotalRevenue = prevRevenueLogs.reduce(
+    (sum, item) => sum + Number(item.amount || 0),
+    0,
+  );
+  const prevTotalCustomers = prevCustomers.length;
+  const prevTotalReviews = prevReviews.length;
+
+  const bookingsGrowth = getGrowth(totalBookings, prevTotalBookings);
+  const revenueGrowth = getGrowth(totalRevenue, prevTotalRevenue);
+  const completedGrowth = getGrowth(completedBookings, prevCompletedBookings);
+  const cancelledGrowth = getGrowth(cancelledBookings, prevCancelledBookings);
+  const customersGrowth = getGrowth(totalCustomers, prevTotalCustomers);
+  const reviewsGrowth = getGrowth(totalReviews, prevTotalReviews);
+
   const summary_json = {
     label: period.label,
     period_start: period.period_start,
@@ -152,6 +221,23 @@ export const generateMonthlyReport = async () => {
     totalCustomers,
     totalReviews,
     topServices,
+    comparison: {
+      previousLabel: previousPeriod.label,
+      previousPeriodStart: previousPeriod.period_start,
+      previousPeriodEnd: previousPeriod.period_end,
+      previousTotalBookings: prevTotalBookings,
+      previousCompletedBookings: prevCompletedBookings,
+      previousCancelledBookings: prevCancelledBookings,
+      previousTotalRevenue: prevTotalRevenue,
+      previousTotalCustomers: prevTotalCustomers,
+      previousTotalReviews: prevTotalReviews,
+      bookingsGrowth,
+      revenueGrowth,
+      completedGrowth,
+      cancelledGrowth,
+      customersGrowth,
+      reviewsGrowth,
+    },
   };
 
   const inserted = await monthlyReportModel.insertMonthlyReport({
@@ -168,6 +254,34 @@ export const generateMonthlyReport = async () => {
     total_customers: totalCustomers,
     total_reviews: totalReviews,
     summary_json,
+  });
+
+  const pdf = await generateMonthlyReportPdf({
+    label: period.label,
+    periodStart: period.period_start,
+    periodEnd: period.period_end,
+    totalBookings,
+    completedBookings,
+    cancelledBookings,
+    totalRevenue,
+    totalCustomers,
+    totalReviews,
+    topServices,
+    comparison: {
+      previousLabel: previousPeriod.label,
+      previousTotalBookings: prevTotalBookings,
+      previousCompletedBookings: prevCompletedBookings,
+      previousCancelledBookings: prevCancelledBookings,
+      previousTotalRevenue: prevTotalRevenue,
+      previousTotalCustomers: prevTotalCustomers,
+      previousTotalReviews: prevTotalReviews,
+      bookingsGrowth,
+      revenueGrowth,
+      completedGrowth,
+      cancelledGrowth,
+      customersGrowth,
+      reviewsGrowth,
+    },
   });
 
   const admins = await getAllAdmins();
@@ -190,33 +304,55 @@ export const generateMonthlyReport = async () => {
     related_id: inserted.id,
   });
 
-let updatedReport = null;
+  let updatedReport = null;
 
-if (recipients.length > 0) {
-  await sendEmail({
-    to: recipients.join(", "),
-    subject: `UNAILEDIT Monthly Report - ${period.label}`,
-    html: adminMonthlyReportTemplate({
-      label: period.label,
-      periodStart: period.period_start,
-      periodEnd: period.period_end,
-      totalBookings,
-      completedBookings,
-      cancelledBookings,
-      totalRevenue,
-      totalCustomers,
-      totalReviews,
-      topServices,
-      openLink: reportLink,
-    }),
-  });
+  if (recipients.length > 0) {
+    await sendEmail({
+      to: recipients.join(", "),
+      subject: `UNAILEDIT Monthly Report - ${period.label}`,
+      html: adminMonthlyReportTemplate({
+        label: period.label,
+        periodStart: period.period_start,
+        periodEnd: period.period_end,
+        totalBookings,
+        completedBookings,
+        cancelledBookings,
+        totalRevenue,
+        totalCustomers,
+        totalReviews,
+        topServices,
+        comparison: {
+          previousLabel: previousPeriod.label,
+          previousTotalBookings: prevTotalBookings,
+          previousCompletedBookings: prevCompletedBookings,
+          previousCancelledBookings: prevCancelledBookings,
+          previousTotalRevenue: prevTotalRevenue,
+          previousTotalCustomers: prevTotalCustomers,
+          previousTotalReviews: prevTotalReviews,
+          bookingsGrowth,
+          revenueGrowth,
+          completedGrowth,
+          cancelledGrowth,
+          customersGrowth,
+          reviewsGrowth,
+        },
+        openLink: reportLink,
+      }),
+      attachments: pdf?.filePath
+        ? [
+            {
+              filename: pdf.fileName,
+              path: pdf.filePath,
+            },
+          ]
+        : [],
+    });
 
-  updatedReport =
-    await monthlyReportModel.updateMonthlyReportEmailStatus({
+    updatedReport = await monthlyReportModel.updateMonthlyReportEmailStatus({
       id: inserted.id,
       emailed_to: recipients.join(", "),
     });
-}
+  }
 
   return {
     skipped: false,
@@ -226,6 +362,7 @@ if (recipients.length > 0) {
         : "Monthly report generated successfully, but no admin emails were found.",
     report: updatedReport || inserted,
     recipients,
+    pdf,
   };
 };
 

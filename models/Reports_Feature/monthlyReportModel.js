@@ -122,3 +122,52 @@ export const listMonthlyReports = async () => {
   if (error) throw new Error(error.message);
   return data || [];
 };
+
+
+export const getPreviousMonthBookings = async ({ startDate, endDate }) => {
+  const { data, error } = await supabaseAdmin
+    .from("bookings")
+    .select("id, status")
+    .gte("booking_date", startDate)
+    .lte("booking_date", endDate)
+    .order("booking_date", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return data || [];
+};
+
+export const getPreviousMonthRevenueLogs = async ({ startDate, endDate }) => {
+  const { data, error } = await supabaseAdmin
+    .from("revenue_logs")
+    .select("amount, created_at")
+    .gte("created_at", `${startDate}T00:00:00.000Z`)
+    .lte("created_at", `${endDate}T23:59:59.999Z`)
+    .order("created_at", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return data || [];
+};
+
+export const getPreviousMonthCustomers = async ({ startDate, endDate }) => {
+  const { data, error } = await supabaseAdmin
+    .from("customers")
+    .select("id, created_at")
+    .gte("created_at", `${startDate}T00:00:00.000Z`)
+    .lte("created_at", `${endDate}T23:59:59.999Z`)
+    .order("created_at", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return data || [];
+};
+
+export const getPreviousMonthReviews = async ({ startDate, endDate }) => {
+  const { data, error } = await supabaseAdmin
+    .from("reviews")
+    .select("id, created_at")
+    .gte("created_at", `${startDate}T00:00:00.000Z`)
+    .lte("created_at", `${endDate}T23:59:59.999Z`)
+    .order("created_at", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return data || [];
+};

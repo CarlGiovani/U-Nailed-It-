@@ -1,7 +1,7 @@
 import createEmailTransporter from "../../utils/createEmailTransporter.js";
 import { getCurrentEmailSettingsWithPassword } from "./emailSettingsService.js";
 
-const sendEmail = async ({ to, subject, html }) => {
+const sendEmail = async ({ to, subject, html, attachments = [] }) => {
   let config;
 
   try {
@@ -15,10 +15,12 @@ const sendEmail = async ({ to, subject, html }) => {
       };
     }
   } catch (error) {
-    console.warn("⚠️ Failed to load DB email settings, using fallback:", error.message);
+    console.warn(
+      "⚠️ Failed to load DB email settings, using fallback:",
+      error.message,
+    );
   }
 
-  // fallback to .env if no DB config
   if (!config) {
     config = {
       sender_name: "UNailed It",
@@ -37,6 +39,7 @@ const sendEmail = async ({ to, subject, html }) => {
     to,
     subject,
     html,
+    attachments,
   });
 };
 
