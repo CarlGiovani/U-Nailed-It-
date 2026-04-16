@@ -1,16 +1,16 @@
 import express from "express";
 import {
+  listMonthlyReports,
   runBookingExpiryManually,
-  runSlotBlockJob,
-  runSlotCleanupJob,
-   listMonthlyReports,
   runMonthlyReportJob,
   runMonthlyReportManually,
+  runSlotBlockJob,
+  runSlotCleanupJob,
 } from "../../controllers/Cron_Job_Feature/cronJobController.js";
 
 const router = express.Router();
 
-router.post("/send-booking-reminders", runBookingExpiryManually);
+router.post("/booking-expiry", runBookingExpiryManually);
 router.post("/block-past-slots", runSlotBlockJob);
 router.post("/cleanup-old-slots", runSlotCleanupJob);
 router.post("/generate-monthly-report", runMonthlyReportJob);
