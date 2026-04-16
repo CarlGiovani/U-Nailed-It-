@@ -28,7 +28,6 @@
   min-width: 0;
 }
 
-/* Prevent child overflow inside grid/flex */
 .dashboard-container > *,
 .dashboard-page-header > *,
 .stats-grid > *,
@@ -231,16 +230,99 @@
   width: 100%;
 }
 
+.charts-grid-enhanced {
+  align-items: stretch;
+}
+
 .chart-card {
   min-height: 360px;
   overflow: hidden;
   padding: 20px;
   border-radius: 22px;
+  position: relative;
+}
+
+.chart-card-wide {
+  grid-column: span 2;
 }
 
 .chart-card h3 {
   margin: 0;
   font-weight: 700;
+}
+
+.status-chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 250px;
+}
+
+.donut-center-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.donut-center-label strong {
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 800;
+  color: #111827;
+}
+
+.donut-center-label span {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.chart-legend-list {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.chart-legend-item {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #fafafa;
+  border: 1px solid #eef2f7;
+}
+
+.chart-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+}
+
+.chart-legend-name {
+  color: #374151;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.chart-legend-value {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.chart-empty-note {
+  padding: 14px;
+  border: 1px dashed #d1d5db;
+  border-radius: 14px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 13px;
 }
 
 /* ======================================================
@@ -698,42 +780,7 @@
 }
 
 /* ======================================================
-   PRINT REPORT
-====================================================== */
-
-.print-report {
-  padding: 40px;
-  font-family: Arial, sans-serif;
-}
-
-.print-report h1 {
-  margin-bottom: 10px;
-  text-align: center;
-}
-
-.print-report h2 {
-  margin-top: 30px;
-}
-
-.report-table {
-  width: 100%;
-  margin-top: 10px;
-  border-collapse: collapse;
-}
-
-.report-table th,
-.report-table td {
-  padding: 8px;
-  border: 1px solid #ddd;
-}
-
-.report-table th {
-  background: #f5f5f5;
-}
-
-/* ======================================================
    MOBILE BOOKING CARD STRUCTURE
-   (kept for fallback / future use)
 ====================================================== */
 
 .booking-mobile-list {
@@ -800,617 +847,6 @@
 }
 
 /* ======================================================
-   DARK MODE
-====================================================== */
-
-body.dark {
-  background: #121212;
-}
-
-body.dark .dashboard-title {
-  color: #f9fafb;
-}
-
-body.dark .dashboard-subtitle,
-body.dark .section-subtext,
-body.dark .card-heading span,
-body.dark .pagination-indicator {
-  color: #9ca3af;
-}
-
-body.dark .dashboard-refresh-banner {
-  border-color: rgba(212, 175, 55, 0.24);
-  background: rgba(212, 175, 55, 0.12);
-  color: #f4d46b;
-}
-
-body.dark .card-surface,
-body.dark .chart-card,
-body.dark .activity-card,
-body.dark .table-card,
-body.dark .stat-card,
-body.dark .empty-panel,
-body.dark .booking-mobile-card {
-  border-color: #2b2b2b;
-  background: #1f1f1f;
-  color: #ffffff;
-}
-
-body.dark .section-header h2,
-body.dark .section-header h3,
-body.dark .card-heading h3,
-body.dark .activity-title,
-body.dark .admin-table td,
-body.dark .stat-card p,
-body.dark .booking-mobile-id,
-body.dark .booking-mobile-field p {
-  color: #f9fafb;
-}
-
-body.dark .section-header span {
-  border-color: #333;
-  background: #262626;
-  color: #bbb;
-}
-
-body.dark .stat-label,
-body.dark .stat-card h3,
-body.dark .booking-mobile-label {
-  color: #a1a1aa;
-}
-
-body.dark .activity-item {
-  border-color: #2f2f2f;
-  background: linear-gradient(180deg, #232323 0%, #1d1d1d 100%);
-}
-
-body.dark .activity-item:hover {
-  border-color: #3a3a3a;
-  background: #242424;
-}
-
-body.dark .activity-desc {
-  color: #c4c4c4;
-}
-
-body.dark .activity-time,
-body.dark .empty-state {
-  color: #9ca3af;
-}
-
-body.dark .admin-table {
-  background: #1f1f1f;
-}
-
-body.dark .admin-table thead,
-body.dark .admin-table th {
-  background: #262626;
-  color: #bdbdbd;
-}
-
-body.dark .admin-table th,
-body.dark .admin-table td {
-  border-bottom: 1px solid #303030;
-}
-
-body.dark .admin-table tbody tr:hover {
-  background: #262626;
-}
-
-body.dark .table-wrapper::-webkit-scrollbar-track,
-body.dark .recent-bookings-scroll::-webkit-scrollbar-track,
-body.dark .activity-feed::-webkit-scrollbar-track {
-  background: #202020;
-}
-
-body.dark .table-wrapper::-webkit-scrollbar-thumb,
-body.dark .recent-bookings-scroll::-webkit-scrollbar-thumb,
-body.dark .activity-feed::-webkit-scrollbar-thumb {
-  background: #4b5563;
-}
-
-body.dark .table-wrapper::-webkit-scrollbar-thumb:hover,
-body.dark .recent-bookings-scroll::-webkit-scrollbar-thumb:hover,
-body.dark .activity-feed::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
-}
-
-body.dark .pagination button {
-  border-color: #3a3a3a;
-  background: #262626;
-  color: #f9fafb;
-}
-
-body.dark .pagination button:hover:not(:disabled) {
-  background: #2d2d2d;
-}
-
-body.dark .pagination button:disabled {
-  background: #1d1d1d;
-  color: #6b7280;
-}
-
-body.dark .admin-btn-secondary {
-  border-color: #3a3a3a;
-  background: #262626;
-  color: #f9fafb;
-}
-
-body.dark .admin-btn-secondary:hover:not(:disabled) {
-  background: #2f2f2f;
-}
-
-/* ======================================================
-   RESPONSIVE
-====================================================== */
-
-@media (max-width: 1200px) {
-  .dashboard-container {
-    max-width: 100%;
-    padding: 0 16px;
-  }
-
-  .stats-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .charts-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .dashboard-main-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 992px) {
-  .dashboard-shell {
-    padding: 6px 0 24px;
-  }
-
-  .dashboard-title {
-    font-size: 28px;
-  }
-
-  .dashboard-subtitle {
-    max-width: 100%;
-  }
-
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-  }
-
-  .charts-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .chart-card {
-    min-height: 320px;
-  }
-
-  .activity-feed,
-  .recent-bookings-scroll {
-    max-height: 380px;
-  }
-}
-
-@media (max-width: 768px) {
-  .dashboard-shell {
-    width: 100%;
-    padding: 4px 0 20px;
-  }
-
-  .dashboard-container {
-    width: 100%;
-    max-width: 100%;
-    gap: 16px;
-    padding: 0 12px;
-  }
-
-  .dashboard-page-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 14px;
-  }
-
-  .dashboard-title {
-    font-size: 24px;
-    line-height: 1.2;
-  }
-
-  .dashboard-subtitle {
-    margin-top: 6px;
-    font-size: 13px;
-    line-height: 1.5;
-  }
-
-  .dashboard-refresh-banner {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-  }
-
-  .dashboard-actions,
-  .dashboard-actions-top {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: stretch;
-    gap: 10px;
-    width: 100%;
-  }
-
-  .dashboard-actions .admin-btn,
-  .dashboard-actions-top .admin-btn {
-    width: 100%;
-    flex: unset;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .stat-card {
-    padding: 16px;
-    border-radius: 18px;
-  }
-
-  .stat-label {
-    margin-bottom: 10px;
-    font-size: 11px;
-  }
-
-  .stat-card h3 {
-    margin-bottom: 6px;
-    font-size: 13px;
-  }
-
-  .stat-card p {
-    font-size: 24px;
-  }
-
-  .charts-grid {
-    gap: 14px;
-  }
-
-  .chart-card,
-  .activity-card,
-  .table-card,
-  .recent-bookings.card-surface {
-    border-radius: 18px;
-  }
-
-  .chart-card {
-    min-height: 280px;
-    padding: 14px;
-  }
-
-  .activity-card {
-    padding: 16px;
-  }
-
-  .activity-feed {
-    gap: 12px;
-    max-height: 320px;
-    padding-right: 2px;
-  }
-
-  .activity-item {
-    gap: 12px;
-    padding: 12px;
-    border-radius: 14px;
-  }
-
-  .activity-title {
-    font-size: 13px;
-  }
-
-  .activity-desc {
-    font-size: 12px;
-    line-height: 1.5;
-  }
-
-  .activity-time {
-    font-size: 11px;
-  }
-
-  .section-header,
-  .card-heading {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .section-header h2,
-  .section-header h3,
-  .card-heading h3 {
-    font-size: 16px;
-  }
-
-  .section-subtext,
-  .card-heading span,
-  .section-header span {
-    font-size: 12px;
-  }
-
-  /* Recent Bookings: desktop table remains visible on mobile */
-  .recent-bookings.card-surface {
-    padding: 16px;
-    overflow: hidden;
-  }
-
-  .recent-bookings-desktop {
-    display: block;
-  }
-
-  .recent-bookings-mobile {
-    display: none;
-  }
-
-  .table-wrapper {
-    border-radius: 18px;
-  }
-
-  .recent-bookings-scroll,
-  .table-wrapper {
-    width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .recent-bookings-scroll {
-    max-height: 320px;
-  }
-
-  .recent-bookings-scroll::-webkit-scrollbar,
-  .table-wrapper::-webkit-scrollbar {
-    height: 6px;
-  }
-
-  .recent-bookings-scroll::-webkit-scrollbar-thumb,
-  .table-wrapper::-webkit-scrollbar-thumb {
-    background: #d4af37;
-    border-radius: 999px;
-  }
-
-  .admin-table {
-    width: max-content;
-    min-width: 760px;
-  }
-
-  .admin-table th,
-  .admin-table td {
-    padding: 12px;
-    font-size: 12px;
-    white-space: nowrap;
-  }
-
-  .status {
-    min-height: 28px;
-    padding: 5px 10px;
-    font-size: 11px;
-  }
-
-  .admin-btn {
-    min-height: 44px;
-    padding: 11px 16px;
-    border-radius: 12px;
-    font-size: 13px;
-  }
-
-  .pagination {
-    justify-content: center;
-    gap: 8px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .pagination button {
-    min-width: 76px;
-    height: 38px;
-    padding: 0 12px;
-    flex-shrink: 0;
-    font-size: 12px;
-  }
-
-  .pagination-indicator {
-    width: auto;
-    flex-shrink: 0;
-    font-size: 12px;
-    white-space: nowrap;
-  }
-
-  .empty-panel,
-  .empty-state {
-    padding: 20px 14px;
-    font-size: 13px;
-  }
-
-  .booking-mobile-card {
-    padding: 12px;
-    border-radius: 16px;
-  }
-
-  .booking-mobile-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .booking-mobile-id {
-    font-size: 14px;
-  }
-
-  .booking-mobile-field p {
-    font-size: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .dashboard-container {
-    gap: 14px;
-    padding: 0 10px;
-  }
-
-  .dashboard-title {
-    font-size: 21px;
-  }
-
-  .dashboard-subtitle {
-    font-size: 12px;
-  }
-
-  .dashboard-refresh-banner {
-    padding: 9px 10px;
-    font-size: 11px;
-  }
-
-  .stat-card {
-    padding: 14px;
-    border-radius: 16px;
-  }
-
-  .stat-card p {
-    font-size: 22px;
-  }
-
-  .chart-card {
-    min-height: 240px;
-    padding: 12px;
-    border-radius: 16px;
-  }
-
-  .activity-card,
-  .table-card,
-  .recent-bookings.card-surface {
-    border-radius: 16px;
-  }
-
-  .activity-card {
-    padding: 14px;
-  }
-
-  .activity-feed {
-    max-height: 300px;
-  }
-
-  .activity-item {
-    gap: 10px;
-    padding: 10px;
-  }
-
-  .activity-icon {
-    width: 10px;
-    height: 10px;
-    margin-top: 5px;
-  }
-
-  .activity-title {
-    font-size: 12px;
-  }
-
-  .activity-desc {
-    font-size: 11px;
-  }
-
-  .activity-time {
-    font-size: 10px;
-  }
-
-  .booking-mobile-card {
-    padding: 11px;
-  }
-
-  .booking-mobile-top {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .booking-mobile-id {
-    font-size: 13px;
-  }
-
-  .booking-mobile-label {
-    font-size: 10px;
-  }
-
-  .booking-mobile-field p {
-    font-size: 11px;
-  }
-
-  .admin-table {
-    min-width: 560px;
-  }
-
-  .admin-table th,
-  .admin-table td {
-    padding: 10px;
-    font-size: 11px;
-  }
-
-  .status {
-    min-height: 26px;
-    padding: 4px 8px;
-    font-size: 10px;
-  }
-
-  .admin-btn,
-  .pagination button {
-    min-height: 40px;
-    font-size: 12px;
-  }
-
-  .pagination {
-    gap: 6px;
-  }
-
-  .empty-panel,
-  .empty-state {
-    padding: 18px 12px;
-    font-size: 12px;
-  }
-}
-
-@media (max-width: 360px) {
-  .dashboard-container {
-    padding: 0 8px;
-  }
-
-  .dashboard-title {
-    font-size: 19px;
-  }
-
-  .stat-card,
-  .chart-card,
-  .activity-card,
-  .recent-bookings.card-surface {
-    border-radius: 14px;
-  }
-
-  .stat-card p {
-    font-size: 20px;
-  }
-
-  .admin-btn {
-    min-height: 38px;
-    padding: 10px 12px;
-    font-size: 11px;
-  }
-
-  .pagination button {
-    min-width: 64px;
-    height: 36px;
-    padding: 0 10px;
-    font-size: 11px;
-  }
-}
-
-/* ======================================================
    DASHBOARD ACTION FEEDBACK
 ====================================================== */
 
@@ -1447,7 +883,7 @@ body.dark .admin-btn-secondary:hover:not(:disabled) {
 }
 
 .most-cancelled-scroll {
-  max-height: 460px;
+  max-height: 420px;
   overflow-x: auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -1472,32 +908,37 @@ body.dark .admin-btn-secondary:hover:not(:disabled) {
   background: #9ca3af;
 }
 
-.admin-table-wide {
+.admin-table-most-cancelled {
+  width: 100%;
   min-width: 1080px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #ffffff;
 }
 
 .cancel-count-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 38px;
-  min-height: 32px;
-  padding: 6px 10px;
+  min-width: 36px;
+  min-height: 30px;
+  padding: 4px 10px;
   border-radius: 999px;
   background: linear-gradient(
     135deg,
-    rgba(212, 175, 55, 0.15),
+    rgba(212, 175, 55, 0.14),
     rgba(255, 105, 180, 0.12)
   );
-  color: #7c5b00;
+  color: #8a6b00;
   font-size: 12px;
   font-weight: 800;
 }
 
 .reason-cell {
   min-width: 220px;
+  max-width: 260px;
   white-space: normal !important;
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
 .risk-badge {
@@ -1538,362 +979,6 @@ body.dark .admin-btn-secondary:hover:not(:disabled) {
 }
 
 .admin-btn-inline {
-  min-width: 110px;
-  min-height: 40px;
-  padding: 10px 14px;
-  font-size: 13px;
-  border-radius: 12px;
-}
-
-.admin-btn-danger {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.22);
-  color: #ffffff;
-}
-
-.admin-btn-danger:hover:not(:disabled) {
-  box-shadow: 0 16px 28px rgba(239, 68, 68, 0.28);
-}
-
-.cancelled-mobile-card {
-  width: 100%;
-  padding: 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
-}
-
-.cancelled-mobile-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.cancelled-mobile-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.cancelled-mobile-actions {
-  margin-top: 14px;
-  display: flex;
-  width: 100%;
-}
-
-.cancelled-mobile-actions .admin-btn {
-  width: 100%;
-}
-
-/* ======================================================
-   DARK MODE ADDITIONS
-====================================================== */
-
-body.dark .dashboard-action-banner {
-  border-color: rgba(255, 105, 180, 0.22);
-  background: rgba(255, 105, 180, 0.1);
-  color: #f9a8d4;
-}
-
-body.dark .cancel-count-badge {
-  background: linear-gradient(
-    135deg,
-    rgba(212, 175, 55, 0.18),
-    rgba(255, 105, 180, 0.16)
-  );
-  color: #f5d76e;
-}
-
-body.dark .risk-badge.normal {
-  background: rgba(23, 92, 211, 0.16);
-  color: #93c5fd;
-  border-color: rgba(147, 197, 253, 0.24);
-}
-
-body.dark .risk-badge.warning {
-  background: rgba(245, 158, 11, 0.14);
-  color: #fcd34d;
-  border-color: rgba(252, 211, 77, 0.22);
-}
-
-body.dark .risk-badge.danger {
-  background: rgba(244, 63, 94, 0.14);
-  color: #fda4af;
-  border-color: rgba(253, 164, 175, 0.2);
-}
-
-body.dark .risk-badge.blocked {
-  background: rgba(239, 68, 68, 0.14);
-  color: #fca5a5;
-  border-color: rgba(252, 165, 165, 0.2);
-}
-
-body.dark .cancelled-mobile-card {
-  border-color: #2b2b2b;
-  background: #1f1f1f;
-}
-
-body.dark .most-cancelled-scroll::-webkit-scrollbar-track {
-  background: #202020;
-}
-
-body.dark .most-cancelled-scroll::-webkit-scrollbar-thumb {
-  background: #4b5563;
-}
-
-body.dark .most-cancelled-scroll::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
-}
-
-/* ======================================================
-   RESPONSIVE ADDITIONS
-====================================================== */
-
-@media (max-width: 768px) {
-  .most-cancelled {
-    padding: 16px;
-    border-radius: 18px;
-  }
-
-  .most-cancelled-desktop {
-    display: none;
-  }
-
-  .most-cancelled-mobile {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .cancelled-mobile-card {
-    padding: 14px;
-    border-radius: 16px;
-  }
-
-  .cancelled-mobile-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .cancelled-mobile-top {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .admin-btn-inline {
-    min-width: 96px;
-    min-height: 38px;
-    font-size: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .dashboard-action-banner {
-    padding: 10px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-  }
-
-  .most-cancelled {
-    padding: 14px;
-    border-radius: 16px;
-  }
-
-  .cancelled-mobile-card {
-    padding: 12px;
-  }
-
-  .risk-badge {
-    min-height: 28px;
-    padding: 5px 10px;
-    font-size: 11px;
-  }
-
-  .cancel-count-badge {
-    min-width: 34px;
-    min-height: 28px;
-    font-size: 11px;
-  }
-}
-
-/* ======================================================
-   MOST CANCELLED MOBILE - MATCH RECENT BOOKINGS STYLE
-====================================================== */
-
-.cancelled-booking-mobile-card {
-  border-radius: 18px;
-  border: 1px solid #e5e7eb;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
-}
-
-.cancelled-booking-mobile-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.cancelled-mobile-actions-clean {
-  margin-top: 14px;
-  display: flex;
-  width: 100%;
-}
-
-.cancelled-mobile-actions-clean .admin-btn {
-  width: 100%;
-}
-
-.cancelled-booking-mobile-card .booking-mobile-field p {
-  white-space: normal;
-  word-break: break-word;
-}
-
-.cancelled-booking-mobile-card .risk-badge {
-  flex-shrink: 0;
-}
-
-@media (max-width: 768px) {
-  .most-cancelled {
-    padding: 16px;
-    border-radius: 18px;
-  }
-
-  .most-cancelled-desktop {
-    display: none;
-  }
-
-  .most-cancelled-mobile {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .cancelled-booking-mobile-card {
-    padding: 14px;
-    border-radius: 16px;
-  }
-
-  .cancelled-booking-mobile-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .cancelled-mobile-actions-clean {
-    margin-top: 12px;
-  }
-
-  .cancelled-mobile-actions-clean .admin-btn {
-    width: 100%;
-    min-height: 44px;
-  }
-}
-
-@media (max-width: 480px) {
-  .cancelled-booking-mobile-card {
-    padding: 12px;
-    border-radius: 16px;
-  }
-
-  .cancelled-booking-mobile-card .booking-mobile-top {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .cancelled-booking-mobile-card .booking-mobile-id {
-    font-size: 13px;
-  }
-
-  .cancelled-booking-mobile-card .booking-mobile-label {
-    font-size: 10px;
-  }
-
-  .cancelled-booking-mobile-card .booking-mobile-field p {
-    font-size: 11px;
-    line-height: 1.5;
-  }
-
-  .cancelled-mobile-actions-clean .admin-btn {
-    min-height: 42px;
-    font-size: 12px;
-  }
-}
-
-/* ======================================================
-   DARK MODE SUPPORT
-====================================================== */
-
-body.dark .cancelled-booking-mobile-card {
-  border-color: #2b2b2b;
-  background: #1f1f1f;
-}
-
-/* ======================================================
-   MOST CANCELLED TABLE - SAME STYLE AS RECENT BOOKINGS
-====================================================== */
-
-.admin-table-most-cancelled {
-  width: 100%;
-  min-width: 1080px;
-  border-collapse: separate;
-  border-spacing: 0;
-  background: #ffffff;
-}
-
-.most-cancelled-scroll {
-  max-height: 420px;
-  overflow-x: auto;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.most-cancelled-scroll::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.most-cancelled-scroll::-webkit-scrollbar-track {
-  background: #f3f4f6;
-  border-radius: 999px;
-}
-
-.most-cancelled-scroll::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 999px;
-}
-
-.most-cancelled-scroll::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
-
-.cancel-count-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 36px;
-  min-height: 30px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: linear-gradient(
-    135deg,
-    rgba(212, 175, 55, 0.14),
-    rgba(255, 105, 180, 0.12)
-  );
-  color: #8a6b00;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.reason-cell {
-  min-width: 220px;
-  max-width: 260px;
-  white-space: normal !important;
-  line-height: 1.5;
-}
-
-.admin-btn-inline {
   min-width: 92px;
   min-height: 38px;
   padding: 8px 12px;
@@ -1909,131 +994,6 @@ body.dark .cancelled-booking-mobile-card {
 
 .admin-btn-danger:hover:not(:disabled) {
   box-shadow: 0 16px 28px rgba(239, 68, 68, 0.28);
-}
-
-/* ======================================================
-   MOBILE - MAKE IT MATCH RECENT BOOKINGS
-====================================================== */
-
-@media (max-width: 768px) {
-  .most-cancelled {
-    padding: 16px;
-    overflow: hidden;
-  }
-
-  .most-cancelled-desktop {
-    display: block;
-  }
-
-  .most-cancelled-scroll,
-  .most-cancelled .table-wrapper {
-    width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .most-cancelled-scroll {
-    max-height: 320px;
-  }
-
-  .most-cancelled-scroll::-webkit-scrollbar {
-    height: 6px;
-  }
-
-  .most-cancelled-scroll::-webkit-scrollbar-thumb {
-    background: #d4af37;
-    border-radius: 999px;
-  }
-
-  .admin-table-most-cancelled {
-    width: max-content;
-    min-width: 980px;
-  }
-
-  .admin-table-most-cancelled th,
-  .admin-table-most-cancelled td {
-    padding: 12px;
-    font-size: 12px;
-    white-space: nowrap;
-  }
-
-  .reason-cell {
-    min-width: 220px;
-    max-width: 220px;
-    white-space: normal !important;
-  }
-
-  .admin-btn-inline {
-    min-width: 86px;
-    min-height: 36px;
-    padding: 7px 10px;
-    font-size: 11px;
-  }
-
-  .cancel-count-badge {
-    min-width: 32px;
-    min-height: 28px;
-    font-size: 11px;
-  }
-}
-
-@media (max-width: 480px) {
-  .most-cancelled {
-    padding: 14px;
-    border-radius: 16px;
-  }
-
-  .admin-table-most-cancelled {
-    min-width: 920px;
-  }
-
-  .admin-table-most-cancelled th,
-  .admin-table-most-cancelled td {
-    padding: 10px;
-    font-size: 11px;
-  }
-
-  .admin-btn-inline {
-    min-width: 78px;
-    min-height: 34px;
-    font-size: 10px;
-  }
-
-  .cancel-count-badge {
-    min-width: 30px;
-    min-height: 26px;
-    font-size: 10px;
-  }
-}
-
-/* ======================================================
-   DARK MODE
-====================================================== */
-
-body.dark .admin-table-most-cancelled {
-  background: #1f1f1f;
-}
-
-body.dark .most-cancelled-scroll::-webkit-scrollbar-track {
-  background: #202020;
-}
-
-body.dark .most-cancelled-scroll::-webkit-scrollbar-thumb {
-  background: #4b5563;
-}
-
-body.dark .most-cancelled-scroll::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
-}
-
-body.dark .cancel-count-badge {
-  background: linear-gradient(
-    135deg,
-    rgba(212, 175, 55, 0.18),
-    rgba(255, 105, 180, 0.16)
-  );
-  color: #f5d76e;
 }
 
 /* ======================================================
@@ -2230,8 +1190,201 @@ body.dark .cancel-count-badge {
 }
 
 /* ======================================================
-   DARK MODE - MODAL
+   DARK MODE
 ====================================================== */
+
+body.dark {
+  background: #121212;
+}
+
+body.dark .dashboard-title {
+  color: #f9fafb;
+}
+
+body.dark .dashboard-subtitle,
+body.dark .section-subtext,
+body.dark .card-heading span,
+body.dark .pagination-indicator,
+body.dark .chart-empty-note {
+  color: #9ca3af;
+}
+
+body.dark .dashboard-refresh-banner {
+  border-color: rgba(212, 175, 55, 0.24);
+  background: rgba(212, 175, 55, 0.12);
+  color: #f4d46b;
+}
+
+body.dark .card-surface,
+body.dark .chart-card,
+body.dark .activity-card,
+body.dark .table-card,
+body.dark .stat-card,
+body.dark .empty-panel,
+body.dark .booking-mobile-card {
+  border-color: #2b2b2b;
+  background: #1f1f1f;
+  color: #ffffff;
+}
+
+body.dark .section-header h2,
+body.dark .section-header h3,
+body.dark .card-heading h3,
+body.dark .activity-title,
+body.dark .admin-table td,
+body.dark .stat-card p,
+body.dark .booking-mobile-id,
+body.dark .booking-mobile-field p,
+body.dark .donut-center-label strong,
+body.dark .chart-legend-name,
+body.dark .chart-legend-value {
+  color: #f9fafb;
+}
+
+body.dark .donut-center-label span {
+  color: #a1a1aa;
+}
+
+body.dark .section-header span {
+  border-color: #333;
+  background: #262626;
+  color: #bbb;
+}
+
+body.dark .stat-label,
+body.dark .stat-card h3,
+body.dark .booking-mobile-label {
+  color: #a1a1aa;
+}
+
+body.dark .activity-item {
+  border-color: #2f2f2f;
+  background: linear-gradient(180deg, #232323 0%, #1d1d1d 100%);
+}
+
+body.dark .activity-item:hover {
+  border-color: #3a3a3a;
+  background: #242424;
+}
+
+body.dark .activity-desc {
+  color: #c4c4c4;
+}
+
+body.dark .activity-time,
+body.dark .empty-state {
+  color: #9ca3af;
+}
+
+body.dark .admin-table,
+body.dark .admin-table-most-cancelled {
+  background: #1f1f1f;
+}
+
+body.dark .admin-table thead,
+body.dark .admin-table th {
+  background: #262626;
+  color: #bdbdbd;
+}
+
+body.dark .admin-table th,
+body.dark .admin-table td {
+  border-bottom: 1px solid #303030;
+}
+
+body.dark .admin-table tbody tr:hover {
+  background: #262626;
+}
+
+body.dark .table-wrapper::-webkit-scrollbar-track,
+body.dark .recent-bookings-scroll::-webkit-scrollbar-track,
+body.dark .activity-feed::-webkit-scrollbar-track,
+body.dark .most-cancelled-scroll::-webkit-scrollbar-track {
+  background: #202020;
+}
+
+body.dark .table-wrapper::-webkit-scrollbar-thumb,
+body.dark .recent-bookings-scroll::-webkit-scrollbar-thumb,
+body.dark .activity-feed::-webkit-scrollbar-thumb,
+body.dark .most-cancelled-scroll::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+body.dark .table-wrapper::-webkit-scrollbar-thumb:hover,
+body.dark .recent-bookings-scroll::-webkit-scrollbar-thumb:hover,
+body.dark .activity-feed::-webkit-scrollbar-thumb:hover,
+body.dark .most-cancelled-scroll::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+body.dark .pagination button {
+  border-color: #3a3a3a;
+  background: #262626;
+  color: #f9fafb;
+}
+
+body.dark .pagination button:hover:not(:disabled) {
+  background: #2d2d2d;
+}
+
+body.dark .pagination button:disabled {
+  background: #1d1d1d;
+  color: #6b7280;
+}
+
+body.dark .admin-btn-secondary {
+  border-color: #3a3a3a;
+  background: #262626;
+  color: #f9fafb;
+}
+
+body.dark .admin-btn-secondary:hover:not(:disabled) {
+  background: #2f2f2f;
+}
+
+body.dark .dashboard-action-banner {
+  border-color: rgba(255, 105, 180, 0.22);
+  background: rgba(255, 105, 180, 0.1);
+  color: #f9a8d4;
+}
+
+body.dark .cancel-count-badge {
+  background: linear-gradient(
+    135deg,
+    rgba(212, 175, 55, 0.18),
+    rgba(255, 105, 180, 0.16)
+  );
+  color: #f5d76e;
+}
+
+body.dark .risk-badge.normal {
+  background: rgba(23, 92, 211, 0.16);
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.24);
+}
+
+body.dark .risk-badge.warning {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fcd34d;
+  border-color: rgba(252, 211, 77, 0.22);
+}
+
+body.dark .risk-badge.danger {
+  background: rgba(244, 63, 94, 0.14);
+  color: #fda4af;
+  border-color: rgba(253, 164, 175, 0.2);
+}
+
+body.dark .risk-badge.blocked {
+  background: rgba(239, 68, 68, 0.14);
+  color: #fca5a5;
+  border-color: rgba(252, 165, 165, 0.2);
+}
+
+body.dark .chart-legend-item {
+  background: #252525;
+  border-color: #2f2f2f;
+}
 
 body.dark .dashboard-modal {
   border-color: #2b2b2b;
@@ -2294,10 +1447,367 @@ body.dark .dashboard-modal-warning {
 }
 
 /* ======================================================
-   RESPONSIVE - MODAL
+   RESPONSIVE
 ====================================================== */
 
+@media (max-width: 1200px) {
+  .dashboard-container {
+    max-width: 100%;
+    padding: 0 16px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .charts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chart-card-wide {
+    grid-column: span 2;
+  }
+
+  .dashboard-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 992px) {
+  .dashboard-shell {
+    padding: 6px 0 24px;
+  }
+
+  .dashboard-title {
+    font-size: 28px;
+  }
+
+  .dashboard-subtitle {
+    max-width: 100%;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card-wide {
+    grid-column: span 1;
+  }
+
+  .chart-card {
+    min-height: 320px;
+  }
+
+  .activity-feed,
+  .recent-bookings-scroll {
+    max-height: 380px;
+  }
+}
+
 @media (max-width: 768px) {
+  .dashboard-shell {
+    width: 100%;
+    padding: 4px 0 20px;
+  }
+
+  .dashboard-container {
+    width: 100%;
+    max-width: 100%;
+    gap: 16px;
+    padding: 0 12px;
+  }
+
+  .dashboard-page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .dashboard-title {
+    font-size: 24px;
+    line-height: 1.2;
+  }
+
+  .dashboard-subtitle {
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .dashboard-refresh-banner {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+
+  .dashboard-actions,
+  .dashboard-actions-top {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: stretch;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .dashboard-actions .admin-btn,
+  .dashboard-actions-top .admin-btn {
+    width: 100%;
+    flex: unset;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .stat-label {
+    margin-bottom: 10px;
+    font-size: 11px;
+  }
+
+  .stat-card h3 {
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+
+  .stat-card p {
+    font-size: 24px;
+  }
+
+  .charts-grid {
+    gap: 14px;
+  }
+
+  .chart-card,
+  .activity-card,
+  .table-card,
+  .recent-bookings.card-surface,
+  .most-cancelled {
+    border-radius: 18px;
+  }
+
+  .chart-card {
+    min-height: 300px;
+    padding: 14px;
+  }
+
+  .status-chart-wrap {
+    height: 230px;
+  }
+
+  .donut-center-label strong {
+    font-size: 24px;
+  }
+
+  .chart-legend-item {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .chart-legend-name,
+  .chart-legend-value {
+    font-size: 12px;
+  }
+
+  .activity-card {
+    padding: 16px;
+  }
+
+  .activity-feed {
+    gap: 12px;
+    max-height: 320px;
+    padding-right: 2px;
+  }
+
+  .activity-item {
+    gap: 12px;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .activity-title {
+    font-size: 13px;
+  }
+
+  .activity-desc {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .activity-time {
+    font-size: 11px;
+  }
+
+  .section-header,
+  .card-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .section-header h2,
+  .section-header h3,
+  .card-heading h3 {
+    font-size: 16px;
+  }
+
+  .section-subtext,
+  .card-heading span,
+  .section-header span {
+    font-size: 12px;
+  }
+
+  .recent-bookings.card-surface,
+  .most-cancelled {
+    padding: 16px;
+    overflow: hidden;
+  }
+
+  .recent-bookings-desktop,
+  .most-cancelled-desktop {
+    display: block;
+  }
+
+  .recent-bookings-mobile,
+  .most-cancelled-mobile {
+    display: none;
+  }
+
+  .table-wrapper {
+    border-radius: 18px;
+  }
+
+  .recent-bookings-scroll,
+  .table-wrapper,
+  .most-cancelled-scroll {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .recent-bookings-scroll,
+  .most-cancelled-scroll {
+    max-height: 320px;
+  }
+
+  .recent-bookings-scroll::-webkit-scrollbar,
+  .table-wrapper::-webkit-scrollbar,
+  .most-cancelled-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .recent-bookings-scroll::-webkit-scrollbar-thumb,
+  .table-wrapper::-webkit-scrollbar-thumb,
+  .most-cancelled-scroll::-webkit-scrollbar-thumb {
+    background: #d4af37;
+    border-radius: 999px;
+  }
+
+  .admin-table {
+    width: max-content;
+    min-width: 760px;
+  }
+
+  .admin-table-most-cancelled {
+    width: max-content;
+    min-width: 980px;
+  }
+
+  .admin-table th,
+  .admin-table td,
+  .admin-table-most-cancelled th,
+  .admin-table-most-cancelled td {
+    padding: 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .reason-cell {
+    min-width: 220px;
+    max-width: 220px;
+    white-space: normal !important;
+  }
+
+  .status {
+    min-height: 28px;
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  .admin-btn {
+    min-height: 44px;
+    padding: 11px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+  }
+
+  .admin-btn-inline {
+    min-width: 86px;
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+
+  .pagination {
+    justify-content: center;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pagination button {
+    min-width: 76px;
+    height: 38px;
+    padding: 0 12px;
+    flex-shrink: 0;
+    font-size: 12px;
+  }
+
+  .pagination-indicator {
+    width: auto;
+    flex-shrink: 0;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .empty-panel,
+  .empty-state {
+    padding: 20px 14px;
+    font-size: 13px;
+  }
+
+  .booking-mobile-card {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .booking-mobile-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .booking-mobile-id {
+    font-size: 14px;
+  }
+
+  .booking-mobile-field p {
+    font-size: 12px;
+  }
+
   .dashboard-modal-overlay {
     padding: 14px;
     align-items: flex-end;
@@ -2355,6 +1865,174 @@ body.dark .dashboard-modal-warning {
 }
 
 @media (max-width: 480px) {
+  .dashboard-container {
+    gap: 14px;
+    padding: 0 10px;
+  }
+
+  .dashboard-title {
+    font-size: 21px;
+  }
+
+  .dashboard-subtitle {
+    font-size: 12px;
+  }
+
+  .dashboard-refresh-banner {
+    padding: 9px 10px;
+    font-size: 11px;
+  }
+
+  .stat-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .stat-card p {
+    font-size: 22px;
+  }
+
+  .chart-card {
+    min-height: 260px;
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .status-chart-wrap {
+    height: 210px;
+  }
+
+  .donut-center-label strong {
+    font-size: 22px;
+  }
+
+  .activity-card,
+  .table-card,
+  .recent-bookings.card-surface,
+  .most-cancelled {
+    border-radius: 16px;
+  }
+
+  .activity-card {
+    padding: 14px;
+  }
+
+  .activity-feed {
+    max-height: 300px;
+  }
+
+  .activity-item {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .activity-icon {
+    width: 10px;
+    height: 10px;
+    margin-top: 5px;
+  }
+
+  .activity-title {
+    font-size: 12px;
+  }
+
+  .activity-desc {
+    font-size: 11px;
+  }
+
+  .activity-time {
+    font-size: 10px;
+  }
+
+  .booking-mobile-card {
+    padding: 11px;
+  }
+
+  .booking-mobile-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .booking-mobile-id {
+    font-size: 13px;
+  }
+
+  .booking-mobile-label {
+    font-size: 10px;
+  }
+
+  .booking-mobile-field p {
+    font-size: 11px;
+  }
+
+  .admin-table {
+    min-width: 560px;
+  }
+
+  .admin-table-most-cancelled {
+    min-width: 920px;
+  }
+
+  .admin-table th,
+  .admin-table td,
+  .admin-table-most-cancelled th,
+  .admin-table-most-cancelled td {
+    padding: 10px;
+    font-size: 11px;
+  }
+
+  .status {
+    min-height: 26px;
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .admin-btn,
+  .pagination button {
+    min-height: 40px;
+    font-size: 12px;
+  }
+
+  .admin-btn-inline {
+    min-width: 78px;
+    min-height: 34px;
+    font-size: 10px;
+  }
+
+  .pagination {
+    gap: 6px;
+  }
+
+  .empty-panel,
+  .empty-state {
+    padding: 18px 12px;
+    font-size: 12px;
+  }
+
+  .dashboard-action-banner {
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+
+  .most-cancelled {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .cancel-count-badge {
+    min-width: 30px;
+    min-height: 26px;
+    font-size: 10px;
+  }
+
+  .risk-badge {
+    min-height: 28px;
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
   .dashboard-modal-overlay {
     padding: 10px;
   }
@@ -2385,5 +2063,40 @@ body.dark .dashboard-modal-warning {
     height: 34px;
     border-radius: 10px;
     font-size: 20px;
+  }
+}
+
+@media (max-width: 360px) {
+  .dashboard-container {
+    padding: 0 8px;
+  }
+
+  .dashboard-title {
+    font-size: 19px;
+  }
+
+  .stat-card,
+  .chart-card,
+  .activity-card,
+  .recent-bookings.card-surface,
+  .most-cancelled {
+    border-radius: 14px;
+  }
+
+  .stat-card p {
+    font-size: 20px;
+  }
+
+  .admin-btn {
+    min-height: 38px;
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+
+  .pagination button {
+    min-width: 64px;
+    height: 36px;
+    padding: 0 10px;
+    font-size: 11px;
   }
 }

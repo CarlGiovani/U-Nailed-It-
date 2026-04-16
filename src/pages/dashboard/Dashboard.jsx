@@ -9,6 +9,9 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
+  Legend,
+  Line,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -152,95 +155,96 @@ const Dashboard = () => {
     return map;
   }, [customers]);
 
-const mostCancelledCustomers = useMemo(() => {
-  const grouped = {};
+  const mostCancelledCustomers = useMemo(() => {
+    const grouped = {};
 
-  allBookings.forEach((booking) => {
-    if (booking?.status !== "cancelled") return;
+    allBookings.forEach((booking) => {
+      if (booking?.status !== "cancelled") return;
 
-    const rawEmail = booking?.customer_email || booking?.customers?.email || "";
-    const email = String(rawEmail).trim().toLowerCase();
-    if (!email) return;
+      const rawEmail =
+        booking?.customer_email || booking?.customers?.email || "";
+      const email = String(rawEmail).trim().toLowerCase();
+      if (!email) return;
 
-    const linkedCustomer = customerMap.get(email);
+      const linkedCustomer = customerMap.get(email);
 
-    if (!grouped[email]) {
-      grouped[email] = {
-        id: linkedCustomer?.id || null,
-        email,
-        full_name:
-          booking?.customer_name ||
-          booking?.customers?.full_name ||
-          linkedCustomer?.full_name ||
-          "Unknown Customer",
-        phone:
-          booking?.customer_phone ||
-          booking?.customers?.phone ||
-          linkedCustomer?.phone ||
-          "N/A",
-        facebook_link:
-          booking?.customer_facebook_link ||
-          booking?.customers?.facebook_link ||
-          linkedCustomer?.facebook_link ||
-          "",
-        cancel_count: 0,
-        latest_cancelled_at:
-          booking?.cancelled_at ||
-          booking?.updated_at ||
-          booking?.created_at ||
-          "",
-        latest_reason: booking?.cancellation_reason || "No reason provided",
-        is_blocked: Boolean(linkedCustomer?.is_blocked),
-        blocked_reason: linkedCustomer?.blocked_reason || "",
-      };
-    }
-
-    grouped[email].cancel_count += 1;
-
-    const bookingCancelledAt =
-      booking?.cancelled_at ||
-      booking?.updated_at ||
-      booking?.created_at ||
-      "";
-
-    if (
-      bookingCancelledAt &&
-      (!grouped[email].latest_cancelled_at ||
-        new Date(bookingCancelledAt) >
-          new Date(grouped[email].latest_cancelled_at))
-    ) {
-      grouped[email].latest_cancelled_at = bookingCancelledAt;
-    }
-
-    if (booking?.cancellation_reason) {
-      grouped[email].latest_reason = booking.cancellation_reason;
-    }
-
-    if (linkedCustomer) {
-      grouped[email].id = linkedCustomer?.id || null;
-      grouped[email].is_blocked = Boolean(linkedCustomer?.is_blocked);
-      grouped[email].blocked_reason = linkedCustomer?.blocked_reason || "";
-      grouped[email].full_name =
-        linkedCustomer?.full_name || grouped[email].full_name;
-      grouped[email].phone = linkedCustomer?.phone || grouped[email].phone;
-      grouped[email].facebook_link =
-        linkedCustomer?.facebook_link || grouped[email].facebook_link;
-    }
-  });
-
-  return Object.values(grouped)
-    .sort((a, b) => {
-      if (b.cancel_count !== a.cancel_count) {
-        return b.cancel_count - a.cancel_count;
+      if (!grouped[email]) {
+        grouped[email] = {
+          id: linkedCustomer?.id || null,
+          email,
+          full_name:
+            booking?.customer_name ||
+            booking?.customers?.full_name ||
+            linkedCustomer?.full_name ||
+            "Unknown Customer",
+          phone:
+            booking?.customer_phone ||
+            booking?.customers?.phone ||
+            linkedCustomer?.phone ||
+            "N/A",
+          facebook_link:
+            booking?.customer_facebook_link ||
+            booking?.customers?.facebook_link ||
+            linkedCustomer?.facebook_link ||
+            "",
+          cancel_count: 0,
+          latest_cancelled_at:
+            booking?.cancelled_at ||
+            booking?.updated_at ||
+            booking?.created_at ||
+            "",
+          latest_reason: booking?.cancellation_reason || "No reason provided",
+          is_blocked: Boolean(linkedCustomer?.is_blocked),
+          blocked_reason: linkedCustomer?.blocked_reason || "",
+        };
       }
 
-      return (
-        new Date(b.latest_cancelled_at || 0).getTime() -
-        new Date(a.latest_cancelled_at || 0).getTime()
-      );
-    })
-    .slice(0, 20);
-}, [allBookings, customerMap]);
+      grouped[email].cancel_count += 1;
+
+      const bookingCancelledAt =
+        booking?.cancelled_at ||
+        booking?.updated_at ||
+        booking?.created_at ||
+        "";
+
+      if (
+        bookingCancelledAt &&
+        (!grouped[email].latest_cancelled_at ||
+          new Date(bookingCancelledAt) >
+            new Date(grouped[email].latest_cancelled_at))
+      ) {
+        grouped[email].latest_cancelled_at = bookingCancelledAt;
+      }
+
+      if (booking?.cancellation_reason) {
+        grouped[email].latest_reason = booking.cancellation_reason;
+      }
+
+      if (linkedCustomer) {
+        grouped[email].id = linkedCustomer?.id || null;
+        grouped[email].is_blocked = Boolean(linkedCustomer?.is_blocked);
+        grouped[email].blocked_reason = linkedCustomer?.blocked_reason || "";
+        grouped[email].full_name =
+          linkedCustomer?.full_name || grouped[email].full_name;
+        grouped[email].phone = linkedCustomer?.phone || grouped[email].phone;
+        grouped[email].facebook_link =
+          linkedCustomer?.facebook_link || grouped[email].facebook_link;
+      }
+    });
+
+    return Object.values(grouped)
+      .sort((a, b) => {
+        if (b.cancel_count !== a.cancel_count) {
+          return b.cancel_count - a.cancel_count;
+        }
+
+        return (
+          new Date(b.latest_cancelled_at || 0).getTime() -
+          new Date(a.latest_cancelled_at || 0).getTime()
+        );
+      })
+      .slice(0, 20);
+  }, [allBookings, customerMap]);
 
   const invalidateDashboard = () => {
     if (debounceTimeoutRef.current) {
@@ -370,35 +374,100 @@ const mostCancelledCustomers = useMemo(() => {
     return mostCancelledCustomers.slice(start, end);
   }, [mostCancelledCustomers, cancelledPage]);
 
-  const bookingChart = useMemo(() => {
-    return Object.keys(analytics.bookingsPerMonth || {}).map((month) => ({
-      month,
-      bookings: analytics.bookingsPerMonth[month],
-    }));
-  }, [analytics.bookingsPerMonth]);
+  const comboChartData = useMemo(() => {
+    const monthMap = new Map();
 
-  const revenueChart = useMemo(() => {
-    return Object.keys(analytics.revenuePerMonth || {}).map((month) => ({
-      month,
-      revenue: analytics.revenuePerMonth[month],
-    }));
-  }, [analytics.revenuePerMonth]);
+    Object.entries(analytics.bookingsPerMonth || {}).forEach(([month, value]) => {
+      monthMap.set(month, {
+        month,
+        bookings: Number(value || 0),
+        revenue: 0,
+      });
+    });
+
+    Object.entries(analytics.revenuePerMonth || {}).forEach(([month, value]) => {
+      if (monthMap.has(month)) {
+        monthMap.set(month, {
+          ...monthMap.get(month),
+          revenue: Number(value || 0),
+        });
+      } else {
+        monthMap.set(month, {
+          month,
+          bookings: 0,
+          revenue: Number(value || 0),
+        });
+      }
+    });
+
+    return Array.from(monthMap.values());
+  }, [analytics.bookingsPerMonth, analytics.revenuePerMonth]);
 
   const topServices = useMemo(() => {
     const serviceCount = {};
 
-    bookings.forEach((booking) => {
+    allBookings.forEach((booking) => {
       const name = booking?.services?.name || "Unknown";
       serviceCount[name] = (serviceCount[name] || 0) + 1;
     });
 
-    return Object.keys(serviceCount).map((service) => ({
-      name: service,
-      value: serviceCount[service],
-    }));
-  }, [bookings]);
+    return Object.keys(serviceCount)
+      .map((service) => ({
+        name: service,
+        value: serviceCount[service],
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+  }, [allBookings]);
 
-  const COLORS = ["#d4af37", "#ff69b4", "#8b5cf6", "#60a5fa", "#34d399"];
+  const bookingStatusData = useMemo(() => {
+    const counts = {
+      pending_approval: 0,
+      approved: 0,
+      completed: 0,
+      cancelled: 0,
+      rejected: 0,
+    };
+
+    allBookings.forEach((booking) => {
+      const status = booking?.status;
+      if (counts[status] !== undefined) {
+        counts[status] += 1;
+      }
+    });
+
+    return [
+      {
+        name: "Pending",
+        value: counts.pending_approval,
+        color: "#f59e0b",
+      },
+      {
+        name: "Approved",
+        value: counts.approved,
+        color: "#22c55e",
+      },
+      {
+        name: "Completed",
+        value: counts.completed,
+        color: "#3b82f6",
+      },
+      {
+        name: "Cancelled",
+        value: counts.cancelled,
+        color: "#ef4444",
+      },
+      {
+        name: "Rejected",
+        value: counts.rejected,
+        color: "#8b5cf6",
+      },
+    ].filter((item) => item.value > 0);
+  }, [allBookings]);
+
+  const bookingStatusTotal = useMemo(() => {
+    return bookingStatusData.reduce((sum, item) => sum + item.value, 0);
+  }, [bookingStatusData]);
 
   const getStatusClass = (status) => {
     if (status === "approved") return "status approved";
@@ -1226,21 +1295,19 @@ const mostCancelledCustomers = useMemo(() => {
 
       const bookingRows =
         allBookings.length > 0
-          ? allBookings
-              .slice(0, 20)
-              .map((booking) => [
-                safeText(booking.id),
-                safeText(
-                  booking.customers?.full_name ||
-                    booking.customer_name ||
-                    "N/A",
-                ),
-                safeText(booking.services?.name || "N/A"),
-                safeText(getVariantLabel(booking.service_variants)),
-                safeText(booking.status),
-                safeText(booking.booking_date),
-                formatMoneyPdf(booking.total_price),
-              ])
+          ? allBookings.slice(0, 20).map((booking) => [
+              safeText(booking.id),
+              safeText(
+                booking.customers?.full_name ||
+                  booking.customer_name ||
+                  "N/A",
+              ),
+              safeText(booking.services?.name || "N/A"),
+              safeText(getVariantLabel(booking.service_variants)),
+              safeText(booking.status),
+              safeText(booking.booking_date),
+              formatMoneyPdf(booking.total_price),
+            ])
           : [["-", "No bookings", "-", "-", "-", "-", "PHP 0"]];
 
       doc.setFont("helvetica", "bold");
@@ -1277,16 +1344,14 @@ const mostCancelledCustomers = useMemo(() => {
 
       const reviewRows =
         allReviews.length > 0
-          ? allReviews
-              .slice(0, 15)
-              .map((review) => [
-                safeText(review.id),
-                safeText(review.booking_id),
-                safeText(review.rating),
-                safeText(review.comment),
-                review.is_approved ? "Yes" : "No",
-                safeText(review.bookings?.booking_date),
-              ])
+          ? allReviews.slice(0, 15).map((review) => [
+              safeText(review.id),
+              safeText(review.booking_id),
+              safeText(review.rating),
+              safeText(review.comment),
+              review.is_approved ? "Yes" : "No",
+              safeText(review.bookings?.booking_date),
+            ])
           : [["-", "-", "-", "No reviews", "-", "-"]];
 
       doc.setFont("helvetica", "bold");
@@ -1314,13 +1379,11 @@ const mostCancelledCustomers = useMemo(() => {
 
       const auditRows =
         activities.length > 0
-          ? activities
-              .slice(0, 15)
-              .map((log) => [
-                safeText(log.action?.replaceAll("_", " ")),
-                safeText(log.description),
-                formatDateTime(log.created_at),
-              ])
+          ? activities.slice(0, 15).map((log) => [
+              safeText(log.action?.replaceAll("_", " ")),
+              safeText(log.description),
+              formatDateTime(log.created_at),
+            ])
           : [["No logs", "No audit logs found.", "N/A"]];
 
       doc.setFont("helvetica", "bold");
@@ -1471,68 +1534,142 @@ const mostCancelledCustomers = useMemo(() => {
             </div>
           </div>
 
-          <div className="charts-grid">
-            <div className="chart-card">
+          <div className="charts-grid charts-grid-enhanced">
+            <div className="chart-card chart-card-wide">
               <div className="card-heading">
-                <h3>Bookings Per Month</h3>
-                <span>Monthly trend</span>
+                <div>
+                  <h3>Bookings & Revenue Trend</h3>
+                  <span>Monthly bookings and revenue in one view</span>
+                </div>
               </div>
 
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={bookingChart}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
+              <ResponsiveContainer width="100%" height={320}>
+                <ComposedChart data={comboChartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 12 }}
+                    interval={0}
+                    angle={comboChartData.length > 6 ? -18 : 0}
+                    textAnchor={comboChartData.length > 6 ? "end" : "middle"}
+                    height={comboChartData.length > 6 ? 56 : 34}
+                  />
+                  <YAxis
+                    yAxisId="left"
+                    tick={{ fontSize: 12 }}
+                    allowDecimals={false}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `₱${Number(value).toLocaleString()}`}
+                  />
+                  <Tooltip
+                    formatter={(value, name) => {
+                      if (name === "Revenue") return formatCurrency(value);
+                      return value;
+                    }}
+                  />
+                  <Legend />
                   <Bar
+                    yAxisId="left"
                     dataKey="bookings"
+                    name="Bookings"
                     fill="#d4af37"
                     radius={[8, 8, 0, 0]}
+                    maxBarSize={42}
                   />
-                </BarChart>
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="revenue"
+                    name="Revenue"
+                    stroke="#ff69b4"
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
 
             <div className="chart-card">
               <div className="card-heading">
-                <h3>Revenue Per Month</h3>
-                <span>Financial trend</span>
+                <div>
+                  <h3>Booking Status</h3>
+                  <span>Distribution of current booking outcomes</span>
+                </div>
               </div>
 
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={revenueChart}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => formatCurrency(value)} />
-                  <Bar dataKey="revenue" fill="#ff69b4" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+              <div className="status-chart-wrap">
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={bookingStatusData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={70}
+                      outerRadius={100}
+                      paddingAngle={3}
+                    >
+                      {bookingStatusData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
 
-            <div className="chart-card">
-              <div className="card-heading">
-                <h3>Top Services</h3>
-                <span>Based on recent bookings</span>
+                <div className="donut-center-label">
+                  <strong>{bookingStatusTotal}</strong>
+                  <span>Total</span>
+                </div>
               </div>
 
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={topServices}
-                    dataKey="value"
-                    nameKey="name"
-                    outerRadius={100}
-                  >
-                    {topServices.map((entry, index) => (
-                      <Cell
-                        key={entry.name || index}
-                        fill={COLORS[index % COLORS.length]}
+              <div className="chart-legend-list">
+                {bookingStatusData.length > 0 ? (
+                  bookingStatusData.map((item) => (
+                    <div className="chart-legend-item" key={item.name}>
+                      <span
+                        className="chart-legend-dot"
+                        style={{ backgroundColor: item.color }}
                       />
-                    ))}
-                  </Pie>
+                      <span className="chart-legend-name">{item.name}</span>
+                      <strong className="chart-legend-value">{item.value}</strong>
+                    </div>
+                  ))
+                ) : (
+                  <div className="chart-empty-note">No booking status data yet.</div>
+                )}
+              </div>
+            </div>
+
+            <div className="chart-card">
+              <div className="card-heading">
+                <div>
+                  <h3>Top Services</h3>
+                  <span>Most booked services overall</span>
+                </div>
+              </div>
+
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart
+                  data={[...topServices].reverse()}
+                  layout="vertical"
+                  margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={110}
+                    tick={{ fontSize: 12 }}
+                  />
                   <Tooltip />
-                </PieChart>
+                  <Bar dataKey="value" fill="#8b5cf6" radius={[0, 8, 8, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -1711,64 +1848,69 @@ const mostCancelledCustomers = useMemo(() => {
                   </thead>
 
                   <tbody>
-  {paginatedCancelledCustomers.length > 0 ? (
-  paginatedCancelledCustomers.map((customer) => {
-    const isBusy = actionLoadingEmail === customer.email;
-    const hasLinkedCustomerId = Boolean(customer?.id);
+                    {paginatedCancelledCustomers.length > 0 ? (
+                      paginatedCancelledCustomers.map((customer) => {
+                        const isBusy = actionLoadingEmail === customer.email;
+                        const hasLinkedCustomerId = Boolean(customer?.id);
 
-    return (
-      <tr key={customer.email}>
-        <td>{customer.full_name || "N/A"}</td>
-        <td>{customer.email || "N/A"}</td>
-        <td>{customer.phone || "N/A"}</td>
-        <td>
-          <span className="cancel-count-badge">{customer.cancel_count}</span>
-        </td>
-        <td>{formatDateTime(customer.latest_cancelled_at)}</td>
-        <td>
-          <span
-            className={getRiskBadgeClass(
-              customer.cancel_count,
-              customer.is_blocked,
-            )}
-          >
-            {getRiskLabel(customer.cancel_count, customer.is_blocked)}
-          </span>
-        </td>
-        <td className="reason-cell">
-          {customer.is_blocked
-            ? customer.blocked_reason || "Blocked by admin"
-            : customer.latest_reason || "No reason provided"}
-        </td>
-        <td>
-          {customer.is_blocked ? (
-            <button
-              className="admin-btn admin-btn-secondary admin-btn-inline"
-              onClick={() => openUnblockModal(customer)}
-              disabled={isBusy || !hasLinkedCustomerId}
-            >
-              {isBusy ? "Unblocking..." : "Unblock"}
-            </button>
-          ) : (
-            <button
-              className="admin-btn admin-btn-danger admin-btn-inline"
-              onClick={() => openBlockModal(customer)}
-              disabled={isBusy || !hasLinkedCustomerId}
-            >
-              {isBusy ? "Blocking..." : "Block"}
-            </button>
-          )}
-        </td>
-      </tr>
-    );
-  })
-) : (
-  <tr>
-    <td colSpan="8" className="empty-state">
-      No cancelled booking records found.
-    </td>
-  </tr>
-)}
+                        return (
+                          <tr key={customer.email}>
+                            <td>{customer.full_name || "N/A"}</td>
+                            <td>{customer.email || "N/A"}</td>
+                            <td>{customer.phone || "N/A"}</td>
+                            <td>
+                              <span className="cancel-count-badge">
+                                {customer.cancel_count}
+                              </span>
+                            </td>
+                            <td>{formatDateTime(customer.latest_cancelled_at)}</td>
+                            <td>
+                              <span
+                                className={getRiskBadgeClass(
+                                  customer.cancel_count,
+                                  customer.is_blocked,
+                                )}
+                              >
+                                {getRiskLabel(
+                                  customer.cancel_count,
+                                  customer.is_blocked,
+                                )}
+                              </span>
+                            </td>
+                            <td className="reason-cell">
+                              {customer.is_blocked
+                                ? customer.blocked_reason || "Blocked by admin"
+                                : customer.latest_reason || "No reason provided"}
+                            </td>
+                            <td>
+                              {customer.is_blocked ? (
+                                <button
+                                  className="admin-btn admin-btn-secondary admin-btn-inline"
+                                  onClick={() => openUnblockModal(customer)}
+                                  disabled={isBusy || !hasLinkedCustomerId}
+                                >
+                                  {isBusy ? "Unblocking..." : "Unblock"}
+                                </button>
+                              ) : (
+                                <button
+                                  className="admin-btn admin-btn-danger admin-btn-inline"
+                                  onClick={() => openBlockModal(customer)}
+                                  disabled={isBusy || !hasLinkedCustomerId}
+                                >
+                                  {isBusy ? "Blocking..." : "Block"}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="8" className="empty-state">
+                          No cancelled booking records found.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

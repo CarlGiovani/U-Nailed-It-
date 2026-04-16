@@ -8,6 +8,8 @@ import {
   FaStar,
   FaTrash,
   FaUserCircle,
+  FaTimes,
+  FaEnvelopeOpenText,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -43,6 +45,13 @@ const Topbar = ({ setMobileOpen }) => {
   const [manageMode, setManageMode] = useState(false);
   const [selectedNotifIds, setSelectedNotifIds] = useState([]);
   const [user, setUser] = useState(() => getStoredAdminUser());
+
+  const [monthlyReportModal, setMonthlyReportModal] = useState({
+    open: false,
+    title: "",
+    message: "",
+    createdAt: "",
+  });
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -100,6 +109,7 @@ const Topbar = ({ setMobileOpen }) => {
     if (link === "/admin/bookings") return "/bookings";
     if (link === "/admin/reviews") return "/reviews";
     if (link === "/admin/announcements") return "/announcements";
+    if (link === "/admin/dashboard") return "/dashboard";
 
     if (link) return link;
 
@@ -387,6 +397,23 @@ const Topbar = ({ setMobileOpen }) => {
         await markOneReadMutation.mutateAsync(notif.id);
       }
 
+      if (notif.type === "monthly_report") {
+        setNotifOpen(false);
+        setProfileOpen(false);
+        setManageMode(false);
+        setSelectedNotifIds([]);
+
+        setMonthlyReportModal({
+          open: true,
+          title: notif.title || "Monthly Report Ready",
+          message:
+            notif.message ||
+            "The monthly report has been generated successfully.",
+          createdAt: notif.created_at || "",
+        });
+        return;
+      }
+
       const targetPath = normalizeNotificationLink(
         notif.link,
         notif.related_entity,
@@ -400,6 +427,15 @@ const Topbar = ({ setMobileOpen }) => {
     } catch (err) {
       console.error("Notification click error:", err);
     }
+  };
+
+  const closeMonthlyReportModal = () => {
+    setMonthlyReportModal({
+      open: false,
+      title: "",
+      message: "",
+      createdAt: "",
+    });
   };
 
   /* ================= MARK ALL AS READ ================= */
@@ -479,190 +515,244 @@ const Topbar = ({ setMobileOpen }) => {
   };
 
   return (
-    <div className={`topbar ${scrolled ? "scrolled" : ""}`}>
-      <div className="topbar-left">
-        <button
-          className="mobile-menu-btn"
-          onClick={() => setMobileOpen(true)}
-          type="button"
-        >
-          <FaBars />
-        </button>
+    <>
+      <div className={`topbar ${scrolled ? "scrolled" : ""}`}>
+        <div className="topbar-left">
+          <button
+            className="mobile-menu-btn"
+            onClick={() => setMobileOpen(true)}
+            type="button"
+          >
+            <FaBars />
+          </button>
 
-        <div className="topbar-title-wrapper">
-          <h3 className="topbar-title">Hi, {getDisplayName}</h3>
+          <div className="topbar-title-wrapper">
+            <h3 className="topbar-title">Hi, {getDisplayName}</h3>
+          </div>
         </div>
-      </div>
 
-      <div className="topbar-right">
-        <div className="icon-wrapper" ref={notifRef}>
-          <FaBell onClick={handleToggleNotifications} />
+        <div className="topbar-right">
+          <div className="icon-wrapper" ref={notifRef}>
+            <FaBell onClick={handleToggleNotifications} />
 
-          {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
+            {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
 
-          {notifOpen && (
-            <div className="notifications-dropdown">
-              <div className="notif-header">
-                <span>Notifications</span>
+            {notifOpen && (
+              <div className="notifications-dropdown">
+                <div className="notif-header">
+                  <span>Notifications</span>
 
-                {!manageMode ? (
-                  <div className="notif-header-actions">
-                    <button
-                      type="button"
-                      className="notif-text-btn"
-                      onClick={handleMarkAllAsRead}
-                      disabled={
-                        markAllReadMutation.isPending ||
-                        unreadVisibleCount === 0
-                      }
-                    >
-                      Mark all read
-                    </button>
+                  {!manageMode ? (
+                    <div className="notif-header-actions">
+                      <button
+                        type="button"
+                        className="notif-text-btn"
+                        onClick={handleMarkAllAsRead}
+                        disabled={
+                          markAllReadMutation.isPending ||
+                          unreadVisibleCount === 0
+                        }
+                      >
+                        Mark all read
+                      </button>
 
-                    <button
-                      type="button"
-                      className="notif-text-btn"
-                      onClick={handleToggleManageMode}
-                      disabled={paginatedNotifications.length === 0}
-                    >
-                      Manage
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        className="notif-text-btn"
+                        onClick={handleToggleManageMode}
+                        disabled={paginatedNotifications.length === 0}
+                      >
+                        Manage
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="notif-header-actions">
+                      <button
+                        type="button"
+                        className="notif-text-btn"
+                        onClick={toggleSelectAllVisible}
+                        disabled={paginatedNotifications.length === 0}
+                      >
+                        {allVisibleSelected ? "Unselect all" : "Select all"}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="notif-text-btn danger"
+                        onClick={handleBulkDelete}
+                        disabled={
+                          deleteOneMutation.isPending ||
+                          selectedNotifIds.length === 0
+                        }
+                      >
+                        Delete selected
+                      </button>
+
+                      <button
+                        type="button"
+                        className="notif-text-btn"
+                        onClick={handleToggleManageMode}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {notifLoading ? (
+                  <p className="no-notif">Loading notifications...</p>
+                ) : paginatedNotifications.length === 0 ? (
+                  <p className="no-notif">No notifications</p>
                 ) : (
-                  <div className="notif-header-actions">
+                  paginatedNotifications.map((notif) => (
+                    <div
+                      key={notif.id}
+                      className={`notif-item ${notif.is_read ? "read" : "unread"} ${manageMode ? "manage-mode" : ""}`}
+                      onClick={() => handleNotificationClick(notif)}
+                    >
+                      {manageMode && (
+                        <div
+                          className="notif-checkbox"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedNotifIds.includes(notif.id)}
+                            onChange={(e) =>
+                              toggleSelectNotification(e, notif.id)
+                            }
+                          />
+                        </div>
+                      )}
+
+                      <div className="notif-left">{getNotifIcon(notif)}</div>
+
+                      <div className="notif-content">
+                        <div className="notif-top-row">
+                          <div className="notif-title">{notif.title}</div>
+
+                          {!manageMode && (
+                            <button
+                              type="button"
+                              className="notif-delete-btn"
+                              onClick={(e) =>
+                                handleDeleteNotification(e, notif.id)
+                              }
+                              disabled={deletingId === notif.id}
+                              title="Delete notification"
+                            >
+                              <FaTrash />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="notif-message">{notif.message}</div>
+
+                        <div className="notif-time">
+                          {new Date(notif.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                {notifications.length > NOTIF_PER_PAGE && (
+                  <div className="notif-pagination">
                     <button
                       type="button"
-                      className="notif-text-btn"
-                      onClick={toggleSelectAllVisible}
-                      disabled={paginatedNotifications.length === 0}
+                      disabled={currentPage === 1}
+                      onClick={() => setPage((prev) => prev - 1)}
                     >
-                      {allVisibleSelected ? "Unselect all" : "Select all"}
+                      Prev
                     </button>
+
+                    <span>
+                      {currentPage} / {totalPages}
+                    </span>
 
                     <button
                       type="button"
-                      className="notif-text-btn danger"
-                      onClick={handleBulkDelete}
-                      disabled={
-                        deleteOneMutation.isPending ||
-                        selectedNotifIds.length === 0
-                      }
+                      disabled={currentPage === totalPages}
+                      onClick={() => setPage((prev) => prev + 1)}
                     >
-                      Delete selected
-                    </button>
-
-                    <button
-                      type="button"
-                      className="notif-text-btn"
-                      onClick={handleToggleManageMode}
-                    >
-                      Cancel
+                      Next
                     </button>
                   </div>
                 )}
               </div>
+            )}
+          </div>
 
-              {notifLoading ? (
-                <p className="no-notif">Loading notifications...</p>
-              ) : paginatedNotifications.length === 0 ? (
-                <p className="no-notif">No notifications</p>
-              ) : (
-                paginatedNotifications.map((notif) => (
-                  <div
-                    key={notif.id}
-                    className={`notif-item ${notif.is_read ? "read" : "unread"} ${manageMode ? "manage-mode" : ""}`}
-                    onClick={() => handleNotificationClick(notif)}
-                  >
-                    {manageMode && (
-                      <div
-                        className="notif-checkbox"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedNotifIds.includes(notif.id)}
-                          onChange={(e) =>
-                            toggleSelectNotification(e, notif.id)
-                          }
-                        />
-                      </div>
-                    )}
+          <div className="icon-wrapper" ref={profileRef}>
+            <FaUserCircle onClick={() => setProfileOpen((prev) => !prev)} />
 
-                    <div className="notif-left">{getNotifIcon(notif)}</div>
+            {profileOpen && (
+              <div className="dropdown">
+                <p className="profile-email">{user?.email || "Admin User"}</p>
 
-                    <div className="notif-content">
-                      <div className="notif-top-row">
-                        <div className="notif-title">{notif.title}</div>
+                <hr />
 
-                        {!manageMode && (
-                          <button
-                            type="button"
-                            className="notif-delete-btn"
-                            onClick={(e) =>
-                              handleDeleteNotification(e, notif.id)
-                            }
-                            disabled={deletingId === notif.id}
-                            title="Delete notification"
-                          >
-                            <FaTrash />
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="notif-message">{notif.message}</div>
-
-                      <div className="notif-time">
-                        {new Date(notif.created_at).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-
-              {notifications.length > NOTIF_PER_PAGE && (
-                <div className="notif-pagination">
-                  <button
-                    type="button"
-                    disabled={currentPage === 1}
-                    onClick={() => setPage((prev) => prev - 1)}
-                  >
-                    Prev
-                  </button>
-
-                  <span>
-                    {currentPage} / {totalPages}
-                  </span>
-
-                  <button
-                    type="button"
-                    disabled={currentPage === totalPages}
-                    onClick={() => setPage((prev) => prev + 1)}
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="icon-wrapper" ref={profileRef}>
-          <FaUserCircle onClick={() => setProfileOpen((prev) => !prev)} />
-
-          {profileOpen && (
-            <div className="dropdown">
-              <p className="profile-email">{user?.email || "Admin User"}</p>
-
-              <hr />
-
-              <p className="logout-text" onClick={handleLogout}>
-                Logout
-              </p>
-            </div>
-          )}
+                <p className="logout-text" onClick={handleLogout}>
+                  Logout
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {monthlyReportModal.open && (
+        <div className="report-modal-overlay" onClick={closeMonthlyReportModal}>
+          <div
+            className="report-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="report-modal-close"
+              onClick={closeMonthlyReportModal}
+              aria-label="Close modal"
+            >
+              <FaTimes />
+            </button>
+
+            <div className="report-modal-icon-wrap">
+              <div className="report-modal-icon">
+                <FaEnvelopeOpenText />
+              </div>
+            </div>
+
+            <h3 className="report-modal-title">
+              {monthlyReportModal.title || "Monthly Report Ready"}
+            </h3>
+
+            <p className="report-modal-message">
+              {monthlyReportModal.message ||
+                "The monthly report has been generated successfully."}
+            </p>
+
+            <p className="report-modal-subtext">
+              Please check your email for the PDF copy of the monthly report.
+            </p>
+
+            {monthlyReportModal.createdAt && (
+              <div className="report-modal-meta">
+                Generated on{" "}
+                {new Date(monthlyReportModal.createdAt).toLocaleString()}
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="report-modal-btn"
+              onClick={closeMonthlyReportModal}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

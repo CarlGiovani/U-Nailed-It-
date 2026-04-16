@@ -3,9 +3,13 @@ import { useState } from "react";
 import Sidebar from "../layout/sidebar";
 import Topbar from "../layout/topbar";
 import "./layout.css";
+import useAdminAutoLogout from "../../hooks/useAdminAutoLogout";
 
 const AdminLayout = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useAdminAutoLogout();
+
 
   return (
     <div className="admin-container">
