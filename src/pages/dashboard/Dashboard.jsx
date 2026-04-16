@@ -141,6 +141,12 @@ const Dashboard = () => {
     [exportData?.bookings],
   );
 
+  const allNotifications = useMemo(
+    () =>
+      Array.isArray(exportData?.notifications) ? exportData.notifications : [],
+    [exportData?.notifications],
+  );
+
   const customerMap = useMemo(() => {
     const map = new Map();
 
@@ -377,28 +383,32 @@ const Dashboard = () => {
   const comboChartData = useMemo(() => {
     const monthMap = new Map();
 
-    Object.entries(analytics.bookingsPerMonth || {}).forEach(([month, value]) => {
-      monthMap.set(month, {
-        month,
-        bookings: Number(value || 0),
-        revenue: 0,
-      });
-    });
-
-    Object.entries(analytics.revenuePerMonth || {}).forEach(([month, value]) => {
-      if (monthMap.has(month)) {
-        monthMap.set(month, {
-          ...monthMap.get(month),
-          revenue: Number(value || 0),
-        });
-      } else {
+    Object.entries(analytics.bookingsPerMonth || {}).forEach(
+      ([month, value]) => {
         monthMap.set(month, {
           month,
-          bookings: 0,
-          revenue: Number(value || 0),
+          bookings: Number(value || 0),
+          revenue: 0,
         });
-      }
-    });
+      },
+    );
+
+    Object.entries(analytics.revenuePerMonth || {}).forEach(
+      ([month, value]) => {
+        if (monthMap.has(month)) {
+          monthMap.set(month, {
+            ...monthMap.get(month),
+            revenue: Number(value || 0),
+          });
+        } else {
+          monthMap.set(month, {
+            month,
+            bookings: 0,
+            revenue: Number(value || 0),
+          });
+        }
+      },
+    );
 
     return Array.from(monthMap.values());
   }, [analytics.bookingsPerMonth, analytics.revenuePerMonth]);
@@ -468,6 +478,44 @@ const Dashboard = () => {
   const bookingStatusTotal = useMemo(() => {
     return bookingStatusData.reduce((sum, item) => sum + item.value, 0);
   }, [bookingStatusData]);
+
+  const latestMonthlyReport = useMemo(() => {
+    return [...allNotifications]
+      .filter((item) => item?.type === "monthly_report")
+      .sort(
+        (a, b) =>
+          new Date(b?.created_at || 0).getTime() -
+          new Date(a?.created_at || 0).getTime(),
+      )[0];
+  }, [allNotifications]);
+
+  const completionRate = useMemo(() => {
+    if (allBookings.length === 0) return 0;
+    const completedCount = allBookings.filter(
+      (booking) => booking?.status === "completed",
+    ).length;
+    return ((completedCount / allBookings.length) * 100).toFixed(1);
+  }, [allBookings]);
+
+  const totalCancelledBookings = useMemo(() => {
+    return allBookings.filter((booking) => booking?.status === "cancelled")
+      .length;
+  }, [allBookings]);
+
+  const watchlistCustomersCount = useMemo(() => {
+    return mostCancelledCustomers.filter(
+      (customer) => !customer.is_blocked && customer.cancel_count >= 3,
+    ).length;
+  }, [mostCancelledCustomers]);
+
+  const blockedCustomersCount = useMemo(() => {
+    return mostCancelledCustomers.filter((customer) => customer.is_blocked)
+      .length;
+  }, [mostCancelledCustomers]);
+
+  const topBookedServiceName = useMemo(() => {
+    return topServices[0]?.name || "No data yet";
+  }, [topServices]);
 
   const getStatusClass = (status) => {
     if (status === "approved") return "status approved";
@@ -1563,7 +1611,9 @@ const Dashboard = () => {
                     yAxisId="right"
                     orientation="right"
                     tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => `₱${Number(value).toLocaleString()}`}
+                    tickFormatter={(value) =>
+                      `₱${Number(value).toLocaleString()}`
+                    }
                   />
                   <Tooltip
                     formatter={(value, name) => {
@@ -1636,11 +1686,15 @@ const Dashboard = () => {
                         style={{ backgroundColor: item.color }}
                       />
                       <span className="chart-legend-name">{item.name}</span>
-                      <strong className="chart-legend-value">{item.value}</strong>
+                      <strong className="chart-legend-value">
+                        {item.value}
+                      </strong>
                     </div>
                   ))
                 ) : (
-                  <div className="chart-empty-note">No booking status data yet.</div>
+                  <div className="chart-empty-note">
+                    No booking status data yet.
+                  </div>
                 )}
               </div>
             </div>
@@ -1660,7 +1714,11 @@ const Dashboard = () => {
                   margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <XAxis
+                    type="number"
+                    allowDecimals={false}
+                    tick={{ fontSize: 12 }}
+                  />
                   <YAxis
                     type="category"
                     dataKey="name"
@@ -1671,6 +1729,96 @@ const Dashboard = () => {
                   <Bar dataKey="value" fill="#8b5cf6" radius={[0, 8, 8, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+
+            <div className="chart-card chart-card-wide insights-card">
+              <div className="card-heading">
+                <div>
+                  <h3>Monthly Report & Insights</h3>
+                  <span>Quick business summary and report delivery status</span>
+                </div>
+              </div>
+
+              <div className="insights-card-grid">
+                <div className="report-status-panel">
+                  <div className="report-status-top">
+                    <div className="report-status-icon">📩</div>
+
+                    <div>
+                      <h4 className="report-status-title">
+                        {latestMonthlyReport?.title || "No monthly report yet"}
+                      </h4>
+                      <p className="report-status-text">
+                        {latestMonthlyReport
+                          ? "The latest monthly report has been generated and sent to your configured admin email."
+                          : "No generated monthly report has been recorded yet."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="report-status-meta">
+                    <div className="report-status-meta-item">
+                      <span className="report-meta-label">Status</span>
+                      <strong className="report-meta-value success">
+                        {latestMonthlyReport ? "Sent to email" : "Waiting"}
+                      </strong>
+                    </div>
+
+                    <div className="report-status-meta-item">
+                      <span className="report-meta-label">Generated</span>
+                      <strong className="report-meta-value">
+                        {latestMonthlyReport
+                          ? formatDateTime(latestMonthlyReport.created_at)
+                          : "N/A"}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="insights-list">
+                  <div className="insight-item">
+                    <span className="insight-label">Most booked service</span>
+                    <strong className="insight-value">
+                      {topBookedServiceName}
+                    </strong>
+                  </div>
+
+                  <div className="insight-item">
+                    <span className="insight-label">Completion rate</span>
+                    <strong className="insight-value">
+                      {completionRate}%
+                    </strong>
+                  </div>
+
+                  <div className="insight-item">
+                    <span className="insight-label">Cancelled bookings</span>
+                    <strong className="insight-value danger">
+                      {totalCancelledBookings}
+                    </strong>
+                  </div>
+
+                  <div className="insight-item">
+                    <span className="insight-label">Watchlist customers</span>
+                    <strong className="insight-value warning">
+                      {watchlistCustomersCount}
+                    </strong>
+                  </div>
+
+                  <div className="insight-item">
+                    <span className="insight-label">Blocked customers</span>
+                    <strong className="insight-value danger">
+                      {blockedCustomersCount}
+                    </strong>
+                  </div>
+
+                  <div className="insight-item">
+                    <span className="insight-label">Pending approvals</span>
+                    <strong className="insight-value">
+                      {stats.pendingApprovalBookings}
+                    </strong>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1863,7 +2011,9 @@ const Dashboard = () => {
                                 {customer.cancel_count}
                               </span>
                             </td>
-                            <td>{formatDateTime(customer.latest_cancelled_at)}</td>
+                            <td>
+                              {formatDateTime(customer.latest_cancelled_at)}
+                            </td>
                             <td>
                               <span
                                 className={getRiskBadgeClass(
