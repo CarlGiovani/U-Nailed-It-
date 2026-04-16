@@ -1343,19 +1343,21 @@ const Dashboard = () => {
 
       const bookingRows =
         allBookings.length > 0
-          ? allBookings.slice(0, 20).map((booking) => [
-              safeText(booking.id),
-              safeText(
-                booking.customers?.full_name ||
-                  booking.customer_name ||
-                  "N/A",
-              ),
-              safeText(booking.services?.name || "N/A"),
-              safeText(getVariantLabel(booking.service_variants)),
-              safeText(booking.status),
-              safeText(booking.booking_date),
-              formatMoneyPdf(booking.total_price),
-            ])
+          ? allBookings
+              .slice(0, 20)
+              .map((booking) => [
+                safeText(booking.id),
+                safeText(
+                  booking.customers?.full_name ||
+                    booking.customer_name ||
+                    "N/A",
+                ),
+                safeText(booking.services?.name || "N/A"),
+                safeText(getVariantLabel(booking.service_variants)),
+                safeText(booking.status),
+                safeText(booking.booking_date),
+                formatMoneyPdf(booking.total_price),
+              ])
           : [["-", "No bookings", "-", "-", "-", "-", "PHP 0"]];
 
       doc.setFont("helvetica", "bold");
@@ -1392,14 +1394,16 @@ const Dashboard = () => {
 
       const reviewRows =
         allReviews.length > 0
-          ? allReviews.slice(0, 15).map((review) => [
-              safeText(review.id),
-              safeText(review.booking_id),
-              safeText(review.rating),
-              safeText(review.comment),
-              review.is_approved ? "Yes" : "No",
-              safeText(review.bookings?.booking_date),
-            ])
+          ? allReviews
+              .slice(0, 15)
+              .map((review) => [
+                safeText(review.id),
+                safeText(review.booking_id),
+                safeText(review.rating),
+                safeText(review.comment),
+                review.is_approved ? "Yes" : "No",
+                safeText(review.bookings?.booking_date),
+              ])
           : [["-", "-", "-", "No reviews", "-", "-"]];
 
       doc.setFont("helvetica", "bold");
@@ -1427,11 +1431,13 @@ const Dashboard = () => {
 
       const auditRows =
         activities.length > 0
-          ? activities.slice(0, 15).map((log) => [
-              safeText(log.action?.replaceAll("_", " ")),
-              safeText(log.description),
-              formatDateTime(log.created_at),
-            ])
+          ? activities
+              .slice(0, 15)
+              .map((log) => [
+                safeText(log.action?.replaceAll("_", " ")),
+                safeText(log.description),
+                formatDateTime(log.created_at),
+              ])
           : [["No logs", "No audit logs found.", "N/A"]];
 
       doc.setFont("helvetica", "bold");
@@ -1785,9 +1791,7 @@ const Dashboard = () => {
 
                   <div className="insight-item">
                     <span className="insight-label">Completion rate</span>
-                    <strong className="insight-value">
-                      {completionRate}%
-                    </strong>
+                    <strong className="insight-value">{completionRate}%</strong>
                   </div>
 
                   <div className="insight-item">
@@ -2030,7 +2034,8 @@ const Dashboard = () => {
                             <td className="reason-cell">
                               {customer.is_blocked
                                 ? customer.blocked_reason || "Blocked by admin"
-                                : customer.latest_reason || "No reason provided"}
+                                : customer.latest_reason ||
+                                  "No reason provided"}
                             </td>
                             <td>
                               {customer.is_blocked ? (
