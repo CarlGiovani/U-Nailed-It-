@@ -169,7 +169,18 @@ const Pagination = memo(function Pagination({
 const ModalShell = memo(function ModalShell({ children, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="premium-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="premium-modal service-consistent-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="modal-close-btn"
+          onClick={onClose}
+          aria-label="Close modal"
+        >
+          ✕
+        </button>
         {children}
       </div>
     </div>
@@ -511,25 +522,62 @@ const Services = () => {
     };
   }, [clearPreviewObjectUrl]);
 
+  useEffect(() => {
+    if (!modal) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        closeModal();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [modal, closeModal]);
+
   const renderServiceModal = () => (
     <>
-      <h2>{modal?.id ? "Edit Service" : "Create Service"}</h2>
+      <div className="modal-header-block">
+        <span className="modal-badge">
+          {modal?.id ? "Edit Entry" : "New Entry"}
+        </span>
+        <h2>{modal?.id ? "Edit Service" : "Create Service"}</h2>
+        <p>
+          Add a service with description, estimated duration, and a display
+          image.
+        </p>
+      </div>
 
       <div className="modal-form-grid">
         <div className="field-group">
-          <label className="field-label">Service Name</label>
+          <div className="form-label-row">
+            <label className="field-label">Service Name</label>
+            <span>{modal?.name?.length || 0}/100</span>
+          </div>
           <input
             placeholder="Enter service name"
             value={modal?.name || ""}
+            maxLength={100}
             onChange={(e) => updateModalField("name", e.target.value)}
           />
         </div>
 
         <div className="field-group">
-          <label className="field-label">Description</label>
+          <div className="form-label-row">
+            <label className="field-label">Description</label>
+            <span>{modal?.description?.length || 0}/400</span>
+          </div>
           <textarea
             placeholder="Write a short description"
             value={modal?.description || ""}
+            maxLength={400}
             onChange={(e) => updateModalField("description", e.target.value)}
           />
         </div>
@@ -546,38 +594,77 @@ const Services = () => {
           </div>
 
           <div className="field-group">
-            <label className="field-label">Upload Image</label>
-            <input type="file" accept="image/*" onChange={handleImageChange} />
+            <div className="form-label-row">
+              <label className="field-label">Service Image</label>
+              <span>1 file</span>
+            </div>
+
+            <label className="custom-file-upload">
+              <div className="custom-file-upload-left">
+                <span className="upload-icon">🖼️</span>
+                <div>
+                  <strong>
+                    {modal?.image ? modal.image.name : "Choose image"}
+                  </strong>
+                  <small>JPG, PNG, WEBP supported.</small>
+                </div>
+              </div>
+
+              <span className="upload-action">Browse</span>
+
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+              />
+            </label>
           </div>
         </div>
 
-        {previewImage && (
-          <div className="image-preview">
+        {previewImage ? (
+          <div className="image-preview enhanced-image-preview">
             <img src={previewImage} alt="preview" />
+          </div>
+        ) : (
+          <div className="empty-preview-state service-empty-preview">
+            <span className="empty-preview-icon">🖼️</span>
+            <p>No image selected yet.</p>
           </div>
         )}
 
-        <button
-          className="modal-submit-btn"
-          onClick={handleServiceSave}
-          disabled={isAnyMutationPending}
-        >
-          {isAnyMutationPending
-            ? "Saving..."
-            : modal?.id
-              ? "Update Service"
-              : "Create Service"}
-        </button>
+        <div className="modal-action-row">
+          <button
+            type="button"
+            className="modal-muted-btn"
+            onClick={closeModal}
+            disabled={isAnyMutationPending}
+          >
+            Cancel
+          </button>
+
+          <button
+            className="modal-submit-btn"
+            onClick={handleServiceSave}
+            disabled={isAnyMutationPending}
+          >
+            {isAnyMutationPending
+              ? "Saving..."
+              : modal?.id
+                ? "Update Service"
+                : "Create Service"}
+          </button>
+        </div>
       </div>
     </>
   );
 
   const renderManageModal = () => (
     <>
-      <div className="manage-header">
+      <div className="modal-header-block manage-modal-head">
+        <span className="modal-badge">Manage Entry</span>
         <h2>{modal?.service?.name}</h2>
         <p className="manage-subtitle">
-          Manage categories and pricing variants
+          Manage categories and pricing variants for this service.
         </p>
       </div>
 
@@ -633,32 +720,59 @@ const Services = () => {
 
   const renderCategoryModal = () => (
     <>
-      <h2>{modal?.id ? "Edit Category" : "Category"}</h2>
+      <div className="modal-header-block">
+        <span className="modal-badge">
+          {modal?.id ? "Edit Entry" : "New Entry"}
+        </span>
+        <h2>{modal?.id ? "Edit Category" : "Create Category"}</h2>
+        <p>Create a category to organize service variants more clearly.</p>
+      </div>
 
       <div className="modal-form-grid">
         <div className="field-group">
-          <label className="field-label">Category Name</label>
+          <div className="form-label-row">
+            <label className="field-label">Category Name</label>
+            <span>{modal?.name?.length || 0}/80</span>
+          </div>
           <input
             placeholder="Category Name"
             value={modal?.name || ""}
+            maxLength={80}
             onChange={(e) => updateModalField("name", e.target.value)}
           />
         </div>
 
-        <button
-          className="modal-submit-btn"
-          onClick={handleCategorySave}
-          disabled={isAnyMutationPending}
-        >
-          {isAnyMutationPending ? "Saving..." : "Save"}
-        </button>
+        <div className="modal-action-row">
+          <button
+            type="button"
+            className="modal-muted-btn"
+            onClick={closeModal}
+            disabled={isAnyMutationPending}
+          >
+            Cancel
+          </button>
+
+          <button
+            className="modal-submit-btn"
+            onClick={handleCategorySave}
+            disabled={isAnyMutationPending}
+          >
+            {isAnyMutationPending ? "Saving..." : "Save Category"}
+          </button>
+        </div>
       </div>
     </>
   );
 
   const renderVariantModal = () => (
     <>
-      <h2>{modal?.id ? "Edit Variant" : "Variant"}</h2>
+      <div className="modal-header-block">
+        <span className="modal-badge">
+          {modal?.id ? "Edit Entry" : "New Entry"}
+        </span>
+        <h2>{modal?.id ? "Edit Variant" : "Create Variant"}</h2>
+        <p>Add pricing details and configuration for this service variant.</p>
+      </div>
 
       <div className="modal-form-grid">
         <div className="field-group">
@@ -701,13 +815,24 @@ const Services = () => {
           </div>
         </div>
 
-        <button
-          className="modal-submit-btn"
-          onClick={handleVariantSave}
-          disabled={isAnyMutationPending}
-        >
-          {isAnyMutationPending ? "Saving..." : "Save"}
-        </button>
+        <div className="modal-action-row">
+          <button
+            type="button"
+            className="modal-muted-btn"
+            onClick={closeModal}
+            disabled={isAnyMutationPending}
+          >
+            Cancel
+          </button>
+
+          <button
+            className="modal-submit-btn"
+            onClick={handleVariantSave}
+            disabled={isAnyMutationPending}
+          >
+            {isAnyMutationPending ? "Saving..." : "Save Variant"}
+          </button>
+        </div>
       </div>
     </>
   );

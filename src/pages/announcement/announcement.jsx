@@ -268,6 +268,76 @@ const Announcements = () => {
     setPreview({ images, index });
   }, []);
 
+  const goToPrevPreview = useCallback(() => {
+    setPreview((prev) => {
+      if (!prev?.images?.length) return prev;
+      return {
+        ...prev,
+        index: prev.index === 0 ? prev.images.length - 1 : prev.index - 1,
+      };
+    });
+  }, []);
+
+  const goToNextPreview = useCallback(() => {
+    setPreview((prev) => {
+      if (!prev?.images?.length) return prev;
+      return {
+        ...prev,
+        index: prev.index === prev.images.length - 1 ? 0 : prev.index + 1,
+      };
+    });
+  }, []);
+
+  const titleLength = modal?.title?.length || 0;
+  const contentLength = modal?.content?.length || 0;
+  const modalImageCount = modal?.images?.length || 0;
+
+  useEffect(() => {
+    const hasOverlay = Boolean(modal || deleteItem || preview);
+
+    if (!hasOverlay) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (preview) {
+          setPreview(null);
+          return;
+        }
+
+        if (deleteItem) {
+          setDeleteItem(null);
+          return;
+        }
+
+        if (modal) {
+          closeModal();
+        }
+      }
+
+      if (preview?.images?.length > 1) {
+        if (e.key === "ArrowLeft") goToPrevPreview();
+        if (e.key === "ArrowRight") goToNextPreview();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    modal,
+    deleteItem,
+    preview,
+    closeModal,
+    goToPrevPreview,
+    goToNextPreview,
+  ]);
+
   /* ================= RENDER ================= */
   return (
     <AdminLayout>
@@ -375,71 +445,219 @@ const Announcements = () => {
 
         {modal && (
           <div className="modal-overlay" onClick={closeModal}>
-            <div className="premium-modal" onClick={(e) => e.stopPropagation()}>
-              <h2>{modal.id ? "Edit Announcement" : "Add Announcement"}</h2>
+            <div
+              className="premium-modal announcement-form-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={closeModal}
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
 
-              <input
-                placeholder="Title"
-                value={modal.title}
-                onChange={(e) => handleFieldChange("title", e.target.value)}
-              />
-              {errors.title && <span className="form-error">{errors.title}</span>}
+              <div className="modal-header-block">
+                <span className="modal-badge">
+                  {modal.id ? "Edit Entry" : "New Entry"}
+                </span>
 
-              <textarea
-                placeholder="Content"
-                value={modal.content}
-                onChange={(e) => handleFieldChange("content", e.target.value)}
-              />
-              {errors.content && (
-                <span className="form-error">{errors.content}</span>
-              )}
+                <h2>{modal.id ? "Edit Announcement" : "Add Announcement"}</h2>
 
-              <label>Start Date</label>
-              <input
-                type="date"
-                value={modal.start_date || ""}
-                onChange={(e) => handleFieldChange("start_date", e.target.value)}
-              />
-              {errors.start_date && (
-                <span className="form-error">{errors.start_date}</span>
-              )}
-
-              <label>End Date</label>
-              <input
-                type="date"
-                value={modal.end_date || ""}
-                onChange={(e) => handleFieldChange("end_date", e.target.value)}
-              />
-              {errors.end_date && (
-                <span className="form-error">{errors.end_date}</span>
-              )}
-
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFileChange}
-              />
-
-              <div className="announcement-preview">
-                {previewImages.map((img, i) => (
-                  <img key={`${img}-${i}`} src={img} alt="preview" />
-                ))}
+                <p>
+                  Create a polished announcement with title, message, schedule,
+                  and optional images for better visibility.
+                </p>
               </div>
 
-              <button onClick={handleSave} disabled={saving}>
-                {saving
-                  ? "Saving..."
-                  : modal.id
+              <div className="modal-form-grid">
+                <div className="form-group">
+                  <div className="form-label-row">
+                    <label htmlFor="announcement-title">Title</label>
+                    <span>{titleLength}/100</span>
+                  </div>
+
+                  <input
+                    id="announcement-title"
+                    type="text"
+                    placeholder="Ex. Holy Week Schedule Update"
+                    value={modal.title}
+                    maxLength={100}
+                    onChange={(e) => handleFieldChange("title", e.target.value)}
+                  />
+
+                  {errors.title && (
+                    <span className="form-error">{errors.title}</span>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <div className="form-label-row">
+                    <label htmlFor="announcement-content">Content</label>
+                    <span>{contentLength}/500</span>
+                  </div>
+
+                  <textarea
+                    id="announcement-content"
+                    placeholder="Write the full announcement details here..."
+                    value={modal.content}
+                    maxLength={500}
+                    onChange={(e) =>
+                      handleFieldChange("content", e.target.value)
+                    }
+                  />
+
+                  {errors.content && (
+                    <span className="form-error">{errors.content}</span>
+                  )}
+                </div>
+
+                <div className="announcement-date-grid">
+                  <div className="form-group">
+                    <div className="form-label-row">
+                      <label htmlFor="announcement-start-date">Start Date</label>
+                    </div>
+
+                    <input
+                      id="announcement-start-date"
+                      type="date"
+                      value={modal.start_date || ""}
+                      onChange={(e) =>
+                        handleFieldChange("start_date", e.target.value)
+                      }
+                    />
+
+                    {errors.start_date && (
+                      <span className="form-error">{errors.start_date}</span>
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <div className="form-label-row">
+                      <label htmlFor="announcement-end-date">End Date</label>
+                    </div>
+
+                    <input
+                      id="announcement-end-date"
+                      type="date"
+                      value={modal.end_date || ""}
+                      min={modal.start_date || ""}
+                      onChange={(e) =>
+                        handleFieldChange("end_date", e.target.value)
+                      }
+                    />
+
+                    {errors.end_date && (
+                      <span className="form-error">{errors.end_date}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <div className="form-label-row">
+                    <label htmlFor="announcement-images">Announcement Images</label>
+                    <span>Maximum 5</span>
+                  </div>
+
+                  <label
+                    htmlFor="announcement-images"
+                    className="custom-file-upload"
+                  >
+                    <div className="custom-file-upload-left">
+                      <span className="upload-icon">🖼️</span>
+                      <div>
+                        <strong>
+                          {modalImageCount > 0
+                            ? `${modalImageCount} image${
+                                modalImageCount > 1 ? "s" : ""
+                              } selected`
+                            : previewImages.length > 0
+                            ? `${previewImages.length} image${
+                                previewImages.length > 1 ? "s" : ""
+                              } ready`
+                            : "Choose images"}
+                        </strong>
+                        <small>
+                          JPG, PNG, WEBP supported. Up to 5 files.
+                        </small>
+                      </div>
+                    </div>
+
+                    <span className="upload-action">Browse</span>
+                  </label>
+
+                  <input
+                    id="announcement-images"
+                    className="native-file-input"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileChange}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <div className="preview-header-row">
+                    <label>Preview</label>
+                    <span>{previewImages.length} item(s)</span>
+                  </div>
+
+                  {previewImages.length ? (
+                    <div className="announcement-preview enhanced-preview">
+                      {previewImages.map((img, i) => (
+                        <button
+                          key={`${img}-${i}`}
+                          type="button"
+                          className="preview-thumb-card"
+                          onClick={() => openPreview(previewImages, i)}
+                        >
+                          <img src={img} alt={`preview-${i + 1}`} />
+                          <span>Image {i + 1}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-preview-state">
+                      <span className="empty-preview-icon">🖼️</span>
+                      <p>No images selected yet.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="modal-action-row">
+                <button
+                  type="button"
+                  className="btn-secondary modal-secondary-btn"
+                  onClick={closeModal}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-primary modal-primary-btn"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Saving..."
+                    : modal.id
                     ? "Update Announcement"
                     : "Create Announcement"}
-              </button>
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {deleteItem && (
-          <div className="modal-overlay" onClick={() => !deleting && setDeleteItem(null)}>
+          <div
+            className="modal-overlay"
+            onClick={() => !deleting && setDeleteItem(null)}
+          >
             <div
               className="premium-modal delete-modal"
               onClick={(e) => e.stopPropagation()}
@@ -474,16 +692,56 @@ const Announcements = () => {
 
         {preview && (
           <div className="image-preview-overlay" onClick={closePreview}>
-            <button className="preview-close" onClick={closePreview}>
+            <button
+              className="preview-close"
+              onClick={closePreview}
+              aria-label="Close preview"
+            >
               ✕
             </button>
 
-            <img
-              src={preview.images[preview.index]}
-              className="preview-image"
-              alt="Announcement preview"
+            {preview.images.length > 1 && (
+              <button
+                className="preview-arrow left"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToPrevPreview();
+                }}
+                aria-label="Previous image"
+              >
+                ◀
+              </button>
+            )}
+
+            <div
+              className="preview-stage"
               onClick={(e) => e.stopPropagation()}
-            />
+            >
+              <img
+                src={preview.images[preview.index]}
+                className="preview-image"
+                alt="Announcement preview"
+              />
+
+              <div className="preview-meta">
+                <span>
+                  Image {preview.index + 1} of {preview.images.length}
+                </span>
+              </div>
+            </div>
+
+            {preview.images.length > 1 && (
+              <button
+                className="preview-arrow right"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToNextPreview();
+                }}
+                aria-label="Next image"
+              >
+                ▶
+              </button>
+            )}
           </div>
         )}
       </div>

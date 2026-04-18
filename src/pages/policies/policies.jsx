@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminLayout from "../../components/layout/adminLayout";
 
 import {
@@ -84,7 +84,7 @@ const Policies = () => {
       const clampedPage = Math.min(Math.max(page, 1), totalPages);
       setCurrentPage(clampedPage);
     },
-    [totalPages],
+    [totalPages]
   );
 
   /* ================= HELPERS ================= */
@@ -169,7 +169,7 @@ const Policies = () => {
       const remainingItems = policies.length - 1;
       const newTotalPages = Math.max(
         1,
-        Math.ceil(remainingItems / ITEMS_PER_PAGE),
+        Math.ceil(remainingItems / ITEMS_PER_PAGE)
       );
 
       if (currentPage > newTotalPages) {
@@ -187,6 +187,38 @@ const Policies = () => {
     policies.length,
     currentPage,
   ]);
+
+  const titleLength = modal?.title?.length || 0;
+  const contentLength = modal?.content?.length || 0;
+
+  useEffect(() => {
+    const hasOverlay = Boolean(modal || deleteItem);
+
+    if (!hasOverlay) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (deleteItem) {
+          setDeleteItem(null);
+          return;
+        }
+
+        if (modal) {
+          closeModal();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [modal, deleteItem, closeModal]);
 
   /* ================= RENDER ================= */
   return (
@@ -272,47 +304,128 @@ const Policies = () => {
 
         {modal && (
           <div className="modal-overlay" onClick={closeModal}>
-            <div className="premium-modal" onClick={(e) => e.stopPropagation()}>
-              <h2>{modal.id ? "Edit Policy" : "Add Policy"}</h2>
+            <div
+              className="premium-modal policy-form-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={closeModal}
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
 
-              <input
-                placeholder="Title"
-                value={modal.title}
-                onChange={(e) => handleFieldChange("title", e.target.value)}
-              />
+              <div className="modal-header-block">
+                <span className="modal-badge">
+                  {modal.id ? "Edit Entry" : "New Entry"}
+                </span>
 
-              {errors.title && (
-                <span className="form-error">{errors.title}</span>
-              )}
+                <h2>{modal.id ? "Edit Policy" : "Add Policy"}</h2>
 
-              <textarea
-                placeholder="Content"
-                value={modal.content}
-                onChange={(e) => handleFieldChange("content", e.target.value)}
-              />
+                <p>
+                  Create a clear internal or customer-facing policy with title,
+                  detailed content, and active status control.
+                </p>
+              </div>
 
-              {errors.content && (
-                <span className="form-error">{errors.content}</span>
-              )}
+              <div className="modal-form-grid">
+                <div className="form-group">
+                  <div className="form-label-row">
+                    <label htmlFor="policy-title">Title</label>
+                    <span>{titleLength}/100</span>
+                  </div>
 
-              <label className="policy-toggle">
-                <input
-                  type="checkbox"
-                  checked={Boolean(modal.is_active)}
-                  onChange={(e) =>
-                    handleFieldChange("is_active", e.target.checked)
-                  }
-                />
-                <span>Active Policy</span>
-              </label>
+                  <input
+                    id="policy-title"
+                    type="text"
+                    placeholder="Ex. Cancellation Policy"
+                    value={modal.title}
+                    maxLength={100}
+                    onChange={(e) => handleFieldChange("title", e.target.value)}
+                  />
 
-              <button onClick={handleSave} disabled={saving}>
-                {saving
-                  ? "Saving..."
-                  : modal.id
+                  {errors.title && (
+                    <span className="form-error">{errors.title}</span>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <div className="form-label-row">
+                    <label htmlFor="policy-content">Content</label>
+                    <span>{contentLength}/2000</span>
+                  </div>
+
+                  <textarea
+                    id="policy-content"
+                    placeholder="Write the complete policy details here..."
+                    value={modal.content}
+                    maxLength={2000}
+                    onChange={(e) =>
+                      handleFieldChange("content", e.target.value)
+                    }
+                  />
+
+                  {errors.content && (
+                    <span className="form-error">{errors.content}</span>
+                  )}
+                </div>
+
+                <div className="policy-status-card">
+                  <div className="policy-status-copy">
+                    <strong>Status</strong>
+                    <p>
+                      Turn this on if you want this policy visible as an active
+                      policy in the system.
+                    </p>
+                  </div>
+
+                  <label className="policy-switch" htmlFor="policy-active">
+                    <input
+                      id="policy-active"
+                      type="checkbox"
+                      checked={Boolean(modal.is_active)}
+                      onChange={(e) =>
+                        handleFieldChange("is_active", e.target.checked)
+                      }
+                    />
+                    <span className="policy-slider"></span>
+                  </label>
+                </div>
+
+                <div className="policy-status-pill-row">
+                  {modal.is_active ? (
+                    <span className="status-active">Currently Active</span>
+                  ) : (
+                    <span className="status-inactive">Currently Inactive</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="modal-action-row">
+                <button
+                  type="button"
+                  className="btn-secondary modal-secondary-btn"
+                  onClick={closeModal}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-primary modal-primary-btn"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Saving..."
+                    : modal.id
                     ? "Update Policy"
                     : "Create Policy"}
-              </button>
+                </button>
+              </div>
             </div>
           </div>
         )}
