@@ -98,7 +98,7 @@ const Reviews = () => {
   const sliderSettings = useMemo(
     () => ({
       autoplay: reviews.length > 1,
-      autoplaySpeed: 4000,
+      autoplaySpeed: 4200,
       arrows: reviews.length > 1,
       dots: reviews.length > 1,
       infinite: reviews.length > 1,
@@ -139,7 +139,9 @@ const Reviews = () => {
     ));
 
   const renderCard = (review) => {
-    const name = review.bookings?.customers?.full_name || "Happy Customer";
+    const customerName = review.customer_name?.trim() || "Client";
+    const avatarLabel = customerName.charAt(0).toUpperCase();
+
     const formattedDate = review.created_at
       ? new Date(review.created_at).toLocaleDateString()
       : "Recently";
@@ -150,11 +152,11 @@ const Reviews = () => {
 
         <div className="review-top">
           <div className="review-avatar" aria-hidden="true">
-            {name.charAt(0).toUpperCase()}
+            {avatarLabel}
           </div>
 
           <div className="review-person">
-            <h3 className="review-name">{name}</h3>
+            <h3 className="review-name">{customerName}</h3>
             <p className="review-date">{formattedDate}</p>
           </div>
 
@@ -178,10 +180,14 @@ const Reviews = () => {
           <button
             type="button"
             className="review-image"
-            onClick={() => openPreview(review.image_url, name)}
-            aria-label={`Open review image from ${name}`}
+            onClick={() => openPreview(review.image_url, customerName)}
+            aria-label={`Open review image from ${customerName}`}
           >
-            <img src={review.image_url} alt={`${name} review`} loading="lazy" />
+            <img
+              src={review.image_url}
+              alt={`${customerName} review`}
+              loading="lazy"
+            />
             <span className="review-image-overlay">
               <FaRegImage />
               View Photo
@@ -195,15 +201,24 @@ const Reviews = () => {
   if (isLoading) {
     return (
       <section className="reviews" id="reviews">
-        <div className="container">
+        <div className="reviews-bg reviews-bg-1" />
+        <div className="reviews-bg reviews-bg-2" />
+
+        <div className="container reviews-shell">
           <div className="reviews-heading">
-            <span className="reviews-kicker">Client Love</span>
-            <h2>Why Customers Love Us</h2>
-            <p>Real experiences from our happy nail art clients.</p>
+            <span className="reviews-kicker">Client Reviews</span>
+            <h2>What Clients Are Saying</h2>
+            <p>
+              Real feedback from clients who loved their nail sets, service, and
+              overall studio experience.
+            </p>
           </div>
 
           <div className="reviews-state">
-            <p className="loading-text">Loading reviews...</p>
+            <div className="reviews-state-card">
+              <span className="reviews-state-pill">Please wait</span>
+              <p className="loading-text">Loading reviews...</p>
+            </div>
           </div>
         </div>
       </section>
@@ -216,12 +231,13 @@ const Reviews = () => {
         <div className="reviews-bg reviews-bg-1" />
         <div className="reviews-bg reviews-bg-2" />
 
-        <div className="container">
+        <div className="container reviews-shell">
           <div className="reviews-heading">
-            <span className="reviews-kicker">Client Love</span>
-            <h2>Why Customers Love Us</h2>
+            <span className="reviews-kicker">Client Reviews</span>
+            <h2>What Clients Are Saying</h2>
             <p>
-              Real stories, real smiles, and beautiful results from our clients.
+              Real feedback from clients who shared their experience, service
+              satisfaction, and finished nail results.
             </p>
           </div>
 
@@ -233,11 +249,17 @@ const Reviews = () => {
 
           {isError ? (
             <div className="reviews-state">
-              <p className="loading-text">Failed to load reviews.</p>
+              <div className="reviews-state-card">
+                <span className="reviews-state-pill">Something went wrong</span>
+                <p className="loading-text">Failed to load reviews.</p>
+              </div>
             </div>
           ) : reviews.length === 0 ? (
             <div className="reviews-state">
-              <p className="loading-text">No reviews available.</p>
+              <div className="reviews-state-card">
+                <span className="reviews-state-pill">No content yet</span>
+                <p className="loading-text">No reviews available.</p>
+              </div>
             </div>
           ) : (
             <>

@@ -126,7 +126,7 @@ const Portfolio = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
-    const openPreview = (item, startIndex = 0) => {
+  const openPreview = (item, startIndex = 0) => {
     setPreviewImages(item.images || []);
     setPreviewTitle(item.title || "");
     setPreviewDescription(item.description || item.content || "");
@@ -253,7 +253,7 @@ const Portfolio = () => {
         </div>
       </section>
 
-           {isPreviewOpen && previewImages.length > 0 && (
+      {isPreviewOpen && previewImages.length > 0 && (
         <PortfolioPreviewModal
           images={previewImages}
           title={previewTitle}

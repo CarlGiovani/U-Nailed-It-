@@ -1,5 +1,5 @@
 /* ======================================================
-   HERO - REFINED / CONSISTENT / SAFE
+   HERO - UPGRADED / CLEARER / CONSISTENT / SAFE
 ====================================================== */
 
 .hero {
@@ -10,27 +10,37 @@
   overflow: hidden;
   isolation: isolate;
   padding: 76px 0 56px;
+  background: url("../assets/images/hero-background.png") center center / cover
+    no-repeat;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
   background:
     linear-gradient(
       90deg,
-      rgba(255, 248, 251, 0.92) 0%,
-      rgba(255, 246, 250, 0.84) 28%,
-      rgba(255, 244, 248, 0.42) 54%,
-      rgba(255, 244, 248, 0.08) 100%
-    ),
-    url("../assets/images/background.jpg") no-repeat center center / cover;
+      rgba(255, 248, 251, 0.86) 0%,
+      rgba(255, 246, 250, 0.68) 24%,
+      rgba(255, 244, 248, 0.3) 48%,
+      rgba(255, 244, 248, 0.08) 72%,
+      rgba(255, 244, 248, 0) 100%
+    );
+  z-index: 0;
+  pointer-events: none;
 }
 
 .hero::before {
   content: "";
   position: absolute;
   inset: auto 0 0 0;
-  height: 140px;
+  height: 150px;
   background: linear-gradient(
     to bottom,
     rgba(255, 245, 249, 0),
-    rgba(255, 243, 247, 0.5),
-    rgba(255, 240, 245, 0.9)
+    rgba(255, 243, 247, 0.42),
+    rgba(255, 240, 245, 0.86)
   );
   pointer-events: none;
   z-index: 0;
@@ -40,34 +50,34 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to right, rgba(255, 255, 255, 0.07), transparent 42%),
-    linear-gradient(to left, rgba(0, 0, 0, 0.025), transparent 34%);
+    linear-gradient(to right, rgba(255, 255, 255, 0.04), transparent 38%),
+    linear-gradient(to left, rgba(0, 0, 0, 0.02), transparent 30%);
   pointer-events: none;
-  z-index: 0;
+  z-index: 1;
 }
 
 .hero-bg-glow {
   position: absolute;
   border-radius: 999px;
-  filter: blur(28px);
+  filter: blur(30px);
   pointer-events: none;
-  z-index: 0;
+  z-index: 1;
 }
 
 .hero-bg-glow-1 {
-  top: 70px;
-  left: -70px;
+  top: 64px;
+  left: -60px;
   width: 220px;
   height: 220px;
-  background: rgba(255, 182, 193, 0.16);
+  background: rgba(255, 182, 193, 0.14);
 }
 
 .hero-bg-glow-2 {
-  right: -70px;
-  bottom: 20px;
+  right: -72px;
+  bottom: 14px;
   width: 240px;
   height: 240px;
-  background: rgba(212, 175, 55, 0.12);
+  background: rgba(212, 175, 55, 0.1);
 }
 
 /* ======================================================
@@ -82,7 +92,7 @@
 
 .hero-content {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
   align-items: center;
   gap: clamp(28px, 4vw, 56px);
   min-height: 100%;
@@ -90,7 +100,7 @@
 
 .hero-copy {
   width: 100%;
-  max-width: 560px;
+  max-width: 580px;
   justify-self: center;
   text-align: left;
 }
@@ -115,10 +125,11 @@
   margin-bottom: 18px;
   padding: 10px 16px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.86);
   border: 1px solid rgba(212, 175, 55, 0.16);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.05);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -130,25 +141,28 @@
   margin: 0 0 18px;
   max-width: 10ch;
   font-size: clamp(3rem, 6vw, 5.1rem);
-  line-height: 0.96;
+  line-height: 0.95;
   font-weight: 900;
-  letter-spacing: -0.06em;
+  letter-spacing: -0.065em;
   color: #111111;
+  text-wrap: balance;
 }
 
 .hero-copy h1 span {
   display: block;
-  background: linear-gradient(90deg, #d4af37 0%, #f09cbc 55%, #ef7da7 100%);
+  background: linear-gradient(90deg, #d4af37 0%, #f0a8c2 52%, #ef7da7 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .hero-copy p {
   max-width: 540px;
-  margin: 0 0 28px;
+  margin: 0 0 30px;
   font-size: 1.02rem;
-  line-height: 1.75;
+  line-height: 1.78;
   color: rgba(17, 17, 17, 0.72);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 /* ======================================================
@@ -180,7 +194,12 @@
     box-shadow 0.25s ease,
     background 0.25s ease,
     color 0.25s ease,
-    border-color 0.25s ease;
+    border-color 0.25s ease,
+    opacity 0.25s ease;
+}
+
+.hero-btn:hover {
+  transform: translateY(-2px);
 }
 
 .hero-btn:focus-visible {
@@ -190,26 +209,30 @@
 
 .hero-btn-primary {
   color: #ffffff;
-  background: linear-gradient(to right, var(--primary-pink), var(--gold));
-  box-shadow: 0 10px 24px rgba(255, 182, 193, 0.24);
+  background: linear-gradient(90deg, var(--primary-pink), var(--gold));
+  box-shadow:
+    0 10px 24px rgba(255, 182, 193, 0.22),
+    0 6px 14px rgba(212, 175, 55, 0.12);
 }
 
 .hero-btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 30px rgba(255, 182, 193, 0.3);
+  box-shadow:
+    0 14px 30px rgba(255, 182, 193, 0.28),
+    0 8px 18px rgba(212, 175, 55, 0.14);
 }
 
 .hero-btn-secondary {
   color: var(--primary-pink);
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(255, 105, 180, 0.14);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.045);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .hero-btn-secondary:hover {
-  transform: translateY(-2px);
-  background: var(--pale-pink);
+  background: rgba(255, 248, 252, 0.98);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.055);
 }
 
 /* ======================================================
@@ -249,12 +272,12 @@
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(255, 192, 203, 0.18) 0%,
-    rgba(255, 215, 0, 0.1) 35%,
-    rgba(255, 255, 255, 0.05) 55%,
+    rgba(255, 192, 203, 0.17) 0%,
+    rgba(255, 215, 0, 0.09) 36%,
+    rgba(255, 255, 255, 0.05) 58%,
     transparent 75%
   );
-  filter: blur(26px);
+  filter: blur(28px);
   z-index: -2;
   animation: heroGlowPulse 6s ease-in-out infinite;
   will-change: transform, opacity;
@@ -267,8 +290,8 @@
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(255, 255, 255, 0.18) 0%,
-    transparent 70%
+    rgba(255, 255, 255, 0.16) 0%,
+    transparent 72%
   );
   filter: blur(16px);
   z-index: -1;
@@ -278,8 +301,9 @@
   width: clamp(170px, 23vw, 250px);
   height: auto;
   display: block;
-  filter: drop-shadow(0 20px 34px rgba(255, 105, 180, 0.14))
-    drop-shadow(0 10px 20px rgba(212, 175, 55, 0.12));
+  filter:
+    drop-shadow(0 20px 34px rgba(255, 105, 180, 0.13))
+    drop-shadow(0 10px 20px rgba(212, 175, 55, 0.11));
   animation: heroLogoBreath 7s ease-in-out infinite;
   will-change: transform;
 }
@@ -377,11 +401,12 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.42);
   border-radius: 999px;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: #7a4d5f;
   font-size: 0.7rem;
   font-weight: 700;
@@ -485,7 +510,7 @@
   0%,
   100% {
     transform: scale(0.97);
-    opacity: 0.78;
+    opacity: 0.76;
   }
   50% {
     transform: scale(1.02);
@@ -556,10 +581,10 @@
 @keyframes sparkleTwinkle {
   0%,
   100% {
-    opacity: 0.4;
+    opacity: 0.42;
   }
   50% {
-    opacity: 0.92;
+    opacity: 0.94;
   }
 }
 
@@ -571,7 +596,18 @@
   .hero {
     min-height: auto;
     padding: 82px 0 62px;
-    background-position: center;
+    background-position: center center;
+  }
+
+  .hero::after {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(255, 248, 251, 0.8) 0%,
+        rgba(255, 246, 250, 0.6) 32%,
+        rgba(255, 244, 248, 0.24) 66%,
+        rgba(255, 244, 248, 0.05) 100%
+      );
   }
 
   .hero-content {
@@ -646,14 +682,19 @@
   .hero {
     min-height: auto;
     padding: 64px 0 42px;
+    background: url("../assets/images/hero-background.png") center center / cover
+      no-repeat;
+  }
+
+  .hero::after {
     background:
       linear-gradient(
         180deg,
-        rgba(255, 248, 251, 0.95) 0%,
-        rgba(255, 246, 250, 0.9) 36%,
-        rgba(255, 244, 248, 0.68) 100%
-      ),
-      url("../assets/images/background.jpg") no-repeat center center / cover;
+        rgba(255, 248, 251, 0.9) 0%,
+        rgba(255, 246, 250, 0.78) 34%,
+        rgba(255, 244, 248, 0.5) 68%,
+        rgba(255, 244, 248, 0.22) 100%
+      );
   }
 
   .hero::before {
