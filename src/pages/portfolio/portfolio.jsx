@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AdminLayout from "../../components/layout/adminLayout";
 
@@ -123,31 +123,27 @@ const Portfolio = () => {
     });
   }, []);
 
-  const handleFileChange = useCallback(
-    (e) => {
-      const files = Array.from(e.target.files || []).slice(0, 3);
+  const handleFileChange = useCallback((e) => {
+    const files = Array.from(e.target.files || []).slice(0, 3);
+    const newPreviews = files.map((file) => URL.createObjectURL(file));
 
-      const newPreviews = files.map((file) => URL.createObjectURL(file));
-
-      setPreviewImages((prev) => {
-        prev.forEach((url) => {
-          if (typeof url === "string" && url.startsWith("blob:")) {
-            URL.revokeObjectURL(url);
-          }
-        });
-        return newPreviews;
+    setPreviewImages((prev) => {
+      prev.forEach((url) => {
+        if (typeof url === "string" && url.startsWith("blob:")) {
+          URL.revokeObjectURL(url);
+        }
       });
+      return newPreviews;
+    });
 
-      setModal((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          images: files,
-        };
-      });
-    },
-    []
-  );
+    setModal((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        images: files,
+      };
+    });
+  }, []);
 
   const handleSave = useCallback(async () => {
     if (!modal || saving) return;
@@ -229,6 +225,56 @@ const Portfolio = () => {
       };
     });
   }, []);
+
+  const modalImageCount = modal?.images?.length || 0;
+  const titleLength = modal?.title?.length || 0;
+  const descriptionLength = modal?.description?.length || 0;
+
+  useEffect(() => {
+    const hasOverlay = Boolean(modal || deleteItem || preview);
+
+    if (!hasOverlay) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (preview) {
+          setPreview(null);
+          return;
+        }
+
+        if (deleteItem) {
+          setDeleteItem(null);
+          return;
+        }
+
+        if (modal) {
+          closeModal();
+        }
+      }
+
+      if (preview?.images?.length) {
+        if (e.key === "ArrowLeft") goToPrevPreview();
+        if (e.key === "ArrowRight") goToNextPreview();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    modal,
+    deleteItem,
+    preview,
+    closeModal,
+    goToPrevPreview,
+    goToNextPreview,
+  ]);
 
   return (
     <AdminLayout>
@@ -323,43 +369,163 @@ const Portfolio = () => {
 
         {modal && (
           <div className="modal-overlay" onClick={closeModal}>
-            <div className="premium-modal" onClick={(e) => e.stopPropagation()}>
-              <h2>{modal.id ? "Edit Portfolio" : "Add Portfolio"}</h2>
+            <div
+              className="premium-modal portfolio-form-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={closeModal}
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
 
-              <input
-                placeholder="Title"
-                value={modal.title}
-                onChange={(e) => handleModalChange("title", e.target.value)}
-              />
+              <div className="modal-header-block">
+                <span className="modal-badge">
+                  {modal.id ? "Edit Entry" : "New Entry"}
+                </span>
 
-              <textarea
-                placeholder="Description"
-                value={modal.description}
-                onChange={(e) =>
-                  handleModalChange("description", e.target.value)
-                }
-              />
+                <h2>{modal.id ? "Edit Portfolio" : "Add Portfolio"}</h2>
 
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFileChange}
-              />
-
-              <div className="portfolio-preview">
-                {previewImages.map((img, i) => (
-                  <img key={`${img}-${i}`} src={img} alt="preview" />
-                ))}
+                <p>
+                  Add a polished portfolio item with a clear title, short
+                  description, and up to 3 images.
+                </p>
               </div>
 
-              <button onClick={handleSave} disabled={saving}>
-                {saving
-                  ? "Saving..."
-                  : modal.id
+              <div className="modal-form-grid">
+                <div className="form-group">
+                  <div className="form-label-row">
+                    <label htmlFor="portfolio-title">Title</label>
+                    <span>{titleLength}/80</span>
+                  </div>
+
+                  <input
+                    id="portfolio-title"
+                    type="text"
+                    placeholder="Ex. Soft Glam Bridal Set"
+                    value={modal.title}
+                    maxLength={80}
+                    onChange={(e) =>
+                      handleModalChange("title", e.target.value)
+                    }
+                  />
+                </div>
+
+                <div className="form-group">
+                  <div className="form-label-row">
+                    <label htmlFor="portfolio-description">Description</label>
+                    <span>{descriptionLength}/300</span>
+                  </div>
+
+                  <textarea
+                    id="portfolio-description"
+                    placeholder="Write a short but elegant description of this nail set or portfolio work..."
+                    value={modal.description}
+                    maxLength={300}
+                    onChange={(e) =>
+                      handleModalChange("description", e.target.value)
+                    }
+                  />
+                </div>
+
+                <div className="form-group">
+                  <div className="form-label-row">
+                    <label htmlFor="portfolio-images">Portfolio Images</label>
+                    <span>Maximum 3</span>
+                  </div>
+
+                  <label
+                    htmlFor="portfolio-images"
+                    className="custom-file-upload"
+                  >
+                    <div className="custom-file-upload-left">
+                      <span className="upload-icon">🖼️</span>
+                      <div>
+                        <strong>
+                          {modalImageCount > 0
+                            ? `${modalImageCount} image${
+                                modalImageCount > 1 ? "s" : ""
+                              } selected`
+                            : previewImages.length > 0
+                            ? `${previewImages.length} image${
+                                previewImages.length > 1 ? "s" : ""
+                              } ready`
+                            : "Choose images"}
+                        </strong>
+                        <small>
+                          JPG, PNG, WEBP supported. Best if same style/ratio.
+                        </small>
+                      </div>
+                    </div>
+
+                    <span className="upload-action">Browse</span>
+                  </label>
+
+                  <input
+                    id="portfolio-images"
+                    className="native-file-input"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileChange}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <div className="preview-header-row">
+                    <label>Preview</label>
+                    <span>{previewImages.length} item(s)</span>
+                  </div>
+
+                  {previewImages.length ? (
+                    <div className="portfolio-preview enhanced-preview">
+                      {previewImages.map((img, i) => (
+                        <button
+                          key={`${img}-${i}`}
+                          type="button"
+                          className="preview-thumb-card"
+                          onClick={() => openImagePreview(previewImages, i)}
+                        >
+                          <img src={img} alt={`preview-${i + 1}`} />
+                          <span>Image {i + 1}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-preview-state">
+                      <span className="empty-preview-icon">🖼️</span>
+                      <p>No images selected yet.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="modal-action-row">
+                <button
+                  type="button"
+                  className="btn-secondary modal-secondary-btn"
+                  onClick={closeModal}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-primary modal-primary-btn"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Saving..."
+                    : modal.id
                     ? "Update Portfolio"
                     : "Create Portfolio"}
-              </button>
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -405,24 +571,60 @@ const Portfolio = () => {
         )}
 
         {preview && (
-          <div className="image-preview-overlay">
-            <button className="preview-close" onClick={() => setPreview(null)}>
+          <div
+            className="image-preview-overlay"
+            onClick={() => setPreview(null)}
+          >
+            <button
+              className="preview-close"
+              onClick={() => setPreview(null)}
+              aria-label="Close preview"
+            >
               ✕
             </button>
 
-            <button className="preview-arrow left" onClick={goToPrevPreview}>
-              ◀
-            </button>
+            {preview.images.length > 1 && (
+              <button
+                className="preview-arrow left"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToPrevPreview();
+                }}
+                aria-label="Previous image"
+              >
+                ◀
+              </button>
+            )}
 
-            <img
-              src={preview.images[preview.index]}
-              className="preview-image"
-              alt="Portfolio preview"
-            />
+            <div
+              className="preview-stage"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={preview.images[preview.index]}
+                className="preview-image"
+                alt="Portfolio preview"
+              />
 
-            <button className="preview-arrow right" onClick={goToNextPreview}>
-              ▶
-            </button>
+              <div className="preview-meta">
+                <span>
+                  Image {preview.index + 1} of {preview.images.length}
+                </span>
+              </div>
+            </div>
+
+            {preview.images.length > 1 && (
+              <button
+                className="preview-arrow right"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToNextPreview();
+                }}
+                aria-label="Next image"
+              >
+                ▶
+              </button>
+            )}
           </div>
         )}
       </div>
