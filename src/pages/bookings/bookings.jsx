@@ -55,6 +55,12 @@ const formatDateTime = (date) => {
   return dateTimeFormatter.format(new Date(date));
 };
 
+const formatCurrency = (value) => {
+  const amount = Number(value ?? 0);
+  if (Number.isNaN(amount)) return "₱0";
+  return `₱${amount.toLocaleString("en-PH")}`;
+};
+
 const patchBookingInResponse = (response, bookingId, patch) => {
   if (!response?.data?.length) return response;
 
@@ -90,6 +96,7 @@ const Bookings = () => {
 
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [additionalPayment, setAdditionalPayment] = useState("");
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -215,7 +222,7 @@ const Bookings = () => {
     if (updatedSelectedBooking && updatedSelectedBooking !== selectedBooking) {
       setSelectedBooking(updatedSelectedBooking);
     }
-  }, [bookings]);
+  }, [bookings, selectedBooking]);
 
   /* ================= AUTO SCROLL TO HIGHLIGHTED ROW ================= */
   useEffect(() => {
@@ -276,7 +283,6 @@ const Bookings = () => {
             );
           }
 
-          // for inserts / deletes / filter-sensitive changes, do a safe refresh
           scheduleRealtimeRefresh();
         },
       )
@@ -342,37 +348,81 @@ const Bookings = () => {
   );
 
   /* ================= OPTIMISTIC PATCH ================= */
-  const buildOptimisticPatch = useCallback((type) => {
-    const now = new Date().toISOString();
+  const buildOptimisticPatch = useCallback(
+    (type, booking) => {
+      const now = new Date().toISOString();
 
-    if (type === "approve") {
-      return {
-        status: "approved",
-        approved_at: now,
-      };
-    }
+      if (type === "approve") {
+        return {
+          status: "approved",
+          approved_at: now,
+        };
+      }
 
-    if (type === "reject") {
-      return {
-        status: "rejected",
-      };
-    }
+      if (type === "reject") {
+        return {
+          status: "rejected",
+        };
+      }
+
+      if (type === "complete") {
+        const dp = Number(booking?.downpayment ?? 0);
+        const extra = Number(additionalPayment || 0);
+        const finalPrice = dp + extra;
+
+        return {
+          status: "completed",
+          completed_at: now,
+          additional_payment: extra,
+          final_price: finalPrice,
+        };
+      }
+
+      return {};
+    },
+    [additionalPayment],
+  );
+
+  const openConfirmAction = useCallback((type, booking) => {
+    setConfirmAction({ type, booking });
 
     if (type === "complete") {
-      return {
-        status: "completed",
-        completed_at: now,
-      };
-    }
+      const remaining =
+        Number(booking?.total_price ?? 0) - Number(booking?.downpayment ?? 0);
 
-    return {};
+      setAdditionalPayment(
+        remaining > 0 && Number.isFinite(remaining) ? String(remaining) : "0",
+      );
+    } else {
+      setAdditionalPayment("");
+    }
   }, []);
+
+  const closeConfirmAction = useCallback(() => {
+    if (actionLoading) return;
+    setConfirmAction(null);
+    setAdditionalPayment("");
+  }, [actionLoading]);
 
   const executeAction = useCallback(async () => {
     if (!confirmAction) return;
 
     const { type, booking } = confirmAction;
-    const optimisticPatch = buildOptimisticPatch(type);
+
+    if (type === "complete") {
+      const parsedAdditional = Number(additionalPayment);
+
+      if (
+        additionalPayment === "" ||
+        Number.isNaN(parsedAdditional) ||
+        parsedAdditional < 0
+      ) {
+        alert("Please enter a valid additional payment amount.");
+        return;
+      }
+    }
+
+    const optimisticPatch = buildOptimisticPatch(type, booking);
 
     const querySnapshots = queryClient
       .getQueryCache()
@@ -384,7 +434,6 @@ const Bookings = () => {
 
     setActionLoading(true);
 
-    // optimistic update across all cached booking queries
     querySnapshots.forEach(({ queryKey }) => {
       queryClient.setQueryData(queryKey, (oldData) =>
         patchBookingInResponse(oldData, booking.id, optimisticPatch),
@@ -402,15 +451,26 @@ const Bookings = () => {
     setConfirmAction(null);
 
     try {
-      if (type === "approve") await approveBooking(booking.id);
-      if (type === "reject") await rejectBooking(booking.id);
-      if (type === "complete") await completeBooking(booking.id);
+      if (type === "approve") {
+        await approveBooking(booking.id);
+      }
+
+      if (type === "reject") {
+        await rejectBooking(booking.id);
+      }
+
+      if (type === "complete") {
+        await completeBooking(booking.id, {
+          additional_payment: Number(additionalPayment || 0),
+        });
+      }
 
       await queryClient.invalidateQueries({
         queryKey: ["admin-bookings"],
       });
 
       setSelectedBooking(null);
+      setAdditionalPayment("");
     } catch (err) {
       console.error("Failed to execute booking action:", err);
 
@@ -422,7 +482,12 @@ const Bookings = () => {
     } finally {
       setActionLoading(false);
     }
-  }, [confirmAction, buildOptimisticPatch, queryClient]);
+  }, [
+    confirmAction,
+    buildOptimisticPatch,
+    queryClient,
+    additionalPayment,
+  ]);
 
   const realtimeLabel =
     realtimeStatus === "live"
@@ -430,6 +495,24 @@ const Bookings = () => {
       : realtimeStatus === "reconnecting"
         ? "Reconnecting realtime..."
         : "Connecting realtime...";
+
+  const completePreview = useMemo(() => {
+    if (!confirmAction || confirmAction.type !== "complete") return null;
+
+    const booking = confirmAction.booking;
+    const downpayment = Number(booking?.downpayment ?? 0);
+    const totalPrice = Number(booking?.total_price ?? 0);
+    const parsedAdditional = Number(additionalPayment || 0);
+    const safeAdditional = Number.isNaN(parsedAdditional) ? 0 : parsedAdditional;
+    const computedFinal = downpayment + safeAdditional;
+
+    return {
+      downpayment,
+      totalPrice,
+      safeAdditional,
+      computedFinal,
+    };
+  }, [confirmAction, additionalPayment]);
 
   return (
     <AdminLayout>
@@ -734,17 +817,34 @@ const Bookings = () => {
                 <div className="info-card payment-card">
                   <h3>Payment Information</h3>
                   <p>
-                    <strong>Total:</strong> ₱{selectedBooking.total_price ?? 0}
+                    <strong>Total:</strong>{" "}
+                    {formatCurrency(selectedBooking.total_price ?? 0)}
                   </p>
                   <p>
-                    <strong>Downpayment:</strong> ₱
-                    {selectedBooking.downpayment ?? 0}
+                    <strong>Downpayment:</strong>{" "}
+                    {formatCurrency(selectedBooking.downpayment ?? 0)}
                   </p>
                   <p>
-                    <strong>Remaining:</strong> ₱
-                    {(selectedBooking.total_price ?? 0) -
-                      (selectedBooking.downpayment ?? 0)}
+                    <strong>Remaining:</strong>{" "}
+                    {formatCurrency(
+                      (selectedBooking.total_price ?? 0) -
+                        (selectedBooking.downpayment ?? 0),
+                    )}
                   </p>
+
+                  {selectedBooking.additional_payment != null && (
+                    <p>
+                      <strong>Additional Payment:</strong>{" "}
+                      {formatCurrency(selectedBooking.additional_payment)}
+                    </p>
+                  )}
+
+                  {selectedBooking.final_price != null && (
+                    <p>
+                      <strong>Final Price:</strong>{" "}
+                      {formatCurrency(selectedBooking.final_price)}
+                    </p>
+                  )}
 
                   {selectedBooking.proof_payment_path && (
                     <button
@@ -767,12 +867,7 @@ const Bookings = () => {
                   <button
                     className="btn-approve"
                     type="button"
-                    onClick={() =>
-                      setConfirmAction({
-                        type: "approve",
-                        booking: selectedBooking,
-                      })
-                    }
+                    onClick={() => openConfirmAction("approve", selectedBooking)}
                     disabled={actionLoading}
                   >
                     Approve
@@ -781,12 +876,7 @@ const Bookings = () => {
                   <button
                     className="btn-reject"
                     type="button"
-                    onClick={() =>
-                      setConfirmAction({
-                        type: "reject",
-                        booking: selectedBooking,
-                      })
-                    }
+                    onClick={() => openConfirmAction("reject", selectedBooking)}
                     disabled={actionLoading}
                   >
                     Reject
@@ -798,12 +888,7 @@ const Bookings = () => {
                 <button
                   className="btn-complete"
                   type="button"
-                  onClick={() =>
-                    setConfirmAction({
-                      type: "complete",
-                      booking: selectedBooking,
-                    })
-                  }
+                  onClick={() => openConfirmAction("complete", selectedBooking)}
                   disabled={actionLoading}
                 >
                   Complete
@@ -841,10 +926,7 @@ const Bookings = () => {
       )}
 
       {confirmAction && (
-        <div
-          className="modal-overlay"
-          onClick={() => !actionLoading && setConfirmAction(null)}
-        >
+        <div className="modal-overlay" onClick={closeConfirmAction}>
           <div
             className="confirm-modal premium-confirm-modal"
             onClick={(e) => e.stopPropagation()}
@@ -872,14 +954,55 @@ const Bookings = () => {
               {confirmAction.type === "reject" &&
                 "This will reject the booking and release the reserved slot if applicable."}
               {confirmAction.type === "complete" &&
-                "This will mark the booking as completed and trigger the review flow."}
+                "Enter the additional payment received so the system can compute the final total before completing this booking."}
             </p>
+
+            {confirmAction.type === "complete" && completePreview && (
+              <div className="complete-payment-box">
+                <div className="complete-payment-grid">
+                  <div className="complete-payment-row">
+                    <span>Original Total</span>
+                    <strong>{formatCurrency(completePreview.totalPrice)}</strong>
+                  </div>
+
+                  <div className="complete-payment-row">
+                    <span>Downpayment Paid</span>
+                    <strong>
+                      {formatCurrency(completePreview.downpayment)}
+                    </strong>
+                  </div>
+
+                  <div className="complete-payment-input-group">
+                    <label htmlFor="additional_payment">
+                      Additional Payment Received
+                    </label>
+                    <input
+                      id="additional_payment"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={additionalPayment}
+                      onChange={(e) => setAdditionalPayment(e.target.value)}
+                      placeholder="Enter amount"
+                      disabled={actionLoading}
+                    />
+                  </div>
+
+                  <div className="complete-payment-row final">
+                    <span>Computed Final Total</span>
+                    <strong>
+                      {formatCurrency(completePreview.computedFinal)}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="confirm-actions">
               <button
                 className="confirm-btn cancel"
                 type="button"
-                onClick={() => setConfirmAction(null)}
+                onClick={closeConfirmAction}
                 disabled={actionLoading}
               >
                 Cancel

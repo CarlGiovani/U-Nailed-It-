@@ -51,6 +51,12 @@ const normalizeDurationForInput = (value) => {
   return "";
 };
 
+const formatCurrency = (value) => {
+  const amount = Number(value);
+  if (Number.isNaN(amount)) return "0";
+  return amount.toLocaleString("en-PH");
+};
+
 const getFreshServiceFromMap = (service, servicesById) => {
   return servicesById.get(service.id) || service;
 };
@@ -144,9 +150,7 @@ const Pagination = memo(function Pagination({
           return (
             <button
               key={page}
-              className={`pagination-number ${
-                currentPage === page ? "active" : ""
-              }`}
+              className={`pagination-number ${currentPage === page ? "active" : ""}`}
               onClick={() => onPageChange(page)}
             >
               {page}
@@ -341,6 +345,8 @@ const Services = () => {
       size: "",
       price: "",
       downpayment: "",
+      estimate_min: "",
+      estimate_max: "",
     });
   }, []);
 
@@ -353,6 +359,8 @@ const Services = () => {
       size: variant.size,
       price: variant.price,
       downpayment: variant.downpayment,
+      estimate_min: variant.estimate_min ?? "",
+      estimate_max: variant.estimate_max ?? "",
     });
   }, []);
 
@@ -407,6 +415,7 @@ const Services = () => {
       closeModal();
     } catch (err) {
       console.error(err);
+      alert(err?.response?.data?.error || err?.message || "Failed to save service.");
     } finally {
       setSaving(false);
     }
@@ -433,6 +442,7 @@ const Services = () => {
       closeModal();
     } catch (err) {
       console.error(err);
+      alert(err?.response?.data?.error || err?.message || "Failed to save category.");
     } finally {
       setSaving(false);
     }
@@ -444,12 +454,68 @@ const Services = () => {
     try {
       setSaving(true);
 
+      const estimateMin =
+        modal.estimate_min === "" || modal.estimate_min === null
+          ? null
+          : Number(modal.estimate_min);
+
+      const estimateMax =
+        modal.estimate_max === "" || modal.estimate_max === null
+          ? null
+          : Number(modal.estimate_max);
+
+      if (!modal.body_part?.trim()) {
+        alert("Body part is required.");
+        return;
+      }
+
+      if (modal.price === "" || Number(modal.price) < 0) {
+        alert("Please enter a valid price.");
+        return;
+      }
+
+      if (modal.downpayment === "" || Number(modal.downpayment) < 0) {
+        alert("Please enter a valid downpayment.");
+        return;
+      }
+
+      if (estimateMin !== null && Number.isNaN(estimateMin)) {
+        alert("Estimate Min must be a valid number.");
+        return;
+      }
+
+      if (estimateMax !== null && Number.isNaN(estimateMax)) {
+        alert("Estimate Max must be a valid number.");
+        return;
+      }
+
+      if (estimateMin !== null && estimateMin < 0) {
+        alert("Estimate Min must be 0 or higher.");
+        return;
+      }
+
+      if (estimateMax !== null && estimateMax < 0) {
+        alert("Estimate Max must be 0 or higher.");
+        return;
+      }
+
+      if (
+        estimateMin !== null &&
+        estimateMax !== null &&
+        estimateMin > estimateMax
+      ) {
+        alert("Estimate Min cannot be greater than Estimate Max.");
+        return;
+      }
+
       const payload = {
         category_id: Number(modal.category_id || modal.categoryId),
         body_part: modal.body_part,
         size: modal.size || "",
         price: Number(modal.price),
         downpayment: Number(modal.downpayment || 0),
+        estimate_min: estimateMin,
+        estimate_max: estimateMax,
       };
 
       if (modal.id) {
@@ -464,6 +530,7 @@ const Services = () => {
       closeModal();
     } catch (err) {
       console.error(err);
+      alert(err?.response?.data?.error || err?.message || "Failed to save variant.");
     } finally {
       setSaving(false);
     }
@@ -486,6 +553,7 @@ const Services = () => {
         }
       } catch (err) {
         console.error(err);
+        alert(err?.response?.data?.error || err?.message || "Failed to update service.");
       } finally {
         setTogglingId(null);
       }
@@ -694,9 +762,20 @@ const Services = () => {
                 <div key={variant.id} className="variant-item">
                   <div className="variant-details">
                     <span className="variant-name">
-                      {variant.body_part} - {variant.size}
+                      {variant.body_part}
+                      {variant.size ? ` - ${variant.size}` : ""}
                     </span>
-                    <span className="variant-price">₱{variant.price}</span>
+
+                    <span className="variant-price">
+                      ₱{formatCurrency(variant.price)}
+                      {variant.estimate_min != null &&
+                        variant.estimate_max != null && (
+                          <small className="variant-estimate">
+                            Estimate: ₱{formatCurrency(variant.estimate_min)} - ₱
+                            {formatCurrency(variant.estimate_max)}
+                          </small>
+                        )}
+                    </span>
                   </div>
 
                   <button onClick={() => openVariantEditModal(variant, cat.id)}>
@@ -798,6 +877,8 @@ const Services = () => {
             <label className="field-label">Price</label>
             <input
               type="number"
+              min="0"
+              step="0.01"
               placeholder="Price"
               value={modal?.price || ""}
               onChange={(e) => updateModalField("price", e.target.value)}
@@ -808,11 +889,64 @@ const Services = () => {
             <label className="field-label">Downpayment</label>
             <input
               type="number"
+              min="0"
+              step="0.01"
               placeholder="Downpayment"
               value={modal?.downpayment || ""}
               onChange={(e) => updateModalField("downpayment", e.target.value)}
             />
           </div>
+        </div>
+
+        <div className="estimate-block">
+          <div className="estimate-block-header">
+            <label className="field-label estimate-title">Estimate Display</label>
+            <span className="estimate-badge">Optional</span>
+          </div>
+
+          <p className="estimate-helper-text">
+            These values are shown to customers as an estimated range and do not
+            affect the actual booking or payment computation.
+          </p>
+
+          <div className="field-row">
+            <div className="field-group">
+              <label className="field-label">Estimate Min</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="e.g. 1500"
+                value={modal?.estimate_min ?? ""}
+                onChange={(e) => updateModalField("estimate_min", e.target.value)}
+              />
+            </div>
+
+            <div className="field-group">
+              <label className="field-label">Estimate Max</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="e.g. 2000"
+                value={modal?.estimate_max ?? ""}
+                onChange={(e) => updateModalField("estimate_max", e.target.value)}
+              />
+            </div>
+          </div>
+
+          {modal?.estimate_min !== "" &&
+            modal?.estimate_min != null &&
+            modal?.estimate_max !== "" &&
+            modal?.estimate_max != null && (
+              <div className="estimate-preview-card">
+                <span className="estimate-preview-label">Customer Preview</span>
+                <strong>
+                  ₱{formatCurrency(modal.estimate_min)} - ₱
+                  {formatCurrency(modal.estimate_max)}
+                </strong>
+              </div>
+            )}
         </div>
 
         <div className="modal-action-row">

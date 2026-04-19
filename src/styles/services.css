@@ -700,6 +700,75 @@ button:disabled {
 }
 
 /* ======================================================
+   ESTIMATE BLOCK
+====================================================== */
+
+.estimate-block {
+  padding: 16px;
+  border: 1px solid var(--services-border-soft);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #fffdf9, #faf5ee);
+  box-shadow: 0 4px 12px rgba(70, 42, 20, 0.04);
+}
+
+.estimate-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.estimate-title {
+  margin: 0;
+}
+
+.estimate-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #a97b11;
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.estimate-helper-text {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--services-text-muted);
+}
+
+.estimate-preview-card {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.estimate-preview-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--services-gold-deep);
+}
+
+.estimate-preview-card strong {
+  font-size: 16px;
+  color: var(--services-text);
+}
+
+/* ======================================================
    CUSTOM FILE INPUT
 ====================================================== */
 
@@ -942,9 +1011,18 @@ button:disabled {
 }
 
 .variant-price {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   font-size: 13px;
   font-weight: 800;
   color: var(--services-gold-dark);
+}
+
+.variant-estimate {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--services-text-muted);
 }
 
 .variant-item button {
@@ -1074,6 +1152,11 @@ button:disabled {
 
   .field-row {
     grid-template-columns: 1fr;
+  }
+
+  .estimate-block-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .custom-file-upload {
