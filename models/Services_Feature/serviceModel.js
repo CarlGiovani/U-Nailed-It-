@@ -1,4 +1,5 @@
 import supabase from "../../utils/supabaseClient.js";
+
 const normalizeVariantPayload = (variant = {}) => {
   const normalized = {
     ...variant,
@@ -78,7 +79,125 @@ const normalizeVariantPayload = (variant = {}) => {
 
   return normalized;
 };
-// GET ALL SERVICES (public)
+
+// ===============================
+// HELPERS
+// ===============================
+const SERVICE_IMAGE_BUCKET = "services-images";
+
+const uploadServiceImage = async (file) => {
+  if (!file) return null;
+
+  const safeOriginalName = file.originalname.replace(/\s+/g, "_");
+  const fileName = `services/${Date.now()}-${safeOriginalName}`;
+
+  console.log("[SERVICE IMAGE] Uploading new image:", {
+    bucket: SERVICE_IMAGE_BUCKET,
+    fileName,
+    mimeType: file.mimetype,
+    size: file.size,
+  });
+
+  const { data, error } = await supabase.storage
+    .from(SERVICE_IMAGE_BUCKET)
+    .upload(fileName, file.buffer, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.mimetype,
+    });
+
+  if (error) {
+    console.error("[SERVICE IMAGE] Upload failed:", error);
+    throw new Error(error.message);
+  }
+
+  const { data: publicData } = supabase.storage
+    .from(SERVICE_IMAGE_BUCKET)
+    .getPublicUrl(data.path);
+
+  console.log("[SERVICE IMAGE] Upload success:", {
+    path: data.path,
+    publicUrl: publicData.publicUrl,
+  });
+
+  return {
+    path: data.path,
+    publicUrl: publicData.publicUrl,
+  };
+};
+
+const extractStoragePathFromPublicUrl = (publicUrl) => {
+  if (!publicUrl || typeof publicUrl !== "string") return null;
+
+  try {
+    /**
+     * Example public URL:
+     * https://xxxx.supabase.co/storage/v1/object/public/services-images/services/123-file.png
+     *
+     * We need:
+     * services/123-file.png
+     */
+    const marker = `/storage/v1/object/public/${SERVICE_IMAGE_BUCKET}/`;
+    const index = publicUrl.indexOf(marker);
+
+    if (index === -1) {
+      console.warn(
+        "[SERVICE IMAGE] Could not extract storage path from URL:",
+        publicUrl,
+      );
+      return null;
+    }
+
+    const path = publicUrl.substring(index + marker.length);
+
+    console.log("[SERVICE IMAGE] Extracted old storage path:", path);
+    return path || null;
+  } catch (error) {
+    console.error("[SERVICE IMAGE] Failed to parse public URL:", error);
+    return null;
+  }
+};
+
+const deleteServiceImageByUrl = async (publicUrl) => {
+  if (!publicUrl) {
+    console.log("[SERVICE IMAGE] No old image URL found. Skip delete.");
+    return false;
+  }
+
+  const oldPath = extractStoragePathFromPublicUrl(publicUrl);
+
+  if (!oldPath) {
+    console.warn(
+      "[SERVICE IMAGE] Old image path could not be determined. Skip delete.",
+    );
+    return false;
+  }
+
+  console.log("[SERVICE IMAGE] Attempting to delete old image:", {
+    bucket: SERVICE_IMAGE_BUCKET,
+    oldPath,
+  });
+
+  const { data, error } = await supabase.storage
+    .from(SERVICE_IMAGE_BUCKET)
+    .remove([oldPath]);
+
+  if (error) {
+    console.error("[SERVICE IMAGE] Failed to delete old image:", error);
+    return false;
+  }
+
+  console.log("[SERVICE IMAGE] Old image deleted successfully:", {
+    removed: data,
+    oldPath,
+  });
+
+  return true;
+};
+
+// ===============================
+// GET ALL SERVICES (PUBLIC)
+// ===============================
 export const getAllServices = async () => {
   const { data, error } = await supabase
     .from("services")
@@ -107,7 +226,9 @@ export const getAllServices = async () => {
   return data;
 };
 
-// GET SINGLE SERVICE BY ID (public)
+// ===============================
+// GET SINGLE SERVICE BY ID (PUBLIC)
+// ===============================
 export const getServiceById = async (id) => {
   const { data, error } = await supabase
     .from("services")
@@ -137,8 +258,9 @@ export const getServiceById = async (id) => {
   return data;
 };
 
-// ADMIN : Admin service fetch
-// ADMIN: get all services (including inactive)
+// ===============================
+// ADMIN: GET ALL SERVICES
+// ===============================
 export const getAllServicesAdmin = async () => {
   const { data: services, error: servicesError } = await supabase
     .from("services")
@@ -173,98 +295,193 @@ export const getAllServicesAdmin = async () => {
 
   return enrichedServices;
 };
-// ADMIN:  CREATE new service
 
-const uploadServiceImage = async (file) => {
-  if (!file) return null;
-
-  const fileName = `services/${Date.now()}-${file.originalname}`;
-
-  // Upload
-  const { data, error } = await supabase.storage
-    .from("services-images")
-    .upload(fileName, file.buffer, {
-      cacheControl: "3600",
-      upsert: false,
-      contentType: file.mimetype,
-    });
-
-  if (error) throw new Error(error.message);
-
-  // Kunin public URL
-  const { data: publicData, error: publicError } = await supabase.storage
-    .from("services-images")
-    .getPublicUrl(data.path);
-
-  if (publicError) throw new Error(publicError.message);
-
-  return publicData.publicUrl;
-};
-
-// CREATE new service with optional image
+// ===============================
+// ADMIN: CREATE NEW SERVICE
+// ===============================
 export const createService = async ({ file, ...service }) => {
-  const imageUrl = file ? await uploadServiceImage(file) : null;
+  let imageUrl = null;
+
+  if (file) {
+    const uploadedImage = await uploadServiceImage(file);
+    imageUrl = uploadedImage.publicUrl;
+  }
 
   const { data, error } = await supabase
     .from("services")
     .insert([{ ...service, image_url: imageUrl }])
-    .select();
+    .select()
+    .single();
 
   if (error) throw new Error(error.message);
-  return data[0];
+
+  console.log("[SERVICE CREATE] Service created successfully:", {
+    serviceId: data.id,
+    name: data.name,
+    image_url: data.image_url,
+  });
+
+  return data;
 };
 
-// UPDATE service
+// ===============================
+// ADMIN: UPDATE SERVICE
+// ===============================
 export const updateService = async (id, { file, ...service }) => {
-  const imageUrl = file ? await uploadServiceImage(file) : null;
+  console.log("[SERVICE UPDATE] Starting update for service ID:", id);
+
+  // 1. Get existing service first
+  const { data: existingService, error: existingError } = await supabase
+    .from("services")
+    .select("id, name, image_url")
+    .eq("id", id)
+    .single();
+
+  if (existingError) {
+    console.error(
+      "[SERVICE UPDATE] Failed to fetch existing service:",
+      existingError,
+    );
+    throw new Error(existingError.message);
+  }
+
+  if (!existingService) {
+    throw new Error("Service not found");
+  }
+
+  console.log("[SERVICE UPDATE] Existing service found:", {
+    id: existingService.id,
+    name: existingService.name,
+    oldImageUrl: existingService.image_url,
+  });
+
+  let newImageUrl = null;
+
+  // 2. Upload new image if provided
+  if (file) {
+    const uploadedImage = await uploadServiceImage(file);
+    newImageUrl = uploadedImage.publicUrl;
+  }
 
   const updatedData = {
     ...service,
-    ...(imageUrl && { image_url: imageUrl }),
-    updated_at: new Date(),
+    ...(newImageUrl ? { image_url: newImageUrl } : {}),
+    updated_at: new Date().toISOString(),
   };
 
-  const { data, error } = await supabase
+  console.log("[SERVICE UPDATE] Updating service with data:", {
+    id,
+    hasNewImage: !!newImageUrl,
+    updatedFields: Object.keys(updatedData),
+  });
+
+  // 3. Update row
+  const { data: updatedRow, error: updateError } = await supabase
     .from("services")
     .update(updatedData)
     .eq("id", id)
-    .select();
+    .select()
+    .maybeSingle();
 
-  if (error) throw new Error(error.message);
-  if (!data || data.length === 0) throw new Error("Service not found");
+  if (updateError) {
+    console.error("[SERVICE UPDATE] Database update failed:", updateError);
+    throw new Error(updateError.message);
+  }
 
-  return data[0];
+  console.log("[SERVICE UPDATE] Update query returned:", updatedRow);
+
+  // 4. Fallback fetch if update returned null
+  let finalService = updatedRow;
+
+  if (!finalService) {
+    console.warn(
+      "[SERVICE UPDATE] Update returned no row. Attempting fallback fetch...",
+    );
+
+    const { data: fetchedAfterUpdate, error: fetchAfterUpdateError } =
+      await supabase.from("services").select("*").eq("id", id).single();
+
+    if (fetchAfterUpdateError) {
+      console.error(
+        "[SERVICE UPDATE] Fallback fetch failed:",
+        fetchAfterUpdateError,
+      );
+      throw new Error(
+        "Service update may have succeeded, but fetching updated row failed.",
+      );
+    }
+
+    finalService = fetchedAfterUpdate;
+
+    console.log("[SERVICE UPDATE] Fallback fetch success:", {
+      id: finalService.id,
+      name: finalService.name,
+      image_url: finalService.image_url,
+    });
+  } else {
+    console.log("[SERVICE UPDATE] Database update success:", {
+      id: finalService.id,
+      name: finalService.name,
+      image_url: finalService.image_url,
+    });
+  }
+
+  // 5. Delete old image only after successful update + only if new image exists
+  if (newImageUrl && existingService.image_url) {
+    console.log(
+      "[SERVICE UPDATE] New image uploaded. Deleting old image now...",
+    );
+    await deleteServiceImageByUrl(existingService.image_url);
+  } else if (newImageUrl && !existingService.image_url) {
+    console.log(
+      "[SERVICE UPDATE] New image uploaded, but no old image exists.",
+    );
+  } else {
+    console.log(
+      "[SERVICE UPDATE] No new image uploaded. Old image kept as-is.",
+    );
+  }
+
+  return finalService;
 };
 
-// DELETE / Deactivate service
+// ===============================
+// DELETE / DEACTIVATE SERVICE
+// ===============================
 export const deleteService = async (id) => {
   const { data, error } = await supabase
     .from("services")
-    .update({ is_active: false, updated_at: new Date() })
+    .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", id)
-    .select();
+    .select()
+    .single();
 
   if (error) throw new Error(error.message);
-  if (!data || data.length === 0) throw new Error("Service not found");
+  if (!data) throw new Error("Service not found");
 
-  return data[0];
+  return data;
 };
 
-// REACTIVATE service
+// ===============================
+// REACTIVATE SERVICE
+// ===============================
 export const reactivateService = async (id) => {
   const { data, error } = await supabase
     .from("services")
-    .update({ is_active: true, updated_at: new Date() })
+    .update({ is_active: true, updated_at: new Date().toISOString() })
     .eq("id", id)
-    .select();
+    .select()
+    .single();
 
   if (error) throw new Error(error.message);
-  if (!data || data.length === 0) throw new Error("Service not found");
+  if (!data) throw new Error("Service not found");
 
-  return data[0];
+  return data;
 };
 
+// ===============================
 // SERVICE CATEGORIES
+// ===============================
 export const createCategory = async (service_id, name) => {
   const { data, error } = await supabase
     .from("service_categories")
@@ -276,11 +493,13 @@ export const createCategory = async (service_id, name) => {
   return data;
 };
 
-// UPDATE category
+// ===============================
+// UPDATE CATEGORY
+// ===============================
 export const updateCategory = async (id, name) => {
   const { data, error } = await supabase
     .from("service_categories")
-    .update({ name, updated_at: new Date() })
+    .update({ name, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();
@@ -289,11 +508,13 @@ export const updateCategory = async (id, name) => {
   return data;
 };
 
-// DELETE / Deactivate category (soft delete)
+// ===============================
+// DELETE / DEACTIVATE CATEGORY
+// ===============================
 export const deleteCategory = async (id) => {
   const { data, error } = await supabase
     .from("service_categories")
-    .update({ is_active: false, updated_at: new Date() })
+    .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();
@@ -302,7 +523,9 @@ export const deleteCategory = async (id) => {
   return data;
 };
 
+// ===============================
 // VARIANTS OF THE SERVICES
+// ===============================
 export const createVariant = async (variant) => {
   const normalizedVariant = normalizeVariantPayload(variant);
 
@@ -316,13 +539,15 @@ export const createVariant = async (variant) => {
   return data;
 };
 
-// UPDATE variant
+// ===============================
+// UPDATE VARIANT
+// ===============================
 export const updateVariant = async (id, variant) => {
   const normalizedVariant = normalizeVariantPayload(variant);
 
   const { data, error } = await supabase
     .from("service_variants")
-    .update({ ...normalizedVariant, updated_at: new Date() })
+    .update({ ...normalizedVariant, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .maybeSingle();
@@ -330,11 +555,14 @@ export const updateVariant = async (id, variant) => {
   if (error) throw new Error(error.message);
   return data;
 };
-// DELETE / deactivate variant
+
+// ===============================
+// DELETE / DEACTIVATE VARIANT
+// ===============================
 export const deleteVariant = async (id) => {
   const { data, error } = await supabase
     .from("service_variants")
-    .update({ is_active: false, updated_at: new Date() })
+    .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .maybeSingle();
