@@ -840,6 +840,7 @@ a {
 .price-section {
   display: flex;
   flex-direction: column;
+  gap: 0.18rem;
 }
 
 .price-main {
@@ -852,6 +853,7 @@ a {
   font-size: 0.8rem;
   color: var(--pink-dark);
   font-weight: 600;
+  line-height: 1.4;
 }
 
 .duration-badge {
@@ -1464,6 +1466,86 @@ a {
   border: 1px solid rgba(212, 175, 55, 0.22);
 }
 
+.calendar-loading.premium,
+.timeslots-loading,
+.select-date-prompt,
+.no-slots.premium,
+.timeslots-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+}
+
+.calendar-loading.premium,
+.timeslots-loading {
+  flex-direction: column;
+  gap: 0.75rem;
+  color: var(--slate);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.select-date-prompt {
+  flex-direction: column;
+  gap: 0.65rem;
+  text-align: center;
+  background: linear-gradient(180deg, #fffdf9, #fff7fb);
+  border: 1px dashed rgba(212, 175, 55, 0.28);
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.select-date-prompt p {
+  color: var(--slate);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.prompt-icon,
+.no-slots-icon {
+  font-size: 1.8rem;
+}
+
+.no-slots.premium {
+  flex-direction: column;
+  gap: 0.6rem;
+  text-align: center;
+  border: 1px dashed rgba(255, 105, 180, 0.24);
+  border-radius: 14px;
+  padding: 1rem;
+  background: linear-gradient(180deg, #fff9fb, #fffefb);
+}
+
+.no-slots.premium h4 {
+  font-size: 0.94rem;
+  color: var(--charcoal);
+}
+
+.no-slots.premium p {
+  font-size: 0.8rem;
+  color: var(--slate);
+  max-width: 220px;
+}
+
+.tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+  padding: 0.45rem 0.65rem;
+  background: var(--cream-color);
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  color: var(--charcoal);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.tip-icon {
+  font-size: 0.82rem;
+}
+
 .timeslots-section.premium {
   padding: 14px;
   display: flex;
@@ -1567,6 +1649,25 @@ a {
   font-size: 0.62rem;
   opacity: 0.95;
   line-height: 1.1;
+}
+
+.status-booked {
+  color: var(--danger-color);
+  font-weight: 700;
+}
+
+.timeslot-btn.premium.selected .status-selected {
+  color: white;
+}
+
+.status-selected {
+  color: white;
+  font-weight: 700;
+}
+
+.status-available {
+  color: var(--success-color);
+  font-weight: 700;
 }
 
 .timeslots-info.premium {

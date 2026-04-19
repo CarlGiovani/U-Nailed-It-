@@ -59,11 +59,17 @@ const formatDisplayTime = (timeStr) => {
   if (!timeStr) return "N/A";
 
   try {
-    const [hours, minutes] = timeStr.split(":");
-    const hour = parseInt(hours, 10);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-    return `${displayHour}:${String(minutes).padStart(2, "0")} ${ampm}`;
+    const clean = String(timeStr).trim();
+    const [rawHours = "00", rawMinutes = "00"] = clean.split(":");
+    const hour24 = Number(rawHours);
+    const minute = Number(rawMinutes);
+
+    if (Number.isNaN(hour24) || Number.isNaN(minute)) return clean;
+
+    const ampm = hour24 >= 12 ? "PM" : "AM";
+    const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+
+    return `${hour12}:${String(minute).padStart(2, "0")} ${ampm}`;
   } catch {
     return timeStr;
   }
@@ -71,6 +77,22 @@ const formatDisplayTime = (timeStr) => {
 
 const formatCurrency = (value) =>
   `₱${Number(value || 0).toLocaleString("en-PH")}`;
+
+const formatEstimateRange = (min, max) => {
+  if (min == null || max == null) return "";
+  return `${formatCurrency(min)} - ${formatCurrency(max)}`;
+};
+
+const getReadableDuration = (value) => {
+  const num = Number(value || 0);
+  if (!num) return "Not specified";
+
+  if (Number.isInteger(num)) {
+    return `${num} hour${num !== 1 ? "s" : ""}`;
+  }
+
+  return `${num} hours`;
+};
 
 /* ===============================
    LOCAL STORAGE RESUME
@@ -257,6 +279,8 @@ const Booking = ({ services: servicesProp = [] }) => {
               size: variant.size,
               price: variant.price,
               downpayment: variant.downpayment,
+              estimate_min: variant.estimate_min ?? null,
+              estimate_max: variant.estimate_max ?? null,
               is_active: variant.is_active,
             })) || [],
         })) || [],
@@ -515,7 +539,12 @@ const Booking = ({ services: servicesProp = [] }) => {
               name: service.name,
               category: category ? { name: category.name } : null,
               variant: variant
-                ? { body_part: variant.body_part, size: variant.size }
+                ? {
+                    body_part: variant.body_part,
+                    size: variant.size,
+                    estimate_min: variant.estimate_min ?? null,
+                    estimate_max: variant.estimate_max ?? null,
+                  }
                 : null,
             };
           }
@@ -1725,16 +1754,29 @@ const Booking = ({ services: servicesProp = [] }) => {
               <span>Variant</span>
               <strong>
                 {selectedVariantObj?.body_part
-                  ? `${selectedVariantObj.body_part} (${selectedVariantObj.size})`
+                  ? `${selectedVariantObj.body_part}${
+                      selectedVariantObj.size
+                        ? ` (${selectedVariantObj.size})`
+                        : ""
+                    }`
                   : "N/A"}
               </strong>
             </div>
+            {selectedVariantObj?.estimate_min != null &&
+              selectedVariantObj?.estimate_max != null && (
+                <div className="mini-row">
+                  <span>Estimate</span>
+                  <strong>
+                    {formatEstimateRange(
+                      selectedVariantObj.estimate_min,
+                      selectedVariantObj.estimate_max,
+                    )}
+                  </strong>
+                </div>
+              )}
             <div className="mini-row">
               <span>Duration</span>
-              <strong>
-                {selectedService?.duration || 0} hour
-                {selectedService?.duration !== 1 ? "s" : ""}
-              </strong>
+              <strong>{getReadableDuration(selectedService?.duration)}</strong>
             </div>
             <div className="mini-row highlight">
               <span>Total</span>
@@ -2254,10 +2296,7 @@ const Booking = ({ services: servicesProp = [] }) => {
                     <div className="service-meta premium">
                       <div className="meta-item">
                         <span className="meta-icon">⏱️</span>
-                        <span>
-                          {service.duration} hour
-                          {service.duration !== 1 ? "s" : ""}
-                        </span>
+                        <span>{getReadableDuration(service.duration)}</span>
                       </div>
 
                       <div className="meta-item">
@@ -2321,55 +2360,50 @@ const Booking = ({ services: servicesProp = [] }) => {
           </div>
 
           <div className="categories-container premium">
-            {selectedService?.service_categories?.map((category) => (
-              <button
-                key={category.id}
-                type="button"
-                className={`category-card premium category-card-button ${
-                  selectedCategory?.id === category.id ? "selected" : ""
-                }`}
-                onClick={() => handleCategorySelect(category)}
-              >
-                <div className="category-content">
-                  <h3>{category.name}</h3>
+            {selectedService?.service_categories?.map((category) => {
+              const prices =
+                category.service_variants?.map((v) => Number(v.price || 0)) ||
+                [];
+              const minPrice = prices.length ? Math.min(...prices) : 0;
+              const maxPrice = prices.length ? Math.max(...prices) : 0;
 
-                  <div className="category-meta premium">
-                    <div className="meta-item">
-                      <span className="meta-icon">📦</span>
-                      <span>
-                        {category.service_variants?.length || 0} variant
-                        {category.service_variants?.length !== 1 ? "s" : ""}
-                      </span>
-                    </div>
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  className={`category-card premium category-card-button ${
+                    selectedCategory?.id === category.id ? "selected" : ""
+                  }`}
+                  onClick={() => handleCategorySelect(category)}
+                >
+                  <div className="category-content">
+                    <h3>{category.name}</h3>
 
-                    <div className="meta-item price-range">
-                      <span className="meta-icon">💰</span>
-                      <span>
-                        {formatCurrency(
-                          Math.min(
-                            ...(category.service_variants?.map(
-                              (v) => v.price,
-                            ) || [0]),
-                          ),
-                        )}{" "}
-                        -{" "}
-                        {formatCurrency(
-                          Math.max(
-                            ...(category.service_variants?.map(
-                              (v) => v.price,
-                            ) || [0]),
-                          ),
-                        )}
-                      </span>
+                    <div className="category-meta premium">
+                      <div className="meta-item">
+                        <span className="meta-icon">📦</span>
+                        <span>
+                          {category.service_variants?.length || 0} variant
+                          {category.service_variants?.length !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+
+                      <div className="meta-item price-range">
+                        <span className="meta-icon">💰</span>
+                        <span>
+                          {formatCurrency(minPrice)} -{" "}
+                          {formatCurrency(maxPrice)}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="category-action">
-                  <span className="action-icon">→</span>
-                </div>
-              </button>
-            ))}
+                  <div className="category-action">
+                    <span className="action-icon">→</span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
           <div className="step-footer premium">
@@ -2415,46 +2449,63 @@ const Booking = ({ services: servicesProp = [] }) => {
           </div>
 
           <div className="variants-container premium">
-            {selectedCategory?.service_variants?.map((variant) => (
-              <button
-                key={variant.id}
-                type="button"
-                className={`variant-card premium variant-card-button ${
-                  selectedVariant?.id === variant.id ? "selected" : ""
-                }`}
-                onClick={() => handleVariantSelect(variant)}
-              >
-                <div className="variant-content">
-                  <div className="variant-header">
-                    <h3>{variant.body_part}</h3>
-                    <span className="variant-size">{variant.size}</span>
-                  </div>
+            {selectedCategory?.service_variants?.map((variant) => {
+              const hasEstimate =
+                variant.estimate_min != null && variant.estimate_max != null;
 
-                  <div className="variant-details premium">
-                    <div className="price-section">
-                      <div className="price-main">
-                        {formatCurrency(variant.price)}
-                      </div>
-                      <div className="price-sub">
-                        Downpayment: {formatCurrency(variant.downpayment)}
-                      </div>
+              return (
+                <button
+                  key={variant.id}
+                  type="button"
+                  className={`variant-card premium variant-card-button ${
+                    selectedVariant?.id === variant.id ? "selected" : ""
+                  }`}
+                  onClick={() => handleVariantSelect(variant)}
+                >
+                  <div className="variant-content">
+                    <div className="variant-header">
+                      <h3>{variant.body_part}</h3>
+                      {variant.size ? (
+                        <span className="variant-size">{variant.size}</span>
+                      ) : null}
                     </div>
 
-                    <div className="duration-badge">
-                      <span className="duration-icon">⏱️</span>
-                      <span>
-                        {selectedService?.duration} hour
-                        {selectedService?.duration !== 1 ? "s" : ""}
-                      </span>
+                    <div className="variant-details premium">
+                      <div className="price-section">
+                        <div className="price-main">
+                          {formatCurrency(variant.price)}
+                        </div>
+
+                        {hasEstimate && (
+                          <div className="price-sub">
+                            Estimate:{" "}
+                            {formatEstimateRange(
+                              variant.estimate_min,
+                              variant.estimate_max,
+                            )}
+                          </div>
+                        )}
+
+                        <div className="price-sub">
+                          Downpayment: {formatCurrency(variant.downpayment)}
+                        </div>
+                      </div>
+
+                      <div className="duration-badge">
+                        <span className="duration-icon">⏱️</span>
+                        <span>
+                          {getReadableDuration(selectedService?.duration)}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <span className="select-btn premium">
-                  Select <span className="select-icon">→</span>
-                </span>
-              </button>
-            ))}
+                  <span className="select-btn premium">
+                    Select <span className="select-icon">→</span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="step-footer premium">
@@ -2520,9 +2571,25 @@ const Booking = ({ services: servicesProp = [] }) => {
             <div className="detail-item">
               <span className="detail-label">Variant</span>
               <span className="detail-value">
-                {selectedVariantObj?.body_part} ({selectedVariantObj?.size})
+                {selectedVariantObj?.body_part}
+                {selectedVariantObj?.size
+                  ? ` (${selectedVariantObj.size})`
+                  : ""}
               </span>
             </div>
+
+            {selectedVariantObj?.estimate_min != null &&
+              selectedVariantObj?.estimate_max != null && (
+                <div className="detail-item">
+                  <span className="detail-label">Estimate</span>
+                  <span className="detail-value">
+                    {formatEstimateRange(
+                      selectedVariantObj.estimate_min,
+                      selectedVariantObj.estimate_max,
+                    )}
+                  </span>
+                </div>
+              )}
 
             <div className="detail-item">
               <span className="detail-label">Downpayment</span>
@@ -2743,8 +2810,7 @@ const Booking = ({ services: servicesProp = [] }) => {
                       <div className="info-row">
                         <span className="info-label">Duration</span>
                         <span className="info-value">
-                          {selectedService?.duration} hour
-                          {selectedService?.duration !== 1 ? "s" : ""}
+                          {getReadableDuration(selectedService?.duration)}
                         </span>
                       </div>
                     </div>
@@ -3517,10 +3583,27 @@ const Booking = ({ services: servicesProp = [] }) => {
                 <span className="detail-label">Variant</span>
                 <span className="detail-value">
                   {selectedVariantObj?.body_part
-                    ? `${selectedVariantObj.body_part} (${selectedVariantObj.size})`
+                    ? `${selectedVariantObj.body_part}${
+                        selectedVariantObj.size
+                          ? ` (${selectedVariantObj.size})`
+                          : ""
+                      }`
                     : "N/A"}
                 </span>
               </div>
+
+              {selectedVariantObj?.estimate_min != null &&
+                selectedVariantObj?.estimate_max != null && (
+                  <div className="detail-item">
+                    <span className="detail-label">Estimate</span>
+                    <span className="detail-value">
+                      {formatEstimateRange(
+                        selectedVariantObj.estimate_min,
+                        selectedVariantObj.estimate_max,
+                      )}
+                    </span>
+                  </div>
+                )}
 
               <div className="detail-item">
                 <span className="detail-label">Date & Time</span>
