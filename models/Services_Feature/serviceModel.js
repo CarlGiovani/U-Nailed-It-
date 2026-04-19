@@ -1,5 +1,83 @@
 import supabase from "../../utils/supabaseClient.js";
+const normalizeVariantPayload = (variant = {}) => {
+  const normalized = {
+    ...variant,
+    body_part: variant.body_part?.trim?.() || "",
+    size: variant.size?.trim?.() || "",
+    price:
+      variant.price === "" ||
+      variant.price === null ||
+      variant.price === undefined
+        ? null
+        : Number(variant.price),
+    downpayment:
+      variant.downpayment === "" ||
+      variant.downpayment === null ||
+      variant.downpayment === undefined
+        ? null
+        : Number(variant.downpayment),
+    estimate_min:
+      variant.estimate_min === "" ||
+      variant.estimate_min === null ||
+      variant.estimate_min === undefined
+        ? null
+        : Number(variant.estimate_min),
+    estimate_max:
+      variant.estimate_max === "" ||
+      variant.estimate_max === null ||
+      variant.estimate_max === undefined
+        ? null
+        : Number(variant.estimate_max),
+  };
 
+  if (normalized.price !== null && Number.isNaN(normalized.price)) {
+    throw new Error("Price must be a valid number");
+  }
+
+  if (normalized.downpayment !== null && Number.isNaN(normalized.downpayment)) {
+    throw new Error("Downpayment must be a valid number");
+  }
+
+  if (
+    normalized.estimate_min !== null &&
+    Number.isNaN(normalized.estimate_min)
+  ) {
+    throw new Error("Estimate min must be a valid number");
+  }
+
+  if (
+    normalized.estimate_max !== null &&
+    Number.isNaN(normalized.estimate_max)
+  ) {
+    throw new Error("Estimate max must be a valid number");
+  }
+
+  if (normalized.price !== null && normalized.price < 0) {
+    throw new Error("Price cannot be negative");
+  }
+
+  if (normalized.downpayment !== null && normalized.downpayment < 0) {
+    throw new Error("Downpayment cannot be negative");
+  }
+
+  if (normalized.estimate_min !== null && normalized.estimate_min < 0) {
+    throw new Error("Estimate min cannot be negative");
+  }
+
+  if (normalized.estimate_max !== null && normalized.estimate_max < 0) {
+    throw new Error("Estimate max cannot be negative");
+  }
+
+  if (
+    normalized.estimate_min !== null &&
+    normalized.estimate_max !== null &&
+    normalized.estimate_min > normalized.estimate_max
+  ) {
+    throw new Error("Estimate min cannot be greater than estimate max");
+  }
+
+  return normalized;
+};
 // GET ALL SERVICES (public)
 export const getAllServices = async () => {
   const { data, error } = await supabase
@@ -15,7 +93,9 @@ export const getAllServices = async () => {
           body_part,
           size,
           price,
-          downpayment
+          downpayment,
+          estimate_min,
+          estimate_max
         )
       )
     `,
@@ -42,7 +122,9 @@ export const getServiceById = async (id) => {
           body_part,
           size,
           price,
-          downpayment
+          downpayment,
+          estimate_min,
+          estimate_max
         )
       )
     `,
@@ -222,9 +304,11 @@ export const deleteCategory = async (id) => {
 
 // VARIANTS OF THE SERVICES
 export const createVariant = async (variant) => {
+  const normalizedVariant = normalizeVariantPayload(variant);
+
   const { data, error } = await supabase
     .from("service_variants")
-    .insert([variant])
+    .insert([normalizedVariant])
     .select()
     .maybeSingle();
 
@@ -234,9 +318,11 @@ export const createVariant = async (variant) => {
 
 // UPDATE variant
 export const updateVariant = async (id, variant) => {
+  const normalizedVariant = normalizeVariantPayload(variant);
+
   const { data, error } = await supabase
     .from("service_variants")
-    .update({ ...variant, updated_at: new Date() })
+    .update({ ...normalizedVariant, updated_at: new Date() })
     .eq("id", id)
     .select()
     .maybeSingle();
@@ -244,7 +330,6 @@ export const updateVariant = async (id, variant) => {
   if (error) throw new Error(error.message);
   return data;
 };
-
 // DELETE / deactivate variant
 export const deleteVariant = async (id) => {
   const { data, error } = await supabase
