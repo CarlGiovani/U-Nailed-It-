@@ -6,8 +6,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 
-import AdminLayout from "../../components/layout/adminLayout";
 import supabase from "../../../config/supabaseClient.js";
+import AdminLayout from "../../components/layout/adminLayout";
 import {
   approveBooking,
   completeBooking,
@@ -113,7 +113,6 @@ const Bookings = () => {
   const highlightedRowRef = useRef(null);
   const refreshTimeoutRef = useRef(null);
 
-  /* ================= DEBOUNCED SEARCH ================= */
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search.trim());
@@ -122,12 +121,10 @@ const Bookings = () => {
     return () => clearTimeout(timer);
   }, [search]);
 
-  /* ================= RESET PAGE WHEN FILTERS CHANGE ================= */
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, statusFilter, dateFrom, dateTo]);
 
-  /* ================= FETCH BOOKINGS ================= */
   const {
     data: bookingsResponse,
     isLoading,
@@ -162,7 +159,6 @@ const Bookings = () => {
   const totalBookings = bookingsResponse?.total ?? 0;
   const totalPages = bookingsResponse?.totalPages ?? 1;
 
-  /* ================= PREFETCH NEXT PAGE ================= */
   useEffect(() => {
     if (page >= totalPages) return;
 
@@ -198,7 +194,6 @@ const Bookings = () => {
     queryClient,
   ]);
 
-  /* ================= AUTO OPEN TARGET BOOKING FROM QUERY ================= */
   useEffect(() => {
     if (!bookingIdFromQuery || bookings.length === 0) return;
 
@@ -211,7 +206,6 @@ const Bookings = () => {
     }
   }, [bookingIdFromQuery, bookings]);
 
-  /* ================= KEEP MODAL DATA FRESH ================= */
   useEffect(() => {
     if (!selectedBooking) return;
 
@@ -224,7 +218,6 @@ const Bookings = () => {
     }
   }, [bookings, selectedBooking]);
 
-  /* ================= AUTO SCROLL TO HIGHLIGHTED ROW ================= */
   useEffect(() => {
     if (highlightedRowRef.current) {
       highlightedRowRef.current.scrollIntoView({
@@ -234,7 +227,6 @@ const Bookings = () => {
     }
   }, [bookings, bookingIdFromQuery]);
 
-  /* ================= THROTTLED INVALIDATE FOR REALTIME ================= */
   const scheduleRealtimeRefresh = useCallback(() => {
     if (refreshTimeoutRef.current) return;
 
@@ -246,7 +238,6 @@ const Bookings = () => {
     }, 600);
   }, [queryClient]);
 
-  /* ================= REALTIME SUBSCRIPTION ================= */
   useEffect(() => {
     const channel = supabase
       .channel("admin-bookings-realtime-channel")
@@ -305,7 +296,6 @@ const Bookings = () => {
     };
   }, [queryClient, scheduleRealtimeRefresh]);
 
-  /* ================= LOAD PROOF ================= */
   const handleLoadProof = useCallback(async (filePath) => {
     try {
       const url = await getPaymentProofUrl(filePath);
@@ -315,7 +305,6 @@ const Bookings = () => {
     }
   }, []);
 
-  /* ================= RESET FILTERS ================= */
   const handleResetFilters = useCallback(() => {
     setSearch("");
     setDebouncedSearch("");
@@ -325,7 +314,6 @@ const Bookings = () => {
     setPage(1);
   }, []);
 
-  /* ================= BADGE ================= */
   const statusBadge = useCallback((status) => {
     if (!status) return <span className="status-badge">Unknown</span>;
 
@@ -336,7 +324,6 @@ const Bookings = () => {
     );
   }, []);
 
-  /* ================= HIGHLIGHT ================= */
   const isHighlightedBooking = useCallback(
     (booking) => {
       return (
@@ -347,7 +334,6 @@ const Bookings = () => {
     [bookingIdFromQuery, highlightFromQuery],
   );
 
-  /* ================= OPTIMISTIC PATCH ================= */
   const buildOptimisticPatch = useCallback(
     (type, booking) => {
       const now = new Date().toISOString();
@@ -482,12 +468,7 @@ const Bookings = () => {
     } finally {
       setActionLoading(false);
     }
-  }, [
-    confirmAction,
-    buildOptimisticPatch,
-    queryClient,
-    additionalPayment,
-  ]);
+  }, [confirmAction, buildOptimisticPatch, queryClient, additionalPayment]);
 
   const realtimeLabel =
     realtimeStatus === "live"
@@ -503,7 +484,9 @@ const Bookings = () => {
     const downpayment = Number(booking?.downpayment ?? 0);
     const totalPrice = Number(booking?.total_price ?? 0);
     const parsedAdditional = Number(additionalPayment || 0);
-    const safeAdditional = Number.isNaN(parsedAdditional) ? 0 : parsedAdditional;
+    const safeAdditional = Number.isNaN(parsedAdditional)
+      ? 0
+      : parsedAdditional;
     const computedFinal = downpayment + safeAdditional;
 
     return {
@@ -657,7 +640,9 @@ const Bookings = () => {
                         {b.customer_name || b.customers?.full_name || "-"}
                       </td>
 
-                      <td>{b.services?.name || "-"}</td>
+                      <td>
+                        {b.service_name_snapshot || b.services?.name || "-"}
+                      </td>
 
                       <td>
                         {b.booking_date
@@ -788,20 +773,28 @@ const Bookings = () => {
                   <h3>Service Information</h3>
                   <p>
                     <strong>Service:</strong>{" "}
-                    {selectedBooking.services?.name || "-"}
+                    {selectedBooking.service_name_snapshot ||
+                      selectedBooking.services?.name ||
+                      "-"}
                   </p>
                   <p>
                     <strong>Category:</strong>{" "}
-                    {selectedBooking.service_variants?.service_categories
-                      ?.name || "-"}
+                    {selectedBooking.category_name_snapshot ||
+                      selectedBooking.service_variants?.service_categories
+                        ?.name ||
+                      "-"}
                   </p>
                   <p>
                     <strong>Body Part:</strong>{" "}
-                    {selectedBooking.service_variants?.body_part || "-"}
+                    {selectedBooking.variant_body_part_snapshot ||
+                      selectedBooking.service_variants?.body_part ||
+                      "-"}
                   </p>
                   <p>
                     <strong>Size:</strong>{" "}
-                    {selectedBooking.service_variants?.size || "-"}
+                    {selectedBooking.variant_size_snapshot ||
+                      selectedBooking.service_variants?.size ||
+                      "-"}
                   </p>
                   <p>
                     <strong>Booking Date:</strong>{" "}
@@ -867,7 +860,9 @@ const Bookings = () => {
                   <button
                     className="btn-approve"
                     type="button"
-                    onClick={() => openConfirmAction("approve", selectedBooking)}
+                    onClick={() =>
+                      openConfirmAction("approve", selectedBooking)
+                    }
                     disabled={actionLoading}
                   >
                     Approve
@@ -962,7 +957,9 @@ const Bookings = () => {
                 <div className="complete-payment-grid">
                   <div className="complete-payment-row">
                     <span>Original Total</span>
-                    <strong>{formatCurrency(completePreview.totalPrice)}</strong>
+                    <strong>
+                      {formatCurrency(completePreview.totalPrice)}
+                    </strong>
                   </div>
 
                   <div className="complete-payment-row">
