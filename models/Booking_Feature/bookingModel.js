@@ -99,6 +99,67 @@ export const createBookingWithCustomer = async (bookingData) => {
 
   const nowIso = new Date().toISOString();
 
+  /* ==========================================
+     SNAPSHOT FETCH
+     - get current service + selected variant/category
+  ========================================== */
+  const { data: serviceRow, error: serviceError } = await supabase
+    .from("services")
+    .select("id, name, description, duration, image_url")
+    .eq("id", service_id)
+    .maybeSingle();
+
+  if (serviceError) throw new Error(serviceError.message);
+  if (!serviceRow) throw new Error("Selected service not found");
+
+  let variantRow = null;
+
+  if (service_variant_id) {
+    const { data: selectedVariant, error: variantError } = await supabase
+      .from("service_variants")
+      .select(
+        `
+        id,
+        body_part,
+        size,
+        price,
+        downpayment,
+        service_categories:category_id (
+          id,
+          name,
+          service_id
+        )
+      `,
+      )
+      .eq("id", service_variant_id)
+      .maybeSingle();
+
+    if (variantError) throw new Error(variantError.message);
+    if (!selectedVariant) throw new Error("Selected service variant not found");
+
+    if (
+      selectedVariant.service_categories?.service_id &&
+      Number(selectedVariant.service_categories.service_id) !==
+        Number(service_id)
+    ) {
+      throw new Error(
+        "Selected variant does not belong to the selected service",
+      );
+    }
+
+    if (
+      service_category_id &&
+      Number(selectedVariant.service_categories?.id) !==
+        Number(service_category_id)
+    ) {
+      throw new Error(
+        "Selected variant does not belong to the selected category",
+      );
+    }
+
+    variantRow = selectedVariant;
+  }
+
   // 1) Check if may existing ACTIVE pending_payment booking for same slot/service/customer
   const { data: existing, error: existingErr } = await supabase
     .from("bookings")
@@ -143,6 +204,19 @@ export const createBookingWithCustomer = async (bookingData) => {
         customer_phone: phone,
         customer_facebook_link: facebook_link,
         service_variant_id: service_variant_id || null,
+
+        service_name_snapshot: serviceRow.name || null,
+        service_description_snapshot: serviceRow.description || null,
+        service_duration_snapshot: serviceRow.duration || null,
+        service_image_url_snapshot: serviceRow.image_url || null,
+
+        category_name_snapshot: variantRow?.service_categories?.name || null,
+        variant_body_part_snapshot: variantRow?.body_part || null,
+        variant_size_snapshot: variantRow?.size || null,
+        variant_price_snapshot: variantRow?.price ?? total_price ?? null,
+        variant_downpayment_snapshot:
+          variantRow?.downpayment ?? downpayment ?? null,
+
         total_price,
         downpayment,
         notes,
@@ -206,8 +280,22 @@ export const createBookingWithCustomer = async (bookingData) => {
         customer_email: normalizedEmail,
         customer_phone: phone,
         customer_facebook_link: facebook_link,
+
         service_id,
         service_variant_id: service_variant_id || null,
+
+        service_name_snapshot: serviceRow.name || null,
+        service_description_snapshot: serviceRow.description || null,
+        service_duration_snapshot: serviceRow.duration || null,
+        service_image_url_snapshot: serviceRow.image_url || null,
+
+        category_name_snapshot: variantRow?.service_categories?.name || null,
+        variant_body_part_snapshot: variantRow?.body_part || null,
+        variant_size_snapshot: variantRow?.size || null,
+        variant_price_snapshot: variantRow?.price ?? total_price ?? null,
+        variant_downpayment_snapshot:
+          variantRow?.downpayment ?? downpayment ?? null,
+
         booking_date,
         booking_time,
         total_price,
