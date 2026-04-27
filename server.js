@@ -69,8 +69,8 @@ app.use("/api/jobs", jobRoutes);
 app.use("/api/email-settings" , emailSettingsRoutes);
 
 // START CRON JOBS LOCAL for serverless
-scheduleSlotCleanup();
-scheduleBookingExpiry();
+// scheduleSlotCleanup();
+// scheduleBookingExpiry();
 
 // START SERVER
 app.listen(PORT, () => {
