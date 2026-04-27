@@ -1,8 +1,8 @@
-import supabase from "../../utils/supabaseClient.js";
+import { supabaseAdmin } from "../../utils/supabaseClient.js";
 
 // upload file
 export const uploadFile = async (filepath, file) => {
-  const { error } = await supabase.storage
+  const { error } = await supabaseAdmin.storage
     .from("payment-proofs")
     .upload(filepath, file.buffer, {
       contentType: file.mimetype,
@@ -16,7 +16,7 @@ export const uploadFile = async (filepath, file) => {
 
 // save file to booking
 export const saveProofPath = async (booking_id, filePath) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("bookings")
     .update({ proof_payment_path: filePath })
     .eq("id", booking_id)
@@ -31,7 +31,7 @@ export const saveProofPath = async (booking_id, filePath) => {
 
 // NEW: create payment intent
 export const createPaymentIntent = async (intentData) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("payment_intents")
     .insert([intentData])
     .select()
@@ -44,7 +44,7 @@ export const createPaymentIntent = async (intentData) => {
 // ADMIN :signed url
 export const createSignedUrl = async (filePath, expiresIn = 1800) => {
   // 1800s = 30 min
-  const { data, error } = await supabase.storage
+  const { data, error } = await supabaseAdmin.storage
     .from("payment-proofs")
     .createSignedUrl(filePath, expiresIn);
 

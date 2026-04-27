@@ -1,4 +1,4 @@
-import supabase from "../../utils/supabaseClient.js";
+import supabase, { supabaseAdmin } from "../../utils/supabaseClient.js";
 
 const normalizeVariantPayload = (variant = {}) => {
   const normalized = {
@@ -98,7 +98,7 @@ const uploadServiceImage = async (file) => {
     size: file.size,
   });
 
-  const { data, error } = await supabase.storage
+  const { data, error } = await supabaseAdmin.storage
     .from(SERVICE_IMAGE_BUCKET)
     .upload(fileName, file.buffer, {
       cacheControl: "3600",
@@ -111,7 +111,7 @@ const uploadServiceImage = async (file) => {
     throw new Error(error.message);
   }
 
-  const { data: publicData } = supabase.storage
+  const { data: publicData } = supabaseAdmin.storage
     .from(SERVICE_IMAGE_BUCKET)
     .getPublicUrl(data.path);
 
@@ -178,7 +178,7 @@ const deleteServiceImageByUrl = async (publicUrl) => {
     oldPath,
   });
 
-  const { data, error } = await supabase.storage
+  const { data, error } = await supabaseAdmin.storage
     .from(SERVICE_IMAGE_BUCKET)
     .remove([oldPath]);
 
@@ -199,7 +199,7 @@ const deleteServiceImageByUrl = async (publicUrl) => {
 // GET ALL SERVICES (PUBLIC)
 // ===============================
 export const getAllServices = async () => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("services")
     .select(
       `
@@ -230,7 +230,7 @@ export const getAllServices = async () => {
 // GET SINGLE SERVICE BY ID (PUBLIC)
 // ===============================
 export const getServiceById = async (id) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("services")
     .select(
       `
@@ -262,7 +262,7 @@ export const getServiceById = async (id) => {
 // ADMIN: GET ALL SERVICES
 // ===============================
 export const getAllServicesAdmin = async () => {
-  const { data: services, error: servicesError } = await supabase
+  const { data: services, error: servicesError } = await supabaseAdmin
     .from("services")
     .select(
       `
@@ -277,7 +277,7 @@ export const getAllServicesAdmin = async () => {
 
   if (servicesError) throw new Error(servicesError.message);
 
-  const { data: activeBookings, error: bookingsError } = await supabase
+  const { data: activeBookings, error: bookingsError } = await supabaseAdmin
     .from("bookings")
     .select("service_id")
     .in("status", ["pending_payment", "pending_approval", "approved"]);
@@ -307,7 +307,7 @@ export const createService = async ({ file, ...service }) => {
     imageUrl = uploadedImage.publicUrl;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("services")
     .insert([{ ...service, image_url: imageUrl }])
     .select()
@@ -331,7 +331,7 @@ export const updateService = async (id, { file, ...service }) => {
   console.log("[SERVICE UPDATE] Starting update for service ID:", id);
 
   // 1. Get existing service first
-  const { data: existingService, error: existingError } = await supabase
+  const { data: existingService, error: existingError } = await supabaseAdmin
     .from("services")
     .select("id, name, image_url")
     .eq("id", id)
@@ -376,7 +376,7 @@ export const updateService = async (id, { file, ...service }) => {
   });
 
   // 3. Update row
-  const { data: updatedRow, error: updateError } = await supabase
+  const { data: updatedRow, error: updateError } = await supabaseAdmin
     .from("services")
     .update(updatedData)
     .eq("id", id)
@@ -399,7 +399,7 @@ export const updateService = async (id, { file, ...service }) => {
     );
 
     const { data: fetchedAfterUpdate, error: fetchAfterUpdateError } =
-      await supabase.from("services").select("*").eq("id", id).single();
+      await supabaseAdmin.from("services").select("*").eq("id", id).single();
 
     if (fetchAfterUpdateError) {
       console.error(
@@ -449,7 +449,7 @@ export const updateService = async (id, { file, ...service }) => {
 // DELETE / DEACTIVATE SERVICE
 // ===============================
 export const deleteService = async (id) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("services")
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", id)
@@ -466,7 +466,7 @@ export const deleteService = async (id) => {
 // REACTIVATE SERVICE
 // ===============================
 export const reactivateService = async (id) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("services")
     .update({ is_active: true, updated_at: new Date().toISOString() })
     .eq("id", id)
@@ -483,7 +483,7 @@ export const reactivateService = async (id) => {
 // SERVICE CATEGORIES
 // ===============================
 export const createCategory = async (service_id, name) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("service_categories")
     .insert([{ service_id, name, is_active: true }])
     .select()
@@ -497,7 +497,7 @@ export const createCategory = async (service_id, name) => {
 // UPDATE CATEGORY
 // ===============================
 export const updateCategory = async (id, name) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("service_categories")
     .update({ name, updated_at: new Date().toISOString() })
     .eq("id", id)
@@ -512,7 +512,7 @@ export const updateCategory = async (id, name) => {
 // DELETE / DEACTIVATE CATEGORY
 // ===============================
 export const deleteCategory = async (id) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("service_categories")
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", id)
@@ -529,7 +529,7 @@ export const deleteCategory = async (id) => {
 export const createVariant = async (variant) => {
   const normalizedVariant = normalizeVariantPayload(variant);
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("service_variants")
     .insert([normalizedVariant])
     .select()
@@ -545,7 +545,7 @@ export const createVariant = async (variant) => {
 export const updateVariant = async (id, variant) => {
   const normalizedVariant = normalizeVariantPayload(variant);
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("service_variants")
     .update({ ...normalizedVariant, updated_at: new Date().toISOString() })
     .eq("id", id)
@@ -560,7 +560,7 @@ export const updateVariant = async (id, variant) => {
 // DELETE / DEACTIVATE VARIANT
 // ===============================
 export const deleteVariant = async (id) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("service_variants")
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", id)

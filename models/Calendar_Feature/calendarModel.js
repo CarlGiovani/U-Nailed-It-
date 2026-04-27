@@ -1,11 +1,11 @@
 import formatLocalDate from "../../utils/dateFormatter.js";
-import supabase from "../../utils/supabaseClient.js";
+import { supabaseAdmin } from "../../utils/supabaseClient.js";
 
 /* =========================
    ADMIN : CREATE SINGLE SLOT
 ========================= */
 export const createSlot = async (slot) => {
-  const { data: existing } = await supabase
+  const { data: existing } = await supabaseAdmin
     .from("calendar_slots")
     .select("id")
     .eq("service_id", slot.service_id)
@@ -18,7 +18,7 @@ export const createSlot = async (slot) => {
 
   if (slot.is_available === undefined) slot.is_available = true;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("calendar_slots")
     .insert([slot])
     .select();
@@ -37,7 +37,7 @@ export const getAvailableSlots = async (service_id, date) => {
   const todayStr = formatLocalDate(now);
   const currentTime = now.toTimeString().slice(0, 5);
 
-  let query = supabase
+  let query = supabaseAdmin
     .from("calendar_slots")
     .select("*")
     .eq("service_id", Number(service_id))
@@ -75,7 +75,7 @@ export const getMonthlyAvailability = async (service_id, year, month) => {
   const todayStr = formatLocalDate(now);
   const currentTime = now.toTimeString().slice(0, 5);
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("calendar_slots")
     .select("date, time, is_available")
     .eq("service_id", Number(service_id))
@@ -110,7 +110,7 @@ export const updateSlot = async (id, updates) => {
     is_available,
   }))(updates);
 
-  const { data: existingSlot, error: existingSlotErr } = await supabase
+  const { data: existingSlot, error: existingSlotErr } = await supabaseAdmin
     .from("calendar_slots")
     .select("id, date, time")
     .eq("id", id)
@@ -123,7 +123,7 @@ export const updateSlot = async (id, updates) => {
   const finalTime = allowedUpdates.time ?? existingSlot.time;
 
   if (allowedUpdates.is_available === true) {
-    const { data: activeBooking, error: activeBookingErr } = await supabase
+    const { data: activeBooking, error: activeBookingErr } = await supabaseAdmin
       .from("bookings")
       .select("id")
       .eq("booking_date", finalDate)
@@ -141,7 +141,7 @@ export const updateSlot = async (id, updates) => {
     }
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("calendar_slots")
     .update(allowedUpdates)
     .eq("id", id)
@@ -156,7 +156,7 @@ export const updateSlot = async (id, updates) => {
    ADMIN : DELETE SLOT
 ========================= */
 export const deleteSlot = async (id) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("calendar_slots")
     .delete()
     .eq("id", id)
@@ -170,7 +170,7 @@ export const deleteSlot = async (id) => {
    GLOBAL BLOCK / UNBLOCK
 ========================= */
 export const blockSlotGlobally = async (date, time) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("calendar_slots")
     .update({ is_available: false })
     .eq("date", date)
@@ -183,7 +183,7 @@ export const blockSlotGlobally = async (date, time) => {
 
 // NOTE: this is "force unblock". Huwag gamitin sa normal reject/cancel flow.
 export const unblockSlotGlobally = async (date, time) => {
-  const { data: activeBooking, error: activeBookingErr } = await supabase
+  const { data: activeBooking, error: activeBookingErr } = await supabaseAdmin
     .from("bookings")
     .select("id")
     .eq("booking_date", date)
@@ -198,7 +198,7 @@ export const unblockSlotGlobally = async (date, time) => {
     throw new Error("Cannot unblock slot with active booking");
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("calendar_slots")
     .update({ is_available: true })
     .eq("date", date)
@@ -236,7 +236,7 @@ export const createSlotsBulk = async ({
 
     for (const time of times) {
       // ✅ Only active bookings block the slot
-      const { data: takenGlobal, error: checkError } = await supabase
+      const { data: takenGlobal, error: checkError } = await supabaseAdmin
         .from("bookings")
         .select("id")
         .eq("booking_date", dateStr)
@@ -250,7 +250,7 @@ export const createSlotsBulk = async ({
 
       // if blocked globally, block all existing slots too
       if (isBlocked) {
-        await supabase
+        await supabaseAdmin
           .from("calendar_slots")
           .update({ is_available: false })
           .eq("date", dateStr)
@@ -266,7 +266,7 @@ export const createSlotsBulk = async ({
     }
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("calendar_slots")
     .upsert(slotsToInsert, { onConflict: ["service_id", "date", "time"] })
     .select();
@@ -280,7 +280,7 @@ export const createSlotsBulk = async ({
 ========================= */
 export const blockDayGlobally = async (date, isAvailable = false) => {
   if (isAvailable === true) {
-    const { data: activeBookings, error: activeBookingErr } = await supabase
+    const { data: activeBookings, error: activeBookingErr } = await supabaseAdmin
       .from("bookings")
       .select("id")
       .eq("booking_date", date)
@@ -294,7 +294,7 @@ export const blockDayGlobally = async (date, isAvailable = false) => {
     }
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("calendar_slots")
     .update({ is_available: isAvailable })
     .eq("date", date)
@@ -310,7 +310,7 @@ export const blockDayForService = async (
   isAvailable = false,
 ) => {
   if (isAvailable === true) {
-    const { data: activeBookings, error: activeBookingErr } = await supabase
+    const { data: activeBookings, error: activeBookingErr } = await supabaseAdmin
       .from("bookings")
       .select("id")
       .eq("booking_date", date)
@@ -324,7 +324,7 @@ export const blockDayForService = async (
     }
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("calendar_slots")
     .update({ is_available: isAvailable })
     .eq("service_id", service_id)

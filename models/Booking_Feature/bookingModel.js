@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import supabase from "../../utils/supabaseClient.js";
+import { supabaseAdmin } from "../../utils/supabaseClient.js";
 import { unblockSlotGlobally } from "../Calendar_Feature/calendarModel.js";
 import { getOrCreateCustomer } from "../Customer_Feature/customerModel.js";
 
@@ -27,7 +27,7 @@ const filterSelectedVariant = (booking) => {
    - Only unblock if NO other active booking exists
 ========================================== */
 const safeUnblockGlobalIfNoActiveBooking = async (date, time) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("bookings")
     .select("id")
     .eq("booking_date", date)
@@ -73,7 +73,7 @@ export const createBookingWithCustomer = async (bookingData) => {
   /* ==========================================
      BLOCKED EMAIL CHECK
   ========================================== */
-  const { data: blockedCustomer, error: blockedCheckError } = await supabase
+  const { data: blockedCustomer, error: blockedCheckError } = await supabaseAdmin
     .from("customers")
     .select("id, full_name, email, is_blocked, blocked_reason")
     .eq("email", normalizedEmail)
@@ -103,7 +103,7 @@ export const createBookingWithCustomer = async (bookingData) => {
      SNAPSHOT FETCH
      - get current service + selected variant/category
   ========================================== */
-  const { data: serviceRow, error: serviceError } = await supabase
+  const { data: serviceRow, error: serviceError } = await supabaseAdmin
     .from("services")
     .select("id, name, description, duration, image_url")
     .eq("id", service_id)
@@ -115,7 +115,7 @@ export const createBookingWithCustomer = async (bookingData) => {
   let variantRow = null;
 
   if (service_variant_id) {
-    const { data: selectedVariant, error: variantError } = await supabase
+    const { data: selectedVariant, error: variantError } = await supabaseAdmin
       .from("service_variants")
       .select(
         `
@@ -161,7 +161,7 @@ export const createBookingWithCustomer = async (bookingData) => {
   }
 
   // 1) Check if may existing ACTIVE pending_payment booking for same slot/service/customer
-  const { data: existing, error: existingErr } = await supabase
+  const { data: existing, error: existingErr } = await supabaseAdmin
     .from("bookings")
     .select(
       `
@@ -196,7 +196,7 @@ export const createBookingWithCustomer = async (bookingData) => {
 
   // If exists, reuse it but refresh snapshot fields
   if (existing) {
-    const { data: refreshedBooking, error: refreshError } = await supabase
+    const { data: refreshedBooking, error: refreshError } = await supabaseAdmin
       .from("bookings")
       .update({
         customer_name: full_name,
@@ -271,7 +271,7 @@ export const createBookingWithCustomer = async (bookingData) => {
   // 2) Create new booking if none found
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
-  const { data: booking, error: bookingError } = await supabase
+  const { data: booking, error: bookingError } = await supabaseAdmin
     .from("bookings")
     .insert([
       {
@@ -354,7 +354,7 @@ export const createBookingWithCustomer = async (bookingData) => {
 ========================================== */
 export const createBookingWithPaymentIntent = async (intentId) => {
   // 1) Load pending intent
-  const { data: intent, error: intentErr } = await supabase
+  const { data: intent, error: intentErr } = await supabaseAdmin
     .from("payment_intents")
     .select("*")
     .eq("id", intentId)
@@ -368,14 +368,14 @@ export const createBookingWithPaymentIntent = async (intentId) => {
 
   // 2) Expiry check
   if (new Date(intent.expires_at).getTime() < Date.now()) {
-    const { error: intentExpireError } = await supabase
+    const { error: intentExpireError } = await supabaseAdmin
       .from("payment_intents")
       .update({ status: "expired" })
       .eq("id", intentId);
 
     if (intentExpireError) throw new Error(intentExpireError.message);
 
-    const { error: bookingExpireError } = await supabase
+    const { error: bookingExpireError } = await supabaseAdmin
       .from("bookings")
       .update({ status: "expired" })
       .eq("id", intent.booking_id)
@@ -387,7 +387,7 @@ export const createBookingWithPaymentIntent = async (intentId) => {
   }
 
   // 3) Load booking
-  const { data: bookingRow, error: bookingErr } = await supabase
+  const { data: bookingRow, error: bookingErr } = await supabaseAdmin
     .from("bookings")
     .select("id, status, booking_date, booking_time")
     .eq("id", intent.booking_id)
@@ -402,7 +402,7 @@ export const createBookingWithPaymentIntent = async (intentId) => {
 
   // 4) Soft pre-check for existing active booking on same global slot
   //    (helpful message, but DB unique index is still the real protection)
-  const { data: existingActive, error: existingActiveErr } = await supabase
+  const { data: existingActive, error: existingActiveErr } = await supabaseAdmin
     .from("bookings")
     .select("id, status")
     .eq("booking_date", intent.booking_date)
@@ -420,7 +420,7 @@ export const createBookingWithPaymentIntent = async (intentId) => {
 
   // 5) Update all same date+time calendar slots globally to unavailable first
   //    so UI/service slots reflect the real business rule
-  const { error: globalBlockErr } = await supabase
+  const { error: globalBlockErr } = await supabaseAdmin
     .from("calendar_slots")
     .update({ is_available: false })
     .eq("date", intent.booking_date)
@@ -432,7 +432,7 @@ export const createBookingWithPaymentIntent = async (intentId) => {
   //    IMPORTANT: the DB unique index is what prevents double booking here.
   const pendingCancelToken = crypto.randomUUID();
 
-  const { data: updatedBooking, error: updateErr } = await supabase
+  const { data: updatedBooking, error: updateErr } = await supabaseAdmin
     .from("bookings")
     .update({
       status: "pending_approval",
@@ -453,7 +453,7 @@ export const createBookingWithPaymentIntent = async (intentId) => {
   }
 
   // 7) Mark intent used
-  const { error: intentUsedErr } = await supabase
+  const { error: intentUsedErr } = await supabaseAdmin
     .from("payment_intents")
     .update({ status: "used" })
     .eq("id", intentId)
@@ -461,7 +461,7 @@ export const createBookingWithPaymentIntent = async (intentId) => {
 
   if (intentUsedErr) {
     // rollback booking status if marking intent fails
-    await supabase
+    await supabaseAdmin
       .from("bookings")
       .update({
         status: "pending_payment",
@@ -515,7 +515,7 @@ export const getAllBookings = async ({
   const from = (safePage - 1) * safeLimit;
   const to = from + safeLimit - 1;
 
-  let query = supabase
+  let query = supabaseAdmin
     .from("bookings")
     .select(
       `
@@ -588,7 +588,7 @@ export const getAllBookings = async ({
    ADMIN: update booking status (generic)
 ========================================== */
 export const updateBookingStatus = async (id, status) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("bookings")
     .update({ status })
     .eq("id", id)
@@ -606,7 +606,7 @@ export const updateBookingStatus = async (id, status) => {
 export const approveBooking = async (id) => {
   const cancelToken = crypto.randomUUID();
 
-  const { data: updated, error } = await supabase
+  const { data: updated, error } = await supabaseAdmin
     .from("bookings")
     .update({
       status: "approved",
@@ -633,7 +633,7 @@ export const approveBooking = async (id) => {
     );
   }
 
-  const { data, error: fetchError } = await supabase
+  const { data, error: fetchError } = await supabaseAdmin
     .from("bookings")
     .select(
       `
@@ -671,7 +671,7 @@ export const approveBooking = async (id) => {
    - return filtered selected variant only
 ========================================== */
 export const rejectBooking = async (id) => {
-  const { data: updated, error } = await supabase
+  const { data: updated, error } = await supabaseAdmin
     .from("bookings")
     .update({
       status: "rejected",
@@ -701,7 +701,7 @@ export const rejectBooking = async (id) => {
     updated.booking_time,
   );
 
-  const { data, error: fetchError } = await supabase
+  const { data, error: fetchError } = await supabaseAdmin
     .from("bookings")
     .select(
       `
@@ -738,7 +738,7 @@ export const rejectBooking = async (id) => {
    - then safe unblock if no other active bookings
 ========================================== */
 export const cancelBookingByToken = async (token, reason) => {
-  const { data: booking, error } = await supabase
+  const { data: booking, error } = await supabaseAdmin
     .from("bookings")
     .select("*")
     .eq("cancel_token", token)
@@ -770,7 +770,7 @@ export const cancelBookingByToken = async (token, reason) => {
     );
   }
 
-  const { data: cancelled, error: cancelError } = await supabase
+  const { data: cancelled, error: cancelError } = await supabaseAdmin
     .from("bookings")
     .update({
       status: "cancelled",
@@ -791,7 +791,7 @@ export const cancelBookingByToken = async (token, reason) => {
     booking.booking_time,
   );
 
-  const { data: fullBooking, error: fetchError } = await supabase
+  const { data: fullBooking, error: fetchError } = await supabaseAdmin
     .from("bookings")
     .select(
       `
@@ -828,7 +828,7 @@ export const cancelPendingApprovalBookingById = async (
   const id = Number(bookingId);
   if (!id) throw new Error("Invalid booking id");
 
-  const { data: booking, error } = await supabase
+  const { data: booking, error } = await supabaseAdmin
     .from("bookings")
     .select("*")
     .eq("id", id)
@@ -860,7 +860,7 @@ export const cancelPendingApprovalBookingById = async (
     throw new Error("Booking verification failed");
   }
 
-  const { data: cancelled, error: cancelError } = await supabase
+  const { data: cancelled, error: cancelError } = await supabaseAdmin
     .from("bookings")
     .update({
       status: "cancelled",
@@ -879,7 +879,7 @@ export const cancelPendingApprovalBookingById = async (
     booking.booking_time,
   );
 
-  const { data: fullBooking, error: fetchError } = await supabase
+  const { data: fullBooking, error: fetchError } = await supabaseAdmin
     .from("bookings")
     .select(
       `
@@ -909,7 +909,7 @@ export const cancelPendingApprovalBookingById = async (
    - then safe unblock if no other active bookings
 ========================================== */
 export const cancelPendingApprovalBookingByToken = async (token, reason) => {
-  const { data: booking, error } = await supabase
+  const { data: booking, error } = await supabaseAdmin
     .from("bookings")
     .select("*")
     .eq("pending_cancel_token", token)
@@ -934,7 +934,7 @@ export const cancelPendingApprovalBookingByToken = async (token, reason) => {
     throw new Error("Cannot cancel past appointments");
   }
 
-  const { data: cancelled, error: cancelError } = await supabase
+  const { data: cancelled, error: cancelError } = await supabaseAdmin
     .from("bookings")
     .update({
       status: "cancelled",
@@ -961,7 +961,7 @@ export const cancelPendingApprovalBookingByToken = async (token, reason) => {
     booking.booking_time,
   );
 
-  const { data: fullBooking, error: fetchError } = await supabase
+  const { data: fullBooking, error: fetchError } = await supabaseAdmin
     .from("bookings")
     .select(
       `
@@ -994,7 +994,7 @@ export const getBookingById = async (id) => {
   const bookingId = Number(id);
   if (!bookingId) throw new Error("Invalid booking id");
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("bookings")
     .select(
       `
@@ -1035,7 +1035,7 @@ export const confirmBookingForBookingId = async (bookingId, intentId) => {
   if (!bookingIdNum) throw new Error("Invalid booking id");
 
   // 1) load intent (pending)
-  const { data: intent, error: intentErr } = await supabase
+  const { data: intent, error: intentErr } = await supabaseAdmin
     .from("payment_intents")
     .select("id, booking_id, status")
     .eq("id", intentId)
@@ -1071,7 +1071,7 @@ export const completeBooking = async (id) => {
   const completedAt = new Date().toISOString();
 
   // update booking status -> completed
-  const { data: updated, error } = await supabase
+  const { data: updated, error } = await supabaseAdmin
     .from("bookings")
     .update({
       status: "completed",
@@ -1088,7 +1088,7 @@ export const completeBooking = async (id) => {
   }
 
   // insert revenue log
-  const { error: revenueError } = await supabase.from("revenue_logs").insert([
+  const { error: revenueError } = await supabaseAdmin.from("revenue_logs").insert([
     {
       booking_id: updated.id,
       amount: updated.total_price,
@@ -1101,7 +1101,7 @@ export const completeBooking = async (id) => {
   }
 
   // return full booking with joins
-  const { data, error: fetchError } = await supabase
+  const { data, error: fetchError } = await supabaseAdmin
     .from("bookings")
     .select(
       `

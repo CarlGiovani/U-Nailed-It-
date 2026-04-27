@@ -1,5 +1,4 @@
-import supabase from "../../utils/supabaseClient.js";
-
+import { supabaseAdmin } from "../../utils/supabaseClient.js";
 export const NotificationModel = {
   async getAll(adminId, limit = 20) {
     if (!adminId) {
@@ -8,7 +7,7 @@ export const NotificationModel = {
 
     const safeLimit = Number(limit) || 20;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("notifications")
       .select("*")
       .eq("admin_id", adminId)
@@ -24,7 +23,7 @@ export const NotificationModel = {
       throw new Error("Admin id is required");
     }
 
-    const { count, error } = await supabase
+    const { count, error } = await supabaseAdmin
       .from("notifications")
       .select("id", { count: "exact", head: true })
       .eq("admin_id", adminId)
@@ -45,7 +44,7 @@ export const NotificationModel = {
       throw new Error("Invalid notification id");
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("notifications")
       .update({ is_read: true })
       .eq("id", notifId)
@@ -62,7 +61,7 @@ export const NotificationModel = {
       throw new Error("Admin id is required");
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("notifications")
       .update({ is_read: true })
       .eq("admin_id", adminId)
@@ -84,7 +83,7 @@ export const NotificationModel = {
       throw new Error("Invalid notification id");
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("notifications")
       .delete()
       .eq("id", notifId)
@@ -114,7 +113,7 @@ export const NotificationModel = {
       throw new Error("No valid notification ids provided");
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("notifications")
       .delete()
       .eq("admin_id", adminId)
