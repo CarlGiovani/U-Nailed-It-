@@ -1,5 +1,5 @@
 import { getAllAdmins } from "../../models/Admin_Gmail_Notif_Feature/adminGmailNotifModel.js";
-import supabase from "../../utils/supabaseClient.js";
+import supabase, { supabaseAdmin } from "../../utils/supabaseClient.js";
 import sendEmail from "../Email_Feature/emailService.js";
 
 export const createAdminNotifAndSendGmail = async ({
@@ -23,7 +23,7 @@ export const createAdminNotifAndSendGmail = async ({
 
   for (const admin of admins) {
     // 1. Create in-app notification for this admin
-    const { data: notification, error: notifError } = await supabase
+    const { data: notification, error: notifError } = await supabaseAdmin
       .from("notifications")
       .insert({
         admin_id: admin.id,

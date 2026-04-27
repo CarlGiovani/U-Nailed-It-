@@ -1,4 +1,4 @@
-import supabase from "../../utils/supabaseClient.js";
+import { supabaseAdmin } from "../../utils/supabaseClient.js";
 
 /* ===============================
    CREATE LOG
@@ -10,7 +10,7 @@ export const createAuditLog = async ({
   entity_id,
   description,
 }) => {
-  const { error } = await supabase.from("audit_logs").insert([
+  const { error } = await supabaseAdmin.from("audit_logs").insert([
     {
       admin_id,
       action,
@@ -27,7 +27,7 @@ export const createAuditLog = async ({
    GET LOGS
 =============================== */
 export const getAuditLogs = async () => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("audit_logs")
     .select("*")
     .order("created_at", { ascending: false })

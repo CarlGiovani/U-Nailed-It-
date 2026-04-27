@@ -1,4 +1,4 @@
-import supabase from "../../utils/supabaseClient.js";
+import { supabaseAdmin } from "../../utils/supabaseClient.js";
 
 const RECENT_BOOKING_STATUSES = ["pending_approval", "approved", "completed"];
 const TOTAL_BOOKING_STATUSES = ["approved", "completed"];
@@ -8,7 +8,7 @@ const REVENUE_STATUS = "completed";
    TOTAL BOOKINGS
 =============================== */
 export const getTotalBookings = async () => {
-  const { count, error } = await supabase
+  const { count, error } = await supabaseAdmin
     .from("bookings")
     .select("*", { count: "exact", head: true })
     .in("status", TOTAL_BOOKING_STATUSES);
@@ -22,7 +22,7 @@ export const getTotalBookings = async () => {
    BOOKING COUNTS BY STATUS
 =============================== */
 export const getBookingStatusCounts = async () => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("bookings")
     .select("status")
     .in("status", RECENT_BOOKING_STATUSES);
@@ -48,7 +48,7 @@ export const getBookingStatusCounts = async () => {
    TOTAL REVENUE
 =============================== */
 export const getTotalRevenue = async () => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("bookings")
     .select("total_price")
     .eq("status", REVENUE_STATUS);
@@ -65,7 +65,7 @@ export const getTotalRevenue = async () => {
    PENDING REVIEWS
 =============================== */
 export const getPendingReviews = async () => {
-  const { count, error } = await supabase
+  const { count, error } = await supabaseAdmin
     .from("reviews")
     .select("*", { count: "exact", head: true })
     .eq("is_approved", false);
@@ -79,7 +79,7 @@ export const getPendingReviews = async () => {
    ACTIVE SERVICES
 =============================== */
 export const getActiveServices = async () => {
-  const { count, error } = await supabase
+  const { count, error } = await supabaseAdmin
     .from("services")
     .select("*", { count: "exact", head: true })
     .eq("is_active", true);
@@ -93,7 +93,7 @@ export const getActiveServices = async () => {
    ANALYTICS
 =============================== */
 export const getBookingAnalytics = async () => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("bookings")
     .select("booking_date,total_price,status")
     .in("status", TOTAL_BOOKING_STATUSES);
@@ -126,7 +126,7 @@ export const getBookingAnalytics = async () => {
    RECENT BOOKINGS
 =============================== */
 export const getRecentBookings = async () => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("bookings")
     .select(
       `
@@ -157,7 +157,7 @@ export const blockCustomerByEmail = async ({ email, reason, adminId }) => {
   const normalizedEmail = String(email).trim().toLowerCase();
 
   // exact match first
-  let { data, error } = await supabase
+  let { data, error } = await supabaseAdmin
     .from("customers")
     .update({
       is_blocked: true,
@@ -173,7 +173,7 @@ export const blockCustomerByEmail = async ({ email, reason, adminId }) => {
 
   // fallback: case-insensitive match
   if (!data) {
-    const fallback = await supabase
+    const fallback = await supabaseAdmin
       .from("customers")
       .update({
         is_blocked: true,
@@ -200,7 +200,7 @@ export const blockCustomerByEmail = async ({ email, reason, adminId }) => {
    UNBLOCK CUSTOMER BY EMAIL
 =============================== */
 export const unblockCustomerById = async ({ customer_id }) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("customers")
     .update({
       is_blocked: false,
@@ -231,7 +231,7 @@ export const getSystemExportData = async () => {
     policiesRes,
     calendarSlotsRes,
   ] = await Promise.all([
-    supabase
+    supabaseAdmin
       .from("bookings")
       .select(
         `
@@ -266,27 +266,27 @@ export const getSystemExportData = async () => {
       )
       .order("created_at", { ascending: false }),
 
-    supabase
+    supabaseAdmin
       .from("customers")
       .select("*")
       .order("created_at", { ascending: false }),
 
-    supabase
+    supabaseAdmin
       .from("services")
       .select("*")
       .order("created_at", { ascending: false }),
 
-    supabase
+    supabaseAdmin
       .from("service_categories")
       .select("*")
       .order("created_at", { ascending: false }),
 
-    supabase
+    supabaseAdmin
       .from("service_variants")
       .select("*")
       .order("created_at", { ascending: false }),
 
-    supabase
+    supabaseAdmin
       .from("reviews")
       .select(
         `
@@ -296,12 +296,12 @@ export const getSystemExportData = async () => {
       )
       .order("created_at", { ascending: false }),
 
-    supabase
+    supabaseAdmin
       .from("notifications")
       .select("*")
       .order("created_at", { ascending: false }),
 
-    supabase
+    supabaseAdmin
       .from("revenue_logs")
       .select(
         `
@@ -311,17 +311,17 @@ export const getSystemExportData = async () => {
       )
       .order("created_at", { ascending: false }),
 
-    supabase
+    supabaseAdmin
       .from("announcements")
       .select("*")
       .order("created_at", { ascending: false }),
 
-    supabase
+    supabaseAdmin
       .from("policies")
       .select("*")
       .order("created_at", { ascending: false }),
 
-    supabase
+    supabaseAdmin
       .from("calendar_slots")
       .select("*")
       .order("created_at", { ascending: false }),

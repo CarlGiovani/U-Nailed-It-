@@ -199,7 +199,7 @@ const deleteServiceImageByUrl = async (publicUrl) => {
 // GET ALL SERVICES (PUBLIC)
 // ===============================
 export const getAllServices = async () => {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from("services")
     .select(
       `
@@ -230,7 +230,7 @@ export const getAllServices = async () => {
 // GET SINGLE SERVICE BY ID (PUBLIC)
 // ===============================
 export const getServiceById = async (id) => {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from("services")
     .select(
       `
@@ -257,6 +257,10 @@ export const getServiceById = async (id) => {
 
   return data;
 };
+
+
+
+
 
 // ===============================
 // ADMIN: GET ALL SERVICES
