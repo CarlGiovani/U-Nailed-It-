@@ -752,6 +752,10 @@ export const cancelBookingByToken = async (token, reason) => {
     throw new Error("Only approved bookings can be cancelled");
   }
 
+  if (booking.status === "completed"){
+    throw new Error("Booking already completed, cancellation not allowed");
+  }
+
   const now = new Date();
 
   const appointmentDateTime = new Date(
@@ -837,10 +841,14 @@ export const cancelPendingApprovalBookingById = async (
   if (error || !booking) {
     throw new Error("Booking not found");
   }
-
   if (booking.status !== "pending_approval") {
     throw new Error("Only pending approval bookings can be cancelled");
   }
+  if (booking.status === "completed"){
+    throw new Error("Booking already completed, cancellation not allowed");
+  }
+
+  
 
   const now = new Date();
 
