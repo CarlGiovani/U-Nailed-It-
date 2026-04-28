@@ -56,3 +56,17 @@ export const unblockCustomer = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+
+export const getBookingSnapshot = async (req, res) => {
+  try {
+    const data = await dashboardService.getBookingSnapshot();
+
+    res.json({
+      message: "Booking snapshot fetched successfully",
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

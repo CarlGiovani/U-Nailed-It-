@@ -7,6 +7,11 @@ const router = express.Router();
 // ADMIN
 router.get("/data", verifyAdmin, dashboardController.getDashboardData);
 router.get("/export", verifyAdmin, dashboardController.getSystemExportData);
+router.get(
+  "/bookings/snapshot",
+  verifyAdmin,
+  dashboardController.getBookingSnapshot
+);
 
 // BLOCK / UNBLOCK CUSTOMER
 router.patch("/customers/block", verifyAdmin, dashboardController.blockCustomer);

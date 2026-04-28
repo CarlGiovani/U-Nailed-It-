@@ -63,3 +63,9 @@ export const unblockCustomer = async ({ customer_id }) => {
     customer_id,
   });
 };
+
+
+
+export const getBookingSnapshot = async () => {
+  return await dashboard.getBookingSnapshot();
+};

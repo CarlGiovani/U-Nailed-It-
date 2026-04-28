@@ -361,3 +361,96 @@ export const getSystemExportData = async () => {
     calendarSlots: calendarSlotsRes.data || [],
   };
 };
+
+/* =====================================
+   BOOKING SNAPSHOT (TODAY + UPCOMING)
+===================================== */
+export const getBookingSnapshot = async () => {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+  }).format(new Date());
+
+  console.log("📅 TODAY FILTER:", today);
+
+  const { data, error } = await supabaseAdmin
+    .from("bookings")
+    .select(`
+      id,
+      booking_date,
+      booking_time,
+      status,
+      total_price,
+      created_at,
+      customer_name,
+      customer_email,
+      customer_phone,
+      service_name_snapshot,
+      variant_body_part_snapshot,
+      variant_size_snapshot,
+      variant_price_snapshot
+    `)
+    .eq("status", "approved")
+    .gte("booking_date", today)
+    .order("booking_date", { ascending: true })
+    .order("booking_time", { ascending: true });
+
+  console.log("📦 RAW APPROVED DATA FROM SUPABASE:", data);
+  console.log("❌ ERROR (if any):", error);
+
+  if (error) throw new Error(error.message);
+
+  const snapshot = {};
+
+  data.forEach((b) => {
+    console.log("➡️ PROCESSING APPROVED BOOKING:", {
+      id: b.id,
+      date: b.booking_date,
+      status: b.status,
+    });
+
+    const date = b.booking_date;
+
+    if (!snapshot[date]) {
+      snapshot[date] = {
+        date,
+        totalBookings: 0,
+        approved: 0,
+        bookings: [],
+      };
+
+      console.log("🆕 CREATED GROUP:", date);
+    }
+
+    const group = snapshot[date];
+
+    group.totalBookings += 1;
+    group.approved += 1;
+
+    group.bookings.push({
+      id: b.id,
+      time: b.booking_time,
+      status: b.status,
+      customer: {
+        name: b.customer_name,
+        email: b.customer_email,
+        phone: b.customer_phone,
+      },
+      service: b.service_name_snapshot,
+      variant: {
+        body_part: b.variant_body_part_snapshot,
+        size: b.variant_size_snapshot,
+        price: b.variant_price_snapshot,
+      },
+      price: b.total_price,
+    });
+  });
+
+  const result = Object.values(snapshot);
+
+  console.log("📊 FINAL UPCOMING SNAPSHOT RESULT:", result);
+
+  return {
+    message: "Approved upcoming bookings fetched successfully",
+    data: result,
+  };
+};
