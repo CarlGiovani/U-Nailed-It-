@@ -24,6 +24,7 @@ import AdminLayout from "../../components/layout/adminLayout";
 import { getAuditLogs } from "../../services/BACKEND/adminAudtiApi";
 import {
   blockCustomer,
+  getBookingSnapshot,
   getDashboardData,
   getSystemExportData,
   unblockCustomer,
@@ -63,6 +64,20 @@ const fetchDashboardData = async () => {
   };
 };
 
+const formatSnapshotDate = (dateStr) => {
+  if (!dateStr) return dateStr;
+  const today = new Date().toISOString().split("T")[0];
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+  if (dateStr === today) return "Today";
+  if (dateStr === tomorrow) return "Tomorrow";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+};
+
 const Dashboard = () => {
   const queryClient = useQueryClient();
 
@@ -95,6 +110,19 @@ const Dashboard = () => {
     refetchOnWindowFocus: false,
     retry: 2,
   });
+
+  const {
+    data: snapshotRaw,
+    isLoading: snapshotLoading,
+    error: snapshotError,
+  } = useQuery({
+    queryKey: ["booking-snapshot"],
+    queryFn: getBookingSnapshot,
+    staleTime: 1000 * 60 * 2,
+  });
+
+  // 👉 DITO MO ILAGAY
+  console.log("📦 snapshotRaw:", snapshotRaw);
 
   const stats = useMemo(
     () => ({
@@ -146,10 +174,16 @@ const Dashboard = () => {
       Array.isArray(exportData?.notifications) ? exportData.notifications : [],
     [exportData?.notifications],
   );
+  const snapshotGroups = useMemo(() => {
+    const data = snapshotRaw?.data?.data ?? snapshotRaw?.data ?? [];
+
+    if (!Array.isArray(data)) return [];
+
+    return [...data].sort((a, b) => (a.date > b.date ? 1 : -1));
+  }, [snapshotRaw]);
 
   const customerMap = useMemo(() => {
     const map = new Map();
-
     customers.forEach((customer) => {
       const email = String(customer?.email || "")
         .trim()
@@ -157,7 +191,6 @@ const Dashboard = () => {
       if (!email) return;
       map.set(email, customer);
     });
-
     return map;
   }, [customers]);
 
@@ -243,7 +276,6 @@ const Dashboard = () => {
         if (b.cancel_count !== a.cancel_count) {
           return b.cancel_count - a.cancel_count;
         }
-
         return (
           new Date(b.latest_cancelled_at || 0).getTime() -
           new Date(a.latest_cancelled_at || 0).getTime()
@@ -256,14 +288,15 @@ const Dashboard = () => {
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
-
     debounceTimeoutRef.current = setTimeout(async () => {
       if (isInvalidatingRef.current) return;
-
       try {
         isInvalidatingRef.current = true;
         await queryClient.invalidateQueries({
           queryKey: DASHBOARD_QUERY_KEY,
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["booking-snapshot"],
         });
       } catch (error) {
         console.error("Dashboard invalidate error:", error);
@@ -314,7 +347,6 @@ const Dashboard = () => {
 
     return () => {
       if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
-
       if (realtimeChannelRef.current) {
         supabase.removeChannel(realtimeChannelRef.current);
         realtimeChannelRef.current = null;
@@ -327,7 +359,6 @@ const Dashboard = () => {
       1,
       Math.ceil(bookings.length / ITEMS_PER_PAGE),
     );
-
     if (currentPage > computedTotalPages) {
       setCurrentPage(computedTotalPages);
     }
@@ -338,7 +369,6 @@ const Dashboard = () => {
       1,
       Math.ceil(mostCancelledCustomers.length / MOST_CANCELLED_PER_PAGE),
     );
-
     if (cancelledPage > computedCancelledPages) {
       setCancelledPage(computedCancelledPages);
     }
@@ -346,11 +376,9 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!actionMessage) return;
-
     const timer = setTimeout(() => {
       setActionMessage("");
     }, 2800);
-
     return () => clearTimeout(timer);
   }, [actionMessage]);
 
@@ -382,7 +410,6 @@ const Dashboard = () => {
 
   const comboChartData = useMemo(() => {
     const monthMap = new Map();
-
     Object.entries(analytics.bookingsPerMonth || {}).forEach(
       ([month, value]) => {
         monthMap.set(month, {
@@ -392,7 +419,6 @@ const Dashboard = () => {
         });
       },
     );
-
     Object.entries(analytics.revenuePerMonth || {}).forEach(
       ([month, value]) => {
         if (monthMap.has(month)) {
@@ -409,18 +435,15 @@ const Dashboard = () => {
         }
       },
     );
-
     return Array.from(monthMap.values());
   }, [analytics.bookingsPerMonth, analytics.revenuePerMonth]);
 
   const topServices = useMemo(() => {
     const serviceCount = {};
-
     allBookings.forEach((booking) => {
       const name = booking?.services?.name || "Unknown";
       serviceCount[name] = (serviceCount[name] || 0) + 1;
     });
-
     return Object.keys(serviceCount)
       .map((service) => ({
         name: service,
@@ -438,40 +461,18 @@ const Dashboard = () => {
       cancelled: 0,
       rejected: 0,
     };
-
     allBookings.forEach((booking) => {
       const status = booking?.status;
       if (counts[status] !== undefined) {
         counts[status] += 1;
       }
     });
-
     return [
-      {
-        name: "Pending",
-        value: counts.pending_approval,
-        color: "#f59e0b",
-      },
-      {
-        name: "Approved",
-        value: counts.approved,
-        color: "#22c55e",
-      },
-      {
-        name: "Completed",
-        value: counts.completed,
-        color: "#3b82f6",
-      },
-      {
-        name: "Cancelled",
-        value: counts.cancelled,
-        color: "#ef4444",
-      },
-      {
-        name: "Rejected",
-        value: counts.rejected,
-        color: "#8b5cf6",
-      },
+      { name: "Pending", value: counts.pending_approval, color: "#f59e0b" },
+      { name: "Approved", value: counts.approved, color: "#22c55e" },
+      { name: "Completed", value: counts.completed, color: "#3b82f6" },
+      { name: "Cancelled", value: counts.cancelled, color: "#ef4444" },
+      { name: "Rejected", value: counts.rejected, color: "#8b5cf6" },
     ].filter((item) => item.value > 0);
   }, [allBookings]);
 
@@ -596,9 +597,7 @@ const Dashboard = () => {
   const handleBlockCustomer = async () => {
     const email = selectedCustomer?.email;
     if (!email) return;
-
     setActionLoadingEmail(email);
-
     try {
       await blockCustomer({
         email,
@@ -606,10 +605,10 @@ const Dashboard = () => {
         reason: blockReason?.trim() || "Too many cancellations",
         cancelCount: selectedCustomer?.cancel_count || 0,
       });
-
       setActionMessage(`Blocked ${email} successfully.`);
       closeBlockModal();
       await queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEY });
+      await queryClient.invalidateQueries({ queryKey: ["booking-snapshot"] });
     } catch (error) {
       console.error("Block customer failed:", error);
       setActionMessage(
@@ -625,20 +624,17 @@ const Dashboard = () => {
   const handleUnblockCustomer = async () => {
     const customerId = selectedCustomer?.id;
     const email = selectedCustomer?.email;
-
     if (!customerId) {
       setActionMessage("Missing customer ID. Please refresh and try again.");
       return;
     }
-
     setActionLoadingEmail(email);
-
     try {
       await unblockCustomer({ customer_id: customerId });
-
       setActionMessage(`Unblocked ${email} successfully.`);
       closeUnblockModal();
       await queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEY });
+      await queryClient.invalidateQueries({ queryKey: ["booking-snapshot"] });
     } catch (error) {
       console.error("Unblock customer failed:", error);
       setActionMessage(
@@ -654,9 +650,7 @@ const Dashboard = () => {
   const exportExcel = async () => {
     try {
       setExportingExcel(true);
-
       const data = await getSystemExportData();
-
       const workbook = new ExcelJS.Workbook();
       workbook.creator = "UNAILEDIT";
       workbook.created = new Date();
@@ -665,7 +659,6 @@ const Dashboard = () => {
         const headerRow = sheet.getRow(1);
         headerRow.font = { bold: true };
         headerRow.alignment = { vertical: "middle", horizontal: "center" };
-
         headerRow.eachCell((cell) => {
           cell.border = {
             top: { style: "thin" },
@@ -684,18 +677,15 @@ const Dashboard = () => {
       const autoFitColumns = (sheet) => {
         sheet.columns.forEach((column) => {
           let maxLength = 12;
-
           column.eachCell?.({ includeEmpty: true }, (cell) => {
             const cellValue = cell.value ? String(cell.value) : "";
             maxLength = Math.max(maxLength, cellValue.length + 2);
           });
-
           column.width = Math.min(maxLength, 40);
         });
       };
 
       const bookingsSheet = workbook.addWorksheet("Bookings");
-
       bookingsSheet.columns = [
         { header: "Booking ID", key: "id" },
         { header: "Customer ID", key: "customer_id" },
@@ -724,7 +714,6 @@ const Dashboard = () => {
         { header: "Created At", key: "created_at" },
         { header: "Updated At", key: "updated_at" },
       ];
-
       (data?.bookings || []).forEach((booking) => {
         bookingsSheet.addRow({
           id: booking.id,
@@ -761,7 +750,6 @@ const Dashboard = () => {
           updated_at: booking.updated_at || "",
         });
       });
-
       styleHeader(bookingsSheet);
       autoFitColumns(bookingsSheet);
 
@@ -777,7 +765,6 @@ const Dashboard = () => {
         { header: "Blocked At", key: "blocked_at" },
         { header: "Created At", key: "created_at" },
       ];
-
       (data?.customers || []).forEach((item) => {
         customersSheet.addRow({
           id: item.id,
@@ -791,7 +778,6 @@ const Dashboard = () => {
           created_at: item.created_at || "",
         });
       });
-
       styleHeader(customersSheet);
       autoFitColumns(customersSheet);
 
@@ -806,7 +792,6 @@ const Dashboard = () => {
         { header: "Created At", key: "created_at" },
         { header: "Updated At", key: "updated_at" },
       ];
-
       (data?.services || []).forEach((item) => {
         servicesSheet.addRow({
           id: item.id,
@@ -819,7 +804,6 @@ const Dashboard = () => {
           updated_at: item.updated_at || "",
         });
       });
-
       styleHeader(servicesSheet);
       autoFitColumns(servicesSheet);
 
@@ -832,7 +816,6 @@ const Dashboard = () => {
         { header: "Created At", key: "created_at" },
         { header: "Updated At", key: "updated_at" },
       ];
-
       (data?.serviceCategories || []).forEach((item) => {
         categoriesSheet.addRow({
           id: item.id,
@@ -843,7 +826,6 @@ const Dashboard = () => {
           updated_at: item.updated_at || "",
         });
       });
-
       styleHeader(categoriesSheet);
       autoFitColumns(categoriesSheet);
 
@@ -859,7 +841,6 @@ const Dashboard = () => {
         { header: "Created At", key: "created_at" },
         { header: "Updated At", key: "updated_at" },
       ];
-
       (data?.serviceVariants || []).forEach((item) => {
         variantsSheet.addRow({
           id: item.id,
@@ -873,7 +854,6 @@ const Dashboard = () => {
           updated_at: item.updated_at || "",
         });
       });
-
       styleHeader(variantsSheet);
       autoFitColumns(variantsSheet);
 
@@ -889,7 +869,6 @@ const Dashboard = () => {
         { header: "Booking Status", key: "booking_status" },
         { header: "Created At", key: "created_at" },
       ];
-
       (data?.reviews || []).forEach((item) => {
         reviewsSheet.addRow({
           id: item.id,
@@ -903,7 +882,6 @@ const Dashboard = () => {
           created_at: item.created_at || "",
         });
       });
-
       styleHeader(reviewsSheet);
       autoFitColumns(reviewsSheet);
 
@@ -919,7 +897,6 @@ const Dashboard = () => {
         { header: "Is Read", key: "is_read" },
         { header: "Created At", key: "created_at" },
       ];
-
       (data?.notifications || []).forEach((item) => {
         notificationsSheet.addRow({
           id: item.id,
@@ -933,7 +910,6 @@ const Dashboard = () => {
           created_at: item.created_at || "",
         });
       });
-
       styleHeader(notificationsSheet);
       autoFitColumns(notificationsSheet);
 
@@ -947,7 +923,6 @@ const Dashboard = () => {
         { header: "Booking Status", key: "booking_status" },
         { header: "Created At", key: "created_at" },
       ];
-
       (data?.revenueLogs || []).forEach((item) => {
         revenueLogsSheet.addRow({
           id: item.id,
@@ -959,7 +934,6 @@ const Dashboard = () => {
           created_at: item.created_at || "",
         });
       });
-
       styleHeader(revenueLogsSheet);
       autoFitColumns(revenueLogsSheet);
 
@@ -976,7 +950,6 @@ const Dashboard = () => {
         { header: "Created At", key: "created_at" },
         { header: "Updated At", key: "updated_at" },
       ];
-
       (data?.announcements || []).forEach((item) => {
         announcementsSheet.addRow({
           id: item.id,
@@ -991,7 +964,6 @@ const Dashboard = () => {
           updated_at: item.updated_at || "",
         });
       });
-
       styleHeader(announcementsSheet);
       autoFitColumns(announcementsSheet);
 
@@ -1004,7 +976,6 @@ const Dashboard = () => {
         { header: "Created At", key: "created_at" },
         { header: "Updated At", key: "updated_at" },
       ];
-
       (data?.policies || []).forEach((item) => {
         policiesSheet.addRow({
           id: item.id,
@@ -1015,7 +986,6 @@ const Dashboard = () => {
           updated_at: item.updated_at || "",
         });
       });
-
       styleHeader(policiesSheet);
       autoFitColumns(policiesSheet);
 
@@ -1029,7 +999,6 @@ const Dashboard = () => {
         { header: "Created At", key: "created_at" },
         { header: "Updated At", key: "updated_at" },
       ];
-
       (data?.calendarSlots || []).forEach((item) => {
         calendarSlotsSheet.addRow({
           id: item.id,
@@ -1041,16 +1010,13 @@ const Dashboard = () => {
           updated_at: item.updated_at || "",
         });
       });
-
       styleHeader(calendarSlotsSheet);
       autoFitColumns(calendarSlotsSheet);
 
       const buffer = await workbook.xlsx.writeBuffer();
-
       const file = new Blob([buffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
-
       saveAs(
         file,
         `unailedit_system_export_${new Date().toISOString().slice(0, 10)}.xlsx`,
@@ -1065,14 +1031,12 @@ const Dashboard = () => {
   const exportPDF = async () => {
     try {
       setExportingPDF(true);
-
       const data = await getSystemExportData();
 
       const allBookings = Array.isArray(data?.bookings) ? data.bookings : [];
       const completedBookings = allBookings.filter(
         (booking) => booking?.status === "completed",
       );
-
       const allCustomers = Array.isArray(data?.customers) ? data.customers : [];
       const allServices = Array.isArray(data?.services) ? data.services : [];
       const allReviews = Array.isArray(data?.reviews) ? data.reviews : [];
@@ -1095,27 +1059,20 @@ const Dashboard = () => {
         const serviceName = booking?.services?.name || "Unknown";
         pdfServiceCount[serviceName] = (pdfServiceCount[serviceName] || 0) + 1;
       });
-
       const pdfTopServices = Object.keys(pdfServiceCount)
-        .map((name) => ({
-          name,
-          value: pdfServiceCount[name],
-        }))
+        .map((name) => ({ name, value: pdfServiceCount[name] }))
         .sort((a, b) => b.value - a.value)
         .slice(0, 10);
 
       const pdfBookingsPerMonth = {};
       allBookings.forEach((booking) => {
         if (!booking?.booking_date) return;
-
         const rawDate = new Date(booking.booking_date);
         if (Number.isNaN(rawDate.getTime())) return;
-
         const monthKey = rawDate.toLocaleString("en-US", {
           month: "short",
           year: "numeric",
         });
-
         pdfBookingsPerMonth[monthKey] =
           (pdfBookingsPerMonth[monthKey] || 0) + 1;
       });
@@ -1124,15 +1081,12 @@ const Dashboard = () => {
       allRevenueLogs.forEach((log) => {
         const sourceDate = log?.created_at || log?.bookings?.booking_date;
         if (!sourceDate) return;
-
         const rawDate = new Date(sourceDate);
         if (Number.isNaN(rawDate.getTime())) return;
-
         const monthKey = rawDate.toLocaleString("en-US", {
           month: "short",
           year: "numeric",
         });
-
         pdfRevenuePerMonth[monthKey] =
           (pdfRevenuePerMonth[monthKey] || 0) + Number(log?.amount || 0);
       });
@@ -1146,14 +1100,12 @@ const Dashboard = () => {
       const addHeader = () => {
         doc.setFillColor(212, 175, 55);
         doc.rect(0, 0, pageWidth, 22, "F");
-
         doc.setFont("helvetica", "bold");
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(18);
         doc.text("UNAILEDIT System Report", pageWidth / 2, 14, {
           align: "center",
         });
-
         doc.setTextColor(40, 40, 40);
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
@@ -1162,7 +1114,6 @@ const Dashboard = () => {
 
       const addFooter = () => {
         const pageCount = doc.getNumberOfPages();
-
         for (let i = 1; i <= pageCount; i += 1) {
           doc.setPage(i);
           doc.setDrawColor(220, 220, 220);
@@ -1172,7 +1123,6 @@ const Dashboard = () => {
             pageWidth - marginX,
             pageHeight - 12,
           );
-
           doc.setFont("helvetica", "normal");
           doc.setFontSize(9);
           doc.setTextColor(120, 120, 120);
@@ -1186,7 +1136,6 @@ const Dashboard = () => {
       };
 
       addHeader();
-
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
       doc.setTextColor(33, 33, 33);
@@ -1264,20 +1213,13 @@ const Dashboard = () => {
         marginX,
         doc.lastAutoTable.finalY + 12,
       );
-
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 16,
         head: [["Month", "Bookings"]],
         body: monthlyBookingRows,
         theme: "striped",
-        headStyles: {
-          fillColor: [255, 182, 193],
-          textColor: [0, 0, 0],
-        },
-        styles: {
-          fontSize: 9.5,
-          cellPadding: 2.8,
-        },
+        headStyles: { fillColor: [255, 182, 193], textColor: [0, 0, 0] },
+        styles: { fontSize: 9.5, cellPadding: 2.8 },
         margin: { left: marginX, right: marginX },
       });
 
@@ -1296,20 +1238,13 @@ const Dashboard = () => {
         marginX,
         doc.lastAutoTable.finalY + 12,
       );
-
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 16,
         head: [["Month", "Revenue"]],
         body: monthlyRevenueRows,
         theme: "striped",
-        headStyles: {
-          fillColor: [212, 175, 55],
-          textColor: [0, 0, 0],
-        },
-        styles: {
-          fontSize: 9.5,
-          cellPadding: 2.8,
-        },
+        headStyles: { fillColor: [212, 175, 55], textColor: [0, 0, 0] },
+        styles: { fontSize: 9.5, cellPadding: 2.8 },
         margin: { left: marginX, right: marginX },
       });
 
@@ -1325,19 +1260,13 @@ const Dashboard = () => {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
       doc.text("Top Services", marginX, doc.lastAutoTable.finalY + 12);
-
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 16,
         head: [["Rank", "Service", "Bookings"]],
         body: topServiceRows,
         theme: "grid",
-        headStyles: {
-          fillColor: [255, 105, 180],
-        },
-        styles: {
-          fontSize: 9.5,
-          cellPadding: 2.8,
-        },
+        headStyles: { fillColor: [255, 105, 180] },
+        styles: { fontSize: 9.5, cellPadding: 2.8 },
         margin: { left: marginX, right: marginX },
       });
 
@@ -1363,7 +1292,6 @@ const Dashboard = () => {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
       doc.text("Bookings Snapshot", marginX, doc.lastAutoTable.finalY + 12);
-
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 16,
         head: [
@@ -1371,15 +1299,8 @@ const Dashboard = () => {
         ],
         body: bookingRows,
         theme: "striped",
-        headStyles: {
-          fillColor: [212, 175, 55],
-          textColor: [0, 0, 0],
-        },
-        styles: {
-          fontSize: 8.5,
-          cellPadding: 2.2,
-          overflow: "linebreak",
-        },
+        headStyles: { fillColor: [212, 175, 55], textColor: [0, 0, 0] },
+        styles: { fontSize: 8.5, cellPadding: 2.2, overflow: "linebreak" },
         columnStyles: {
           0: { cellWidth: 14 },
           1: { cellWidth: 34 },
@@ -1409,7 +1330,6 @@ const Dashboard = () => {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
       doc.text("Reviews Snapshot", marginX, doc.lastAutoTable.finalY + 12);
-
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 16,
         head: [
@@ -1417,15 +1337,8 @@ const Dashboard = () => {
         ],
         body: reviewRows,
         theme: "striped",
-        headStyles: {
-          fillColor: [255, 182, 193],
-          textColor: [0, 0, 0],
-        },
-        styles: {
-          fontSize: 8.5,
-          cellPadding: 2.2,
-          overflow: "linebreak",
-        },
+        headStyles: { fillColor: [255, 182, 193], textColor: [0, 0, 0] },
+        styles: { fontSize: 8.5, cellPadding: 2.2, overflow: "linebreak" },
         margin: { left: marginX, right: marginX },
       });
 
@@ -1443,21 +1356,13 @@ const Dashboard = () => {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
       doc.text("Recent Audit Logs", marginX, doc.lastAutoTable.finalY + 12);
-
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 16,
         head: [["Action", "Description", "Date / Time"]],
         body: auditRows,
         theme: "striped",
-        headStyles: {
-          fillColor: [212, 175, 55],
-          textColor: [0, 0, 0],
-        },
-        styles: {
-          fontSize: 8.8,
-          cellPadding: 2.5,
-          overflow: "linebreak",
-        },
+        headStyles: { fillColor: [212, 175, 55], textColor: [0, 0, 0] },
+        styles: { fontSize: 8.8, cellPadding: 2.5, overflow: "linebreak" },
         columnStyles: {
           0: { cellWidth: 35 },
           1: { cellWidth: 95 },
@@ -1467,7 +1372,6 @@ const Dashboard = () => {
       });
 
       addFooter();
-
       doc.save(
         `unailedit_system_report_${new Date().toISOString().slice(0, 10)}.pdf`,
       );
@@ -1491,7 +1395,6 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-
             <div className="empty-panel">Loading dashboard...</div>
           </div>
         </div>
@@ -1512,7 +1415,6 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-
             <div className="empty-panel">Failed to load dashboard.</div>
           </div>
         </div>
@@ -1531,7 +1433,6 @@ const Dashboard = () => {
                 View your system performance, activity, and booking summary.
               </p>
             </div>
-
             <div className="dashboard-actions dashboard-actions-top">
               <button
                 onClick={exportExcel}
@@ -1540,7 +1441,6 @@ const Dashboard = () => {
               >
                 {exportingExcel ? "Exporting Excel..." : "Export Excel"}
               </button>
-
               <button
                 onClick={exportPDF}
                 className="admin-btn"
@@ -1556,7 +1456,6 @@ const Dashboard = () => {
               Refreshing dashboard...
             </div>
           )}
-
           {actionMessage && (
             <div className="dashboard-action-banner">{actionMessage}</div>
           )}
@@ -1566,22 +1465,18 @@ const Dashboard = () => {
               <span className="stat-label">Total Bookings</span>
               <p>{stats.totalBookings}</p>
             </div>
-
             <div className="stat-card">
               <span className="stat-label">Total Revenue</span>
               <p>{formatCurrency(stats.totalRevenue)}</p>
             </div>
-
             <div className="stat-card stat-card-pending">
               <span className="stat-label">Pending Approval</span>
               <p>{stats.pendingApprovalBookings}</p>
             </div>
-
             <div className="stat-card">
               <span className="stat-label">Pending Reviews</span>
               <p>{stats.pendingReviews}</p>
             </div>
-
             <div className="stat-card">
               <span className="stat-label">Active Services</span>
               <p>{stats.activeServices}</p>
@@ -1596,7 +1491,6 @@ const Dashboard = () => {
                   <span>Monthly bookings and revenue in one view</span>
                 </div>
               </div>
-
               <ResponsiveContainer width="100%" height={320}>
                 <ComposedChart data={comboChartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -1622,10 +1516,9 @@ const Dashboard = () => {
                     }
                   />
                   <Tooltip
-                    formatter={(value, name) => {
-                      if (name === "Revenue") return formatCurrency(value);
-                      return value;
-                    }}
+                    formatter={(value, name) =>
+                      name === "Revenue" ? formatCurrency(value) : value
+                    }
                   />
                   <Legend />
                   <Bar
@@ -1657,7 +1550,6 @@ const Dashboard = () => {
                   <span>Distribution of current booking outcomes</span>
                 </div>
               </div>
-
               <div className="status-chart-wrap">
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
@@ -1676,13 +1568,11 @@ const Dashboard = () => {
                     <Tooltip />
                   </PieChart>
                 </ResponsiveContainer>
-
                 <div className="donut-center-label">
                   <strong>{bookingStatusTotal}</strong>
                   <span>Total</span>
                 </div>
               </div>
-
               <div className="chart-legend-list">
                 {bookingStatusData.length > 0 ? (
                   bookingStatusData.map((item) => (
@@ -1712,7 +1602,6 @@ const Dashboard = () => {
                   <span>Most booked services overall</span>
                 </div>
               </div>
-
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart
                   data={[...topServices].reverse()}
@@ -1744,12 +1633,10 @@ const Dashboard = () => {
                   <span>Quick business summary and report delivery status</span>
                 </div>
               </div>
-
               <div className="insights-card-grid">
                 <div className="report-status-panel">
                   <div className="report-status-top">
                     <div className="report-status-icon">📩</div>
-
                     <div>
                       <h4 className="report-status-title">
                         {latestMonthlyReport?.title || "No monthly report yet"}
@@ -1761,7 +1648,6 @@ const Dashboard = () => {
                       </p>
                     </div>
                   </div>
-
                   <div className="report-status-meta">
                     <div className="report-status-meta-item">
                       <span className="report-meta-label">Status</span>
@@ -1769,7 +1655,6 @@ const Dashboard = () => {
                         {latestMonthlyReport ? "Sent to email" : "Waiting"}
                       </strong>
                     </div>
-
                     <div className="report-status-meta-item">
                       <span className="report-meta-label">Generated</span>
                       <strong className="report-meta-value">
@@ -1780,7 +1665,6 @@ const Dashboard = () => {
                     </div>
                   </div>
                 </div>
-
                 <div className="insights-list">
                   <div className="insight-item">
                     <span className="insight-label">Most booked service</span>
@@ -1788,33 +1672,28 @@ const Dashboard = () => {
                       {topBookedServiceName}
                     </strong>
                   </div>
-
                   <div className="insight-item">
                     <span className="insight-label">Completion rate</span>
                     <strong className="insight-value">{completionRate}%</strong>
                   </div>
-
                   <div className="insight-item">
                     <span className="insight-label">Cancelled bookings</span>
                     <strong className="insight-value danger">
                       {totalCancelledBookings}
                     </strong>
                   </div>
-
                   <div className="insight-item">
                     <span className="insight-label">Watchlist customers</span>
                     <strong className="insight-value warning">
                       {watchlistCustomersCount}
                     </strong>
                   </div>
-
                   <div className="insight-item">
                     <span className="insight-label">Blocked customers</span>
                     <strong className="insight-value danger">
                       {blockedCustomersCount}
                     </strong>
                   </div>
-
                   <div className="insight-item">
                     <span className="insight-label">Pending approvals</span>
                     <strong className="insight-value">
@@ -1826,6 +1705,170 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* NEW: Upcoming Bookings Snapshot Section */}
+          <div className="snapshot-section card-surface">
+            <div className="section-header">
+              <div>
+                <h2>📅 Upcoming Bookings Snapshot</h2>
+                <p className="section-subtext">
+                  Today and future bookings grouped by date
+                </p>
+              </div>
+              {snapshotGroups.length > 0 && (
+                <span>
+                  {snapshotGroups.reduce((acc, g) => acc + g.totalBookings, 0)}{" "}
+                  total
+                </span>
+              )}
+            </div>
+
+            {snapshotLoading ? (
+              <div className="empty-panel">Loading snapshot...</div>
+            ) : snapshotError ? (
+              <div className="empty-panel">Could not load snapshot data.</div>
+            ) : snapshotGroups.length === 0 ? (
+              <div className="empty-panel">No upcoming bookings found.</div>
+            ) : (
+              <div className="snapshot-days-wrapper">
+                {snapshotGroups.map((dayGroup) => (
+                  <div key={dayGroup.date} className="snapshot-day-card">
+                    <div className="snapshot-day-header">
+                      <div>
+                        <h4 className="snapshot-day-title">
+                          {formatSnapshotDate(dayGroup.date)}
+                        </h4>
+                        <p className="snapshot-day-sub">{dayGroup.date}</p>
+                      </div>
+                      <div className="snapshot-stats-badges">
+                        <span className="snapshot-badge total">
+                          {dayGroup.totalBookings} booking
+                          {dayGroup.totalBookings !== 1 && "s"}
+                        </span>
+                        {dayGroup.pending > 0 && (
+                          <span className="snapshot-badge pending">
+                            Pending: {dayGroup.pending}
+                          </span>
+                        )}
+                        {dayGroup.approved > 0 && (
+                          <span className="snapshot-badge approved">
+                            Approved: {dayGroup.approved}
+                          </span>
+                        )}
+                        {dayGroup.completed > 0 && (
+                          <span className="snapshot-badge completed">
+                            Completed: {dayGroup.completed}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Desktop table */}
+                    <div className="snapshot-table-wrapper">
+                      <table className="admin-table snapshot-table">
+                        <thead>
+                          <tr>
+                            <th>Time</th>
+                            <th>Customer</th>
+                            <th>Service / Variant</th>
+                            <th>Status</th>
+                            <th>Price</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dayGroup.bookings.map((b) => (
+                            <tr key={b.id}>
+                              <td>{b.time}</td>
+                              <td>
+                                {b.customer?.full_name || "—"}
+                                <br />
+                                <span className="snapshot-customer-contact">
+                                  {b.customer?.email || b.customer?.phone || ""}
+                                </span>
+                              </td>
+                              <td>
+                                {b.service || "—"}
+                                {b.variant && (
+                                  <div className="snapshot-variant">
+                                    {[b.variant.body_part, b.variant.size]
+                                      .filter(Boolean)
+                                      .join(" · ")}
+                                  </div>
+                                )}
+                              </td>
+                              <td>
+                                <span className={`status ${b.status}`}>
+                                  {b.status === "pending_approval"
+                                    ? "Pending"
+                                    : b.status}
+                                </span>
+                              </td>
+                              <td>₱{Number(b.price || 0).toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile cards */}
+                    <div className="snapshot-mobile-list">
+                      {dayGroup.bookings.map((b) => (
+                        <div key={b.id} className="snapshot-mobile-card">
+                          <div className="snapshot-mobile-row">
+                            <span className="snapshot-mobile-label">Time</span>
+                            <strong>{b.time}</strong>
+                          </div>
+                          <div className="snapshot-mobile-row">
+                            <span className="snapshot-mobile-label">
+                              Customer
+                            </span>
+                            <div>
+                              {b.customer?.full_name || "—"}
+                              <br />
+                              <small>
+                                {b.customer?.email || b.customer?.phone || ""}
+                              </small>
+                            </div>
+                          </div>
+                          <div className="snapshot-mobile-row">
+                            <span className="snapshot-mobile-label">
+                              Service
+                            </span>
+                            <div>
+                              {b.service || "—"}
+                              {b.variant && (
+                                <div className="snapshot-variant-mobile">
+                                  {[b.variant.body_part, b.variant.size]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="snapshot-mobile-row">
+                            <span className="snapshot-mobile-label">
+                              Status
+                            </span>
+                            <span className={`status ${b.status}`}>
+                              {b.status === "pending_approval"
+                                ? "Pending"
+                                : b.status}
+                            </span>
+                          </div>
+                          <div className="snapshot-mobile-row">
+                            <span className="snapshot-mobile-label">Price</span>
+                            <strong>
+                              ₱{Number(b.price || 0).toLocaleString()}
+                            </strong>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="dashboard-main-grid">
             <div className="activity-card">
               <div className="section-header">
@@ -1835,22 +1878,18 @@ const Dashboard = () => {
                 </div>
                 <span>{activities.length} activities</span>
               </div>
-
               <div className="activity-feed">
                 {activities.length > 0 ? (
                   activities.slice(0, 5).map((log) => (
                     <div className="activity-item" key={log.id}>
                       <div className={`activity-icon ${log.action}`} />
-
                       <div className="activity-content">
                         <div className="activity-title">
                           {safeText(log.action).replaceAll("_", " ")}
                         </div>
-
                         <div className="activity-desc">
                           {safeText(log.description)}
                         </div>
-
                         <div className="activity-time">
                           {formatDateTime(log.created_at)}
                         </div>
@@ -1871,7 +1910,6 @@ const Dashboard = () => {
                 </div>
                 <span>{bookings.length} bookings</span>
               </div>
-
               <div className="table-card table-card-elevated recent-bookings-desktop">
                 <div className="table-wrapper recent-bookings-scroll">
                   <table className="admin-table">
@@ -1884,7 +1922,6 @@ const Dashboard = () => {
                         <th>Date</th>
                       </tr>
                     </thead>
-
                     <tbody>
                       {paginatedBookings.length > 0 ? (
                         paginatedBookings.map((booking) => (
@@ -1911,7 +1948,6 @@ const Dashboard = () => {
                   </table>
                 </div>
               </div>
-
               <div className="recent-bookings-mobile">
                 {paginatedBookings.length > 0 ? (
                   paginatedBookings.map((booking) => (
@@ -1921,23 +1957,19 @@ const Dashboard = () => {
                           <p className="booking-mobile-label">Booking ID</p>
                           <h4 className="booking-mobile-id">{booking.id}</h4>
                         </div>
-
                         <span className={getStatusClass(booking.status)}>
                           {booking.status}
                         </span>
                       </div>
-
                       <div className="booking-mobile-grid">
                         <div className="booking-mobile-field">
                           <span className="booking-mobile-label">Name</span>
                           <p>{booking.customers?.full_name || "N/A"}</p>
                         </div>
-
                         <div className="booking-mobile-field">
                           <span className="booking-mobile-label">Service</span>
                           <p>{booking.services?.name || "N/A"}</p>
                         </div>
-
                         <div className="booking-mobile-field booking-mobile-field-full">
                           <span className="booking-mobile-label">Date</span>
                           <p>{booking.booking_date || "N/A"}</p>
@@ -1949,7 +1981,6 @@ const Dashboard = () => {
                   <div className="empty-panel">No recent bookings found.</div>
                 )}
               </div>
-
               <div className="pagination">
                 <button
                   disabled={currentPage === 1}
@@ -1957,11 +1988,9 @@ const Dashboard = () => {
                 >
                   Prev
                 </button>
-
                 <span className="pagination-indicator">
                   Page {currentPage} of {totalPages}
                 </span>
-
                 <button
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage((prev) => prev + 1)}
@@ -1982,7 +2011,6 @@ const Dashboard = () => {
               </div>
               <span>{mostCancelledCustomers.length} customers</span>
             </div>
-
             <div className="table-card table-card-elevated most-cancelled-desktop">
               <div className="table-wrapper most-cancelled-scroll">
                 <table className="admin-table admin-table-most-cancelled">
@@ -1998,13 +2026,11 @@ const Dashboard = () => {
                       <th>Action</th>
                     </tr>
                   </thead>
-
                   <tbody>
                     {paginatedCancelledCustomers.length > 0 ? (
                       paginatedCancelledCustomers.map((customer) => {
                         const isBusy = actionLoadingEmail === customer.email;
                         const hasLinkedCustomerId = Boolean(customer?.id);
-
                         return (
                           <tr key={customer.email}>
                             <td>{customer.full_name || "N/A"}</td>
@@ -2070,7 +2096,6 @@ const Dashboard = () => {
                 </table>
               </div>
             </div>
-
             <div className="pagination">
               <button
                 disabled={cancelledPage === 1}
@@ -2078,11 +2103,9 @@ const Dashboard = () => {
               >
                 Prev
               </button>
-
               <span className="pagination-indicator">
                 Page {cancelledPage} of {cancelledTotalPages}
               </span>
-
               <button
                 disabled={cancelledPage === cancelledTotalPages}
                 onClick={() => setCancelledPage((prev) => prev + 1)}
@@ -2094,6 +2117,7 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Block Modal */}
       {blockModalOpen && (
         <div className="dashboard-modal-overlay" onClick={closeBlockModal}>
           <div className="dashboard-modal" onClick={(e) => e.stopPropagation()}>
@@ -2104,7 +2128,6 @@ const Dashboard = () => {
                   This email will no longer be allowed to create new bookings.
                 </p>
               </div>
-
               <button
                 className="dashboard-modal-close"
                 onClick={closeBlockModal}
@@ -2114,7 +2137,6 @@ const Dashboard = () => {
                 ×
               </button>
             </div>
-
             <div className="dashboard-modal-body">
               <div className="dashboard-modal-info">
                 <span className="dashboard-modal-label">Customer</span>
@@ -2122,12 +2144,10 @@ const Dashboard = () => {
                   {selectedCustomer?.full_name || "Unknown Customer"}
                 </strong>
               </div>
-
               <div className="dashboard-modal-info">
                 <span className="dashboard-modal-label">Email</span>
                 <p>{selectedCustomer?.email || "N/A"}</p>
               </div>
-
               <div className="dashboard-modal-field">
                 <label htmlFor="block-reason">Block Reason</label>
                 <textarea
@@ -2140,7 +2160,6 @@ const Dashboard = () => {
                 />
               </div>
             </div>
-
             <div className="dashboard-modal-actions">
               <button
                 type="button"
@@ -2150,7 +2169,6 @@ const Dashboard = () => {
               >
                 Cancel
               </button>
-
               <button
                 type="button"
                 className="admin-btn admin-btn-danger"
@@ -2164,6 +2182,7 @@ const Dashboard = () => {
         </div>
       )}
 
+      {/* Unblock Modal */}
       {unblockModalOpen && (
         <div className="dashboard-modal-overlay" onClick={closeUnblockModal}>
           <div
@@ -2177,7 +2196,6 @@ const Dashboard = () => {
                   This customer will be allowed to book again once confirmed.
                 </p>
               </div>
-
               <button
                 className="dashboard-modal-close"
                 onClick={closeUnblockModal}
@@ -2187,7 +2205,6 @@ const Dashboard = () => {
                 ×
               </button>
             </div>
-
             <div className="dashboard-modal-body">
               <div className="dashboard-modal-info">
                 <span className="dashboard-modal-label">Customer</span>
@@ -2195,17 +2212,14 @@ const Dashboard = () => {
                   {selectedCustomer?.full_name || "Unknown Customer"}
                 </strong>
               </div>
-
               <div className="dashboard-modal-info">
                 <span className="dashboard-modal-label">Email</span>
                 <p>{selectedCustomer?.email || "N/A"}</p>
               </div>
-
               <div className="dashboard-modal-warning">
                 Are you sure you want to unblock this customer?
               </div>
             </div>
-
             <div className="dashboard-modal-actions">
               <button
                 type="button"
@@ -2215,7 +2229,6 @@ const Dashboard = () => {
               >
                 Cancel
               </button>
-
               <button
                 type="button"
                 className="admin-btn"

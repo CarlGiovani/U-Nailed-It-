@@ -38,3 +38,12 @@ export const unblockCustomer = async ({ customer_id }) => {
   });
   return res.data;
 };
+
+
+/* =====================================
+   ADMIN: BOOKING SNAPSHOT (TODAY + UPCOMING)
+===================================== */
+export const getBookingSnapshot = async () => {
+  const res = await api.get("/dashboard/bookings/snapshot");
+  return res.data;
+};
