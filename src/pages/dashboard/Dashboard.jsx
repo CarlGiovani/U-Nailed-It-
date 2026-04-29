@@ -1777,7 +1777,7 @@ const Dashboard = () => {
                         <tbody>
                           {dayGroup.bookings.map((b) => (
                             <tr key={b.id}>
-                              <td>{b.time}</td>
+                              <td>{b.formatted_time }</td>
                               <td>
                                 {b.customer?.full_name || "—"}
                                 <br />
@@ -1802,7 +1802,26 @@ const Dashboard = () => {
                                     : b.status}
                                 </span>
                               </td>
-                              <td>₱{Number(b.price || 0).toLocaleString()}</td>
+                              <td>
+                                {b.estimated_price ? (
+                                  <>
+                                    ₱
+                                    {Number(
+                                      b.estimated_price.min,
+                                    ).toLocaleString()}{" "}
+                                    - ₱
+                                    {Number(
+                                      b.estimated_price.max,
+                                    ).toLocaleString()}
+                                    <br />
+                                    <small style={{ color: "#888" }}>
+                                      Estimated Range
+                                    </small>
+                                  </>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -1856,9 +1875,26 @@ const Dashboard = () => {
                           </div>
                           <div className="snapshot-mobile-row">
                             <span className="snapshot-mobile-label">Price</span>
-                            <strong>
-                              ₱{Number(b.price || 0).toLocaleString()}
-                            </strong>
+                            {b.estimated_price ? (
+                              <>
+                                <strong>
+                                  ₱
+                                  {Number(
+                                    b.estimated_price.min,
+                                  ).toLocaleString()}{" "}
+                                  - ₱
+                                  {Number(
+                                    b.estimated_price.max,
+                                  ).toLocaleString()}
+                                </strong>
+                                <br />
+                                <small style={{ color: "#888" }}>
+                                  Estimated Range
+                                </small>
+                              </>
+                            ) : (
+                              <strong>—</strong>
+                            )}
                           </div>
                         </div>
                       ))}
