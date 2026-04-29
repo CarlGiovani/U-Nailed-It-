@@ -204,17 +204,24 @@ const CancelBookingPage = () => {
                 <strong>{booking.booking_time}</strong>
               </div>
 
-              {booking.services?.name && (
+              {booking.service_name_snapshot && (
                 <div className="info-row">
                   <span>💆 Service</span>
-                  <strong>{booking.services.name}</strong>
+                  <strong>{booking.service_name_snapshot}</strong>
                 </div>
               )}
 
-              {booking.customers?.full_name && (
+              {booking.variant_body_part_snapshot && (
+                <div className="info-row">
+                  <span>✨ Area</span>
+                  <strong>{booking.variant_body_part_snapshot}</strong>
+                </div>
+              )}
+
+              {booking.customer_name && (
                 <div className="info-row">
                   <span>👤 Name</span>
-                  <strong>{booking.customers.full_name}</strong>
+                  <strong>{booking.customer_name}</strong>
                 </div>
               )}
 
