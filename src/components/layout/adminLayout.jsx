@@ -2,7 +2,7 @@ import { useState } from "react";
 // import "../../styles/adminLayout.css";
 import Sidebar from "../layout/sidebar";
 import Topbar from "../layout/topbar";
-import "./layout.css";
+import "./Layout.css";
 import useAdminAutoLogout from "../../hooks/useAdminAutoLogout";
 
 const AdminLayout = ({ children }) => {
