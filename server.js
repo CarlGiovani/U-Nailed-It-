@@ -1,9 +1,9 @@
 import cors from "cors";
+import dns from "dns";
 import dotenv from "dotenv";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
-import dns from "dns"; 
 
 // ROUTES
 import notificationRoutes from "./routes/Admin_Notification_Feature/notificationRoutes.js";
@@ -29,8 +29,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-dns.setDefaultResultOrder("ipv4first");
-
+if (process.env.NODE_ENV === "production") {
+  dns.setDefaultResultOrder("ipv4first");
+}
 /* ======================================================
    SECURITY MIDDLEWARE
 ====================================================== */
