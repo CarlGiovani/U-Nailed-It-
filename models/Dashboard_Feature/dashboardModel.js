@@ -365,92 +365,179 @@ export const getSystemExportData = async () => {
 /* =====================================
    BOOKING SNAPSHOT (TODAY + UPCOMING)
 ===================================== */
+/* =====================================
+   BOOKING SNAPSHOT (TODAY + UPCOMING)
+   - uses ESTIMATED price (variant)
+===================================== */
 export const getBookingSnapshot = async () => {
-  const today = new Intl.DateTimeFormat("en-CA", {
+  // ==============================
+  // BASE DATES (Asia/Manila SAFE)
+  // ==============================
+  const todayDate = new Date().toLocaleDateString("en-CA", {
     timeZone: "Asia/Manila",
-  }).format(new Date());
+  });
 
-  console.log("📅 TODAY FILTER:", today);
+  const tomorrowDate = new Date(Date.now() + 86400000).toLocaleDateString(
+    "en-CA",
+    { timeZone: "Asia/Manila" },
+  );
 
+  const future = new Date();
+  future.setDate(future.getDate() + 30);
+
+  const futureLimit = future.toLocaleDateString("en-CA", {
+    timeZone: "Asia/Manila",
+  });
+
+  // ==============================
+  // FORMATTERS (NORMALIZED OUTPUT)
+  // ==============================
+  const formatSnapshotDate = (date) => {
+    return new Date(date)
+      .toLocaleDateString("en-US", {
+        timeZone: "Asia/Manila",
+        year: "numeric",
+        month: "long",
+        day: "2-digit",
+      })
+      .toUpperCase();
+  };
+
+  const formatSnapshotTime = (time) => {
+    const [hours, minutes] = time.split(":");
+
+    const dt = new Date();
+    dt.setHours(Number(hours));
+    dt.setMinutes(Number(minutes));
+
+    return dt.toLocaleTimeString("en-US", {
+      timeZone: "Asia/Manila",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  // ==============================
+  // SMART LABEL (TODAY / TOMORROW / DATE)
+  // ==============================
+  const getDateLabel = (date) => {
+    if (date === todayDate) return "TODAY";
+    if (date === tomorrowDate) return "TOMORROW";
+
+    return new Date(date)
+      .toLocaleDateString("en-US", {
+        timeZone: "Asia/Manila",
+        month: "long",
+        day: "2-digit",
+        year: "numeric",
+      })
+      .toUpperCase();
+  };
+
+  // ==============================
+  // FETCH BOOKINGS
+  // ==============================
   const { data, error } = await supabaseAdmin
     .from("bookings")
-    .select(`
+    .select(
+      `
       id,
       booking_date,
       booking_time,
       status,
       total_price,
-      created_at,
       customer_name,
       customer_email,
       customer_phone,
       service_name_snapshot,
-      variant_body_part_snapshot,
-      variant_size_snapshot,
-      variant_price_snapshot
-    `)
+      service_variants (
+        body_part,
+        size,
+        estimate_min,
+        estimate_max
+      )
+    `,
+    )
     .eq("status", "approved")
-    .gte("booking_date", today)
+    .gte("booking_date", todayDate)
+    .lte("booking_date", futureLimit)
     .order("booking_date", { ascending: true })
     .order("booking_time", { ascending: true });
 
-  console.log("📦 RAW APPROVED DATA FROM SUPABASE:", data);
-  console.log("❌ ERROR (if any):", error);
-
   if (error) throw new Error(error.message);
 
+  // ==============================
+  // GROUP SNAPSHOT
+  // ==============================
   const snapshot = {};
 
   data.forEach((b) => {
-    console.log("➡️ PROCESSING APPROVED BOOKING:", {
-      id: b.id,
-      date: b.booking_date,
-      status: b.status,
-    });
-
     const date = b.booking_date;
 
     if (!snapshot[date]) {
       snapshot[date] = {
         date,
+        label: getDateLabel(date),
         totalBookings: 0,
         approved: 0,
+        pending: 0,
+        completed: 0,
         bookings: [],
       };
-
-      console.log("🆕 CREATED GROUP:", date);
     }
 
     const group = snapshot[date];
+    const variant = b.service_variants;
 
     group.totalBookings += 1;
     group.approved += 1;
 
     group.bookings.push({
       id: b.id,
+
+      // raw values
+      date: b.booking_date,
       time: b.booking_time,
+
+      // ✅ NORMALIZED DISPLAY
+      formatted_date: formatSnapshotDate(b.booking_date),
+      formatted_time: formatSnapshotTime(b.booking_time),
+
       status: b.status,
+
       customer: {
-        name: b.customer_name,
+        full_name: b.customer_name,
         email: b.customer_email,
         phone: b.customer_phone,
       },
+
       service: b.service_name_snapshot,
+
       variant: {
-        body_part: b.variant_body_part_snapshot,
-        size: b.variant_size_snapshot,
-        price: b.variant_price_snapshot,
+        body_part: variant?.body_part,
+        size: variant?.size,
+        estimate_min: variant?.estimate_min,
+        estimate_max: variant?.estimate_max,
       },
-      price: b.total_price,
+
+      estimated_price: variant
+        ? {
+            min: variant.estimate_min,
+            max: variant.estimate_max,
+          }
+        : null,
+
+      estimated_price_label: variant
+        ? `${variant.estimate_min} - ${variant.estimate_max}`
+        : null,
+
+      total_price: b.total_price,
     });
   });
 
-  const result = Object.values(snapshot);
-
-  console.log("📊 FINAL UPCOMING SNAPSHOT RESULT:", result);
-
   return {
     message: "Approved upcoming bookings fetched successfully",
-    data: result,
+    data: Object.values(snapshot),
   };
 };
