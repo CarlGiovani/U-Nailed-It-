@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -15,13 +15,23 @@ api.interceptors.request.use(
     const session = localStorage.getItem("admin_session");
 
     if (session) {
-      const parsed = JSON.parse(session);
-      config.headers.Authorization = `Bearer ${parsed.access_token}`;
+      try {
+        const parsed = JSON.parse(session);
+
+        config.headers = {
+          ...config.headers,
+          Authorization: `Bearer ${parsed.access_token}`,
+        };
+      } catch {
+        console.error("Invalid session format");
+        localStorage.removeItem("admin_session");
+      }
     }
 
     console.log(
       `📡 API Request: ${config.method?.toUpperCase()} ${config.url}`,
     );
+
     return config;
   },
   (error) => {
@@ -41,7 +51,6 @@ api.interceptors.response.use(
   (error) => {
     console.error("❌ Response Error:", error.response?.data || error.message);
 
-    // auto logout if unauthorized
     if (error.response?.status === 401) {
       localStorage.removeItem("admin_session");
       localStorage.removeItem("admin_user");
