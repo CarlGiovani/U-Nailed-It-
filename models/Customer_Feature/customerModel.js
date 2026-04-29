@@ -1,4 +1,4 @@
-import supabase from "../../utils/supabaseClient.js";
+import { supabaseAdmin } from "../../utils/supabaseClient.js";
 
 // CREATE or GET customer by email
 export const getOrCreateCustomer = async ({
@@ -8,7 +8,7 @@ export const getOrCreateCustomer = async ({
   facebook_link,
 }) => {
   // Check if customer exists
-  let { data: existing, error } = await supabase
+  let { data: existing, error } = await supabaseAdmin
     .from("customers")
     .select("*")
     .eq("email", email)
@@ -19,7 +19,7 @@ export const getOrCreateCustomer = async ({
   if (existing) return existing;
 
   // If not exists, create new
-  const { data, error: insertError } = await supabase
+  const { data, error: insertError } = await supabaseAdmin
     .from("customers")
     .insert([{ full_name, email, phone, facebook_link }])
     .select();
@@ -31,7 +31,7 @@ export const getOrCreateCustomer = async ({
 
 // GET customer by email
 export const getCustomerByEmail = async (email) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("customers")
     .select("*")
     .eq("email", email)
@@ -43,7 +43,7 @@ export const getCustomerByEmail = async (email) => {
 
 // GET customer by ID
 export const getCustomerById = async (id) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("customers")
     .select("*")
     .eq("id", id)
@@ -55,7 +55,7 @@ export const getCustomerById = async (id) => {
 
 // GET all customers (for admin)
 export const getAllCustomers = async () => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("customers")
     .select("*")
     .order("created_at", { ascending: false });

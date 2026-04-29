@@ -797,20 +797,7 @@ export const cancelBookingByToken = async (token, reason) => {
 
   const { data: fullBooking, error: fetchError } = await supabaseAdmin
     .from("bookings")
-    .select(
-      `
-      *,
-      services (
-        id,
-        name
-      ),
-      customers (
-        id,
-        full_name,
-        email
-      )
-    `,
-    )
+    .select("*")
     .eq("id", cancelled.id)
     .single();
 
@@ -889,20 +876,7 @@ export const cancelPendingApprovalBookingById = async (
 
   const { data: fullBooking, error: fetchError } = await supabaseAdmin
     .from("bookings")
-    .select(
-      `
-      *,
-      services (
-        id,
-        name
-      ),
-      customers (
-        id,
-        full_name,
-        email
-      )
-    `,
-    )
+    .select("*")
     .eq("id", cancelled.id)
     .single();
 
@@ -971,20 +945,7 @@ export const cancelPendingApprovalBookingByToken = async (token, reason) => {
 
   const { data: fullBooking, error: fetchError } = await supabaseAdmin
     .from("bookings")
-    .select(
-      `
-      *,
-      services (
-        id,
-        name
-      ),
-      customers (
-        id,
-        full_name,
-        email
-      )
-    `,
-    )
+    .select("*")
     .eq("id", booking.id)
     .maybeSingle();
 
