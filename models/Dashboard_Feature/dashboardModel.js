@@ -133,7 +133,7 @@ export const getRecentBookings = async () => {
       id,
       booking_date,
       status,
-      customers(full_name),
+      customer_name,
       services(name)
     `,
     )
