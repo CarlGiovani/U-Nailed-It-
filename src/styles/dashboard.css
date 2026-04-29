@@ -2517,3 +2517,25 @@ body.dark .snapshot-mobile-card {
     min-width: auto;
   }
 }
+
+@media (max-width: 768px) {
+
+  .snapshot-table-wrapper {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .snapshot-table {
+    min-width: 900px; /* adjust depende sa columns */
+  }
+
+  .snapshot-mobile-list {
+    display: none;
+  }
+
+  .snapshot-table td,
+  .snapshot-table th {
+    white-space: nowrap;
+  }
+}
