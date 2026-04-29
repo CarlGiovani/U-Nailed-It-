@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import logo from "../../../../UNailedIt_Website/src/assets/images/logo.png";
+import logo from "../../assets/logo.png";
 import { forgotPassword } from "../../services/BACKEND/adminAuthApi";
 import "../../styles/AdminLogin.css";
 
