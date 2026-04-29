@@ -1963,7 +1963,7 @@ const Dashboard = () => {
                         paginatedBookings.map((booking) => (
                           <tr key={booking.id}>
                             <td>{booking.id}</td>
-                            <td>{booking.customers?.full_name || "N/A"}</td>
+                            <td>{booking.customer_name|| "N/A"}</td>
                             <td>{booking.services?.name || "N/A"}</td>
                             <td>
                               <span className={getStatusClass(booking.status)}>
@@ -2213,7 +2213,7 @@ const Dashboard = () => {
               >
                 {actionLoadingEmail ? "Blocking..." : "Confirm Block"}
               </button>
-            </div>
+            </div>z
           </div>
         </div>
       )}
