@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import logo from "../../../../UNailedIt_Website/src/assets/images/logo.png";
+import logo from "../../assets/logo.png";
 import supabase from "../../../config/supabaseClient";
 import "../../styles/AdminLogin.css";
 
