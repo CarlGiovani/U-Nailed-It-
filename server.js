@@ -37,12 +37,15 @@ if (process.env.NODE_ENV === "production") {
 ====================================================== */
 app.use(helmet());
 
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 200, // limit each IP
 });
 
 app.use(limiter);
+
+app.set("trust proxy", 1);
 
 /* ======================================================
    CORS CONFIG (PRODUCTION SAFE)

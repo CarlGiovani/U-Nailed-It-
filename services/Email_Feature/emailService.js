@@ -1,41 +1,22 @@
-import createEmailTransporter from "../../utils/createEmailTransporter.js";
-import { getCurrentEmailSettingsWithPassword } from "./emailSettingsService.js";
+import { Resend } from "resend";
+import { getCurrentEmailSettings } from "./emailSettingsService.js";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendEmail = async ({ to, subject, html, attachments = [] }) => {
-  let config;
+  let senderName = "UNailed It";
 
   try {
-    const dbSettings = await getCurrentEmailSettingsWithPassword();
-
-    if (dbSettings) {
-      config = {
-        sender_name: dbSettings.sender_name,
-        email_user: dbSettings.email_user,
-        email_app_password: dbSettings.email_app_password,
-      };
+    const dbSettings = await getCurrentEmailSettings();
+    if (dbSettings?.sender_name) {
+      senderName = dbSettings.sender_name;
     }
-  } catch (error) {
-    console.warn(
-      "⚠️ Failed to load DB email settings, using fallback:",
-      error.message,
-    );
+  } catch (err) {
+    console.warn("Email settings load failed, using fallback");
   }
 
-  if (!config) {
-    config = {
-      sender_name: "UNailed It",
-      email_user: process.env.EMAIL_USER,
-      email_app_password: process.env.EMAIL_APP_PASSWORD,
-    };
-  }
-
-  const transporter = createEmailTransporter({
-    email_user: config.email_user,
-    email_app_password: config.email_app_password,
-  });
-
-  await transporter.sendMail({
-    from: `"${config.sender_name}" <${config.email_user}>`,
+  await resend.emails.send({
+    from: `${senderName} <onboarding@resend.dev>`,
     to,
     subject,
     html,
