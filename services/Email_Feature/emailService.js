@@ -1,26 +1,57 @@
-import { Resend } from "resend";
-import { getCurrentEmailSettings } from "./emailSettingsService.js";
+import gmail from "../../utils/gmailClient.js";
+import { getCurrentEmailSettingsWithPassword } from "./emailSettingsService.js";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const encodeMessage = (raw) => {
+  return Buffer.from(raw)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+};
 
-const sendEmail = async ({ to, subject, html, attachments = [] }) => {
-  let senderName = "UNailed It";
+const sendEmail = async ({ to, subject, html }) => {
+  let config;
 
   try {
-    const dbSettings = await getCurrentEmailSettings();
-    if (dbSettings?.sender_name) {
-      senderName = dbSettings.sender_name;
+    const dbSettings = await getCurrentEmailSettingsWithPassword();
+
+    if (dbSettings) {
+      config = {
+        sender_name: dbSettings.sender_name,
+      };
     }
-  } catch (err) {
-    console.warn("Email settings load failed, using fallback");
+  } catch (error) {
+    console.warn(
+      "⚠️ Failed to load DB email settings, using fallback:",
+      error.message
+    );
   }
 
-  await resend.emails.send({
-    from: `${senderName} <onboarding@resend.dev>`,
-    to,
-    subject,
+  if (!config) {
+    config = {
+      sender_name: "UNailed It",
+    };
+  }
+
+  const senderName = config.sender_name;
+
+  // Gmail raw email format
+  const rawMessage = [
+    `From: "${senderName}" <me>`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    "Content-Type: text/html; charset=UTF-8",
+    "",
     html,
-    attachments,
+  ].join("\n");
+
+  const encodedMessage = encodeMessage(rawMessage);
+
+  await gmail.users.messages.send({
+    userId: "me",
+    requestBody: {
+      raw: encodedMessage,
+    },
   });
 };
 
