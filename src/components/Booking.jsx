@@ -15,7 +15,7 @@ import {
 import { getActivePolicies } from "../../backend/policiesApi.js";
 import supabase from "../config/supabaseClient.js";
 import "../styles/booking-system.css";
-import QR from "../assets/QR.png";
+import QR from "../assets/images/QR.png";
 /* ===============================
    CONSTANTS
 =============================== */
