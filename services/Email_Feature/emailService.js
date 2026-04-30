@@ -1,4 +1,4 @@
-import resend from "resend";
+import { Resend } from "resend";
 import { getCurrentEmailSettings } from "./emailSettingsService.js";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
