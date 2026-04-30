@@ -15,7 +15,7 @@ import {
 import { getActivePolicies } from "../../backend/policiesApi.js";
 import supabase from "../config/supabaseClient.js";
 import "../styles/booking-system.css";
-
+import QR from "../assets/QR.png";
 /* ===============================
    CONSTANTS
 =============================== */
@@ -3260,18 +3260,20 @@ const Booking = ({ services: servicesProp = [] }) => {
               <div className="qr-container">
                 <div className="qr-placeholder premium">
                   <div className="qr-mock">
-                    <div className="qr-lines">
-                      {Array.from({ length: 12 }).map((_, i) => (
-                        <div key={i} className="qr-line"></div>
-                      ))}
-                    </div>
+                    <img
+                      src={QR}
+                      alt="GCash QR Code"
+                      className="qr-image"
+                    />
                   </div>
 
                   <div className="qr-hint">
                     <span className="hint-icon">💰</span>
                     Send {formatCurrency(formData.downpayment)} to:
                     <br />
-                    <strong>0912 345 6789</strong>
+                    <strong>AL****H B.</strong>
+                    <strong>0918 578 **</strong>
+                  
                     <br />
                     Reference: <strong>BOOK-{bookingId}</strong>
                   </div>
@@ -3302,7 +3304,7 @@ const Booking = ({ services: servicesProp = [] }) => {
 
                 <div className="detail-row">
                   <span className="detail-label">GCash Number</span>
-                  <span className="detail-value">0912 345 6789</span>
+                  <span className="detail-value">0918 578 **</span>
                 </div>
 
                 <div className="detail-row">
