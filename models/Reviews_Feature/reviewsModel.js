@@ -1,5 +1,4 @@
-import supabase from "../../utils/supabaseClient.js";
-
+import supabaseAdmin from "../../supabaseAdmin.js";
 /* ==========================================
    PUBLIC: Create Review
    - only if booking is completed
@@ -10,7 +9,7 @@ export const createReview = async ({ token, rating, comment, image_url }) => {
   if (!token) throw new Error("Review token is required");
 
   // Find booking by token using SNAPSHOT fields
-  const { data: booking, error } = await supabase
+  const { data: booking, error } = await supabaseAdmin
     .from("bookings")
     .select(
       `
@@ -33,7 +32,7 @@ export const createReview = async ({ token, rating, comment, image_url }) => {
   }
 
   // Prevent duplicate review
-  const { data: existing, error: existingErr } = await supabase
+  const { data: existing, error: existingErr } = await supabaseAdmin
     .from("reviews")
     .select("id")
     .eq("booking_id", booking.id)
@@ -43,7 +42,7 @@ export const createReview = async ({ token, rating, comment, image_url }) => {
   if (existing) throw new Error("This booking already has a review");
 
   // Insert review
-  const { data: created, error: createErr } = await supabase
+  const { data: created, error: createErr } = await supabaseAdmin
     .from("reviews")
     .insert([
       {
@@ -78,7 +77,7 @@ export const getApprovedReviews = async ({ page = 1, limit = 6 }) => {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  const { data, error, count } = await supabase
+  const { data, error, count } = await supabaseAdmin
     .from("reviews")
     .select(
       `
@@ -138,7 +137,7 @@ export const getAllReviewsAdmin = async ({
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = supabase.from("reviews").select(
+  let query = supabaseAdmin.from("reviews").select(
     `
       id,
       booking_id,
@@ -221,7 +220,7 @@ export const approveReview = async (id) => {
   const reviewId = Number(id);
   if (!reviewId) throw new Error("Invalid review id");
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("reviews")
     .update({ is_approved: true })
     .eq("id", reviewId)
@@ -280,7 +279,7 @@ export const rejectReview = async (id) => {
   const reviewId = Number(id);
   if (!reviewId) throw new Error("Invalid review id");
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("reviews")
     .delete()
     .eq("id", reviewId)
@@ -300,7 +299,7 @@ export const rejectReview = async (id) => {
 export const verifyReviewToken = async (token) => {
   if (!token) throw new Error("Review token is required");
 
-  const { data: booking, error } = await supabase
+  const { data: booking, error } = await supabaseAdmin
     .from("bookings")
     .select(
       `
@@ -324,7 +323,7 @@ export const verifyReviewToken = async (token) => {
     throw new Error("This booking is not completed");
   }
 
-  const { data: existing, error: existingErr } = await supabase
+  const { data: existing, error: existingErr } = await supabaseAdmin
     .from("reviews")
     .select("id")
     .eq("booking_id", booking.id)
