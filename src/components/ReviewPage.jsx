@@ -1,16 +1,13 @@
 import { useEffect, useState } from "react";
-import {
-  verifyReviewToken,
-  createReview,
-} from "../../backend/reviewApi";
+import { createReview, verifyReviewToken } from "../../backend/reviewApi";
 import { uploadReviewImage } from "../utils/uploadReviewImage";
 
 const ReviewPage = () => {
-  // get token from URL
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
 
-  // states
+  console.log("🔑 TOKEN FROM URL:", token);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [booking, setBooking] = useState(null);
@@ -18,33 +15,45 @@ const ReviewPage = () => {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
 
-  // image states
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [uploading, setUploading] = useState(false);
 
+  const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  // =========================
   // VERIFY TOKEN
+  // =========================
   useEffect(() => {
     let isMounted = true;
 
+    console.log("🚀 useEffect RUNNING");
+
     const verify = async () => {
+      console.log("🟡 VERIFY START");
+
       if (!token) {
-        if (isMounted) {
-          setError("Invalid review link");
-          setLoading(false);
-        }
+        console.log("❌ NO TOKEN FOUND");
+        setError("Invalid review link");
+        setLoading(false);
         return;
       }
 
       try {
+        console.log("📡 CALLING verifyReviewToken...");
+
         const data = await verifyReviewToken(token);
+
+        console.log("✅ API RESPONSE:", data);
+
         if (isMounted) {
           setBooking(data);
           setLoading(false);
+          console.log("🟢 BOOKING SET + LOADING FALSE");
         }
       } catch (err) {
+        console.log("❌ VERIFY ERROR:", err);
+
         if (isMounted) {
           setError(err.message || "Invalid or expired review link");
           setLoading(false);
@@ -53,22 +62,33 @@ const ReviewPage = () => {
     };
 
     verify();
+
     return () => {
+      console.log("🧹 CLEANUP RUN");
       isMounted = false;
     };
   }, [token]);
 
+  // =========================
   // SUBMIT REVIEW
+  // =========================
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    console.log("📤 SUBMIT CLICKED");
 
     try {
       setUploading(true);
 
       let image_url = null;
+
       if (imageFile) {
+        console.log("🖼️ UPLOADING IMAGE...");
         image_url = await uploadReviewImage(imageFile);
+        console.log("✅ IMAGE URL:", image_url);
       }
+
+      console.log("📡 CREATING REVIEW...");
 
       await createReview({
         token,
@@ -77,20 +97,27 @@ const ReviewPage = () => {
         image_url,
       });
 
+      console.log("✅ REVIEW SUBMITTED");
+
       setSubmitted(true);
     } catch (err) {
+      console.log("❌ SUBMIT ERROR:", err);
       alert(err.message || "Failed to submit review");
     } finally {
       setUploading(false);
     }
   };
 
-  // UI STATES
+  // =========================
+  // STATES
+  // =========================
   if (loading) {
+    console.log("⏳ RENDER: LOADING");
     return <div style={{ textAlign: "center", marginTop: 60 }}>Loading...</div>;
   }
 
   if (error) {
+    console.log("⚠️ RENDER: ERROR", error);
     return (
       <div style={{ textAlign: "center", marginTop: 60, color: "red" }}>
         {error}
@@ -99,6 +126,7 @@ const ReviewPage = () => {
   }
 
   if (submitted) {
+    console.log("🎉 RENDER: SUBMITTED");
     return (
       <div style={{ textAlign: "center", marginTop: 60 }}>
         <h2>Thank you for your review 💖</h2>
@@ -107,7 +135,11 @@ const ReviewPage = () => {
     );
   }
 
-  // REVIEW FORM
+  // =========================
+  // UI
+  // =========================
+  console.log("🎨 RENDER: FORM DISPLAY");
+
   return (
     <div
       style={{
@@ -120,23 +152,24 @@ const ReviewPage = () => {
         fontFamily: "Arial, Helvetica, sans-serif",
       }}
     >
-      <h2 style={{ marginBottom: 12 }}>Leave a Review</h2>
+      <h2>Leave a Review</h2>
 
       <p style={{ fontSize: 14, color: "#555" }}>
-        <b>Service:</b> {booking.service}
+        <b>Service:</b> {booking?.service}
         <br />
-        <b>Date:</b> {booking.date}
+        <b>Date:</b> {booking?.date}
         <br />
-        <b>Time:</b> {booking.time}
+        <b>Time:</b> {booking?.time}
       </p>
 
       <form onSubmit={handleSubmit}>
-        {/* ⭐ Rating */}
-        <label style={{ fontWeight: "bold" }}>Rating</label>
+        <label>
+          <b>Rating</b>
+        </label>
         <select
           value={rating}
           onChange={(e) => setRating(Number(e.target.value))}
-          style={{ width: "100%", padding: 10, marginTop: 6 }}
+          style={{ width: "100%", padding: 10 }}
         >
           {[5, 4, 3, 2, 1].map((r) => (
             <option key={r} value={r}>
@@ -145,33 +178,30 @@ const ReviewPage = () => {
           ))}
         </select>
 
-        <br /><br />
+        <br />
+        <br />
 
-        {/* 💬 Comment */}
-        <label style={{ fontWeight: "bold" }}>Comment</label>
+        <label>
+          <b>Comment</b>
+        </label>
         <textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           rows={4}
-          placeholder="Share your experience..."
-          style={{
-            width: "100%",
-            padding: 10,
-            marginTop: 6,
-            resize: "vertical",
-          }}
+          style={{ width: "100%", padding: 10 }}
         />
 
-        <br /><br />
+        <br />
+        <br />
 
-        {/* 🖼️ Image Upload */}
-        <label style={{ fontWeight: "bold" }}>Photo (optional)</label>
         <input
           type="file"
-          accept="image/png,image/jpeg,image/webp"
+          accept="image/*"
           onChange={(e) => {
             const file = e.target.files[0];
             if (!file) return;
+
+            console.log("🖼️ FILE SELECTED:", file);
 
             setImageFile(file);
             setImagePreview(URL.createObjectURL(file));
@@ -181,31 +211,21 @@ const ReviewPage = () => {
         {imagePreview && (
           <img
             src={imagePreview}
-            alt="Preview"
-            style={{
-              width: "100%",
-              marginTop: 10,
-              borderRadius: 8,
-              objectFit: "cover",
-            }}
+            alt="preview"
+            style={{ width: "100%", marginTop: 10 }}
           />
         )}
 
-        <br /><br />
+        <br />
+        <br />
 
-        {/* 🚀 Submit */}
         <button
           type="submit"
           disabled={uploading}
           style={{
             width: "100%",
             padding: 12,
-            borderRadius: 30,
-            border: "none",
             background: uploading ? "#ccc" : "#E8A1B2",
-            color: "#111",
-            fontWeight: "bold",
-            cursor: uploading ? "not-allowed" : "pointer",
           }}
         >
           {uploading ? "Submitting..." : "Submit Review"}
