@@ -1,8 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  verifyReviewToken,
-  createReview,
-} from "../../backend/reviewApi";
+import { createReview, verifyReviewToken } from "../../backend/reviewApi";
 import { uploadReviewImage } from "../utils/uploadReviewImage";
 
 const ReviewPage = () => {
@@ -122,14 +119,15 @@ const ReviewPage = () => {
     >
       <h2 style={{ marginBottom: 12 }}>Leave a Review</h2>
 
-      <p style={{ fontSize: 14, color: "#555" }}>
-        <b>Service:</b> {booking.service}
-        <br />
-        <b>Date:</b> {booking.date}
-        <br />
-        <b>Time:</b> {booking.time}
-      </p>
-
+      {booking && (
+        <p style={{ fontSize: 14, color: "#555" }}>
+          <b>Service:</b> {booking.service || "N/A"}
+          <br />
+          <b>Date:</b> {booking.date || "N/A"}
+          <br />
+          <b>Time:</b> {booking.time || "N/A"}
+        </p>
+      )}
       <form onSubmit={handleSubmit}>
         {/* ⭐ Rating */}
         <label style={{ fontWeight: "bold" }}>Rating</label>
@@ -145,7 +143,8 @@ const ReviewPage = () => {
           ))}
         </select>
 
-        <br /><br />
+        <br />
+        <br />
 
         {/* 💬 Comment */}
         <label style={{ fontWeight: "bold" }}>Comment</label>
@@ -162,7 +161,8 @@ const ReviewPage = () => {
           }}
         />
 
-        <br /><br />
+        <br />
+        <br />
 
         {/* 🖼️ Image Upload */}
         <label style={{ fontWeight: "bold" }}>Photo (optional)</label>
@@ -191,7 +191,8 @@ const ReviewPage = () => {
           />
         )}
 
-        <br /><br />
+        <br />
+        <br />
 
         {/* 🚀 Submit */}
         <button
