@@ -1,4 +1,4 @@
-import supabaseAdmin from "../../supabaseAdmin.js";
+import { supabaseAdmin } from "../../utils/supabaseClient.js";
 /* ==========================================
    PUBLIC: Create Review
    - only if booking is completed
