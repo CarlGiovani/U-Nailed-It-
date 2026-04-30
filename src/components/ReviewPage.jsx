@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
-import { createReview, verifyReviewToken } from "../api/reviewApi";
+import {
+  verifyReviewToken,
+  createReview,
+} from "../../backend/reviewApi";
 import { uploadReviewImage } from "../utils/uploadReviewImage";
 
 const ReviewPage = () => {
+  // get token from URL
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
 
+  // states
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [booking, setBooking] = useState(null);
@@ -13,43 +18,47 @@ const ReviewPage = () => {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
 
+  // image states
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-
   const [uploading, setUploading] = useState(false);
+
   const [submitted, setSubmitted] = useState(false);
 
-  // =========================
   // VERIFY TOKEN
-  // =========================
   useEffect(() => {
-    if (!token) {
-      setError("Invalid review link");
-      setLoading(false);
-      return;
-    }
+    let isMounted = true;
 
     const verify = async () => {
+      if (!token) {
+        if (isMounted) {
+          setError("Invalid review link");
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
         const data = await verifyReviewToken(token);
-
-        console.log("API RESPONSE:", data);
-
-        setBooking(data || {});
-        setLoading(false);
+        if (isMounted) {
+          setBooking(data);
+          setLoading(false);
+        }
       } catch (err) {
-        console.log("ERROR:", err);
-        setError(err.message || "Invalid or expired link");
-        setLoading(false);
+        if (isMounted) {
+          setError(err.message || "Invalid or expired review link");
+          setLoading(false);
+        }
       }
     };
 
     verify();
+    return () => {
+      isMounted = false;
+    };
   }, [token]);
 
-  // =========================
   // SUBMIT REVIEW
-  // =========================
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -57,7 +66,6 @@ const ReviewPage = () => {
       setUploading(true);
 
       let image_url = null;
-
       if (imageFile) {
         image_url = await uploadReviewImage(imageFile);
       }
@@ -77,9 +85,7 @@ const ReviewPage = () => {
     }
   };
 
-  // =========================
-  // STATES
-  // =========================
+  // UI STATES
   if (loading) {
     return <div style={{ textAlign: "center", marginTop: 60 }}>Loading...</div>;
   }
@@ -101,9 +107,7 @@ const ReviewPage = () => {
     );
   }
 
-  // =========================
-  // UI
-  // =========================
+  // REVIEW FORM
   return (
     <div
       style={{
@@ -113,25 +117,22 @@ const ReviewPage = () => {
         borderRadius: 12,
         border: "1px solid #eee",
         boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
-        fontFamily: "Arial, sans-serif",
+        fontFamily: "Arial, Helvetica, sans-serif",
       }}
     >
-      <h2>Leave a Review</h2>
+      <h2 style={{ marginBottom: 12 }}>Leave a Review</h2>
 
-      {/* BOOKING INFO */}
-      {booking && (
-        <p style={{ fontSize: 14, color: "#555" }}>
-          <b>Service:</b> {booking.service || "N/A"}
-          <br />
-          <b>Date:</b> {booking.date || "N/A"}
-          <br />
-          <b>Time:</b> {booking.time || "N/A"}
-        </p>
-      )}
+      <p style={{ fontSize: 14, color: "#555" }}>
+        <b>Service:</b> {booking.service}
+        <br />
+        <b>Date:</b> {booking.date}
+        <br />
+        <b>Time:</b> {booking.time}
+      </p>
 
       <form onSubmit={handleSubmit}>
-        {/* RATING */}
-        <label><b>Rating</b></label>
+        {/* ⭐ Rating */}
+        <label style={{ fontWeight: "bold" }}>Rating</label>
         <select
           value={rating}
           onChange={(e) => setRating(Number(e.target.value))}
@@ -146,23 +147,28 @@ const ReviewPage = () => {
 
         <br /><br />
 
-        {/* COMMENT */}
-        <label><b>Comment</b></label>
+        {/* 💬 Comment */}
+        <label style={{ fontWeight: "bold" }}>Comment</label>
         <textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           rows={4}
           placeholder="Share your experience..."
-          style={{ width: "100%", padding: 10, marginTop: 6 }}
+          style={{
+            width: "100%",
+            padding: 10,
+            marginTop: 6,
+            resize: "vertical",
+          }}
         />
 
         <br /><br />
 
-        {/* IMAGE */}
-        <label><b>Photo (optional)</b></label>
+        {/* 🖼️ Image Upload */}
+        <label style={{ fontWeight: "bold" }}>Photo (optional)</label>
         <input
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/webp"
           onChange={(e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -175,18 +181,19 @@ const ReviewPage = () => {
         {imagePreview && (
           <img
             src={imagePreview}
-            alt="preview"
+            alt="Preview"
             style={{
               width: "100%",
               marginTop: 10,
               borderRadius: 8,
+              objectFit: "cover",
             }}
           />
         )}
 
         <br /><br />
 
-        {/* SUBMIT */}
+        {/* 🚀 Submit */}
         <button
           type="submit"
           disabled={uploading}
@@ -196,6 +203,7 @@ const ReviewPage = () => {
             borderRadius: 30,
             border: "none",
             background: uploading ? "#ccc" : "#E8A1B2",
+            color: "#111",
             fontWeight: "bold",
             cursor: uploading ? "not-allowed" : "pointer",
           }}
