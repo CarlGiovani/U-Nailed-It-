@@ -258,10 +258,6 @@ export const getServiceById = async (id) => {
   return data;
 };
 
-
-
-
-
 // ===============================
 // ADMIN: GET ALL SERVICES
 // ===============================
@@ -501,6 +497,10 @@ export const createCategory = async (service_id, name) => {
 // UPDATE CATEGORY
 // ===============================
 export const updateCategory = async (id, name) => {
+  console.log("🛠️ [SERVICE] updateCategory called");
+  console.log("ID:", id);
+  console.log("NAME:", name);
+
   const { data, error } = await supabaseAdmin
     .from("service_categories")
     .update({ name, updated_at: new Date().toISOString() })
@@ -508,10 +508,15 @@ export const updateCategory = async (id, name) => {
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.log("❌ SUPABASE ERROR:", error);
+    throw new Error(error.message);
+  }
+
+  console.log("✅ SUPABASE RESULT:", data);
+
   return data;
 };
-
 // ===============================
 // DELETE / DEACTIVATE CATEGORY
 // ===============================

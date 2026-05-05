@@ -4,6 +4,7 @@ import {
   serviceSchema,
   validate,
   variantSchema,
+  updateCategorySchema
 } from "../../utils/validators/serviceValidation.js";
 
 // GET all services
@@ -112,17 +113,29 @@ export const createCategory = async (req, res) => {
 
 // UPDATE SERVICE CATEGORY
 export const updateCategory = async (req, res) => {
-  // ---- VALIDATION ----
-  const errors = validate(categorySchema, req.body);
-  if (errors) return res.status(400).json({ errors });
+  console.log("🔥 [UPDATE CATEGORY] HIT");
+  console.log("📦 PARAMS:", req.params);
+  console.log("📨 BODY:", req.body);
+
+  // FIXED HERE 👇
+  const errors = validate(updateCategorySchema, req.body);
+
+  if (errors) {
+    console.log("❌ VALIDATION ERRORS:", errors);
+    return res.status(400).json({ errors });
+  }
 
   const { id } = req.params;
   const { name } = req.body;
 
   try {
     const category = await Services.updateCategory(id, name);
+
+    console.log("✅ UPDATE SUCCESS:", category);
+
     res.json({ message: "category updated!!", category });
   } catch (error) {
+    console.log("💥 UPDATE FAILED:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -143,7 +156,7 @@ export const createVariant = async (req, res) => {
   // ---- VALIDATION ----
   const errors = validate(variantSchema, req.body);
   if (errors) return res.status(400).json({ errors });
-
+c
   try {
     const variant = await Services.createVariant(req.body);
     res.json({ message: "Variant created!", variant });

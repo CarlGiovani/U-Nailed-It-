@@ -76,3 +76,11 @@ export const validate = (schema, data) => {
   if (error) return error.details.map((d) => d.context?.message || d.message);
   return null;
 };
+
+// ------------------ CATEGORY UPDATE VALIDATION ------------------
+export const updateCategorySchema = Joi.object({
+  name: Joi.string().trim().required().messages({
+    "any.required": "Category name is required",
+    "string.empty": "Category name cannot be empty",
+  }),
+});
