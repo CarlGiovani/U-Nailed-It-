@@ -1,83 +1,99 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import logo from "../assets/images/logo.png";
 
 const Hero = () => {
-  const heroRef = useRef(null);
   const navigate = useNavigate();
 
-  const goToBookingPage = () => {
-    navigate("/booking");
-  };
-
   useEffect(() => {
-    const el = heroRef.current;
-    if (el) {
-      requestAnimationFrame(() => {
-        el.classList.add("hero-show");
-      });
-    }
+    document.documentElement.classList.add("hero-ready");
   }, []);
 
   return (
-    <section className="hero hero-reveal" id="home" ref={heroRef}>
-      <div className="hero-bg-glow hero-bg-glow-1" />
-      <div className="hero-bg-glow hero-bg-glow-2" />
+    <section className="hero">
+      <div className="hero-bg" />
       <div className="hero-overlay" />
 
-      <div className="container hero-inner">
-        <div className="hero-content">
-          <div className="hero-copy">
-            <span className="hero-kicker fade-up delay-1">
-              UNailedIt By Alliyah
-            </span>
+      <div className="container hero-grid">
+        {/* LEFT */}
+        <div className="hero-left">
+          <div className="hero-badge">✨ Trusted Nail Studio Nearby</div>
 
-            <h1 className="fade-up delay-2">
-              Elegant nails,
-              <span> made to match you.</span>
-            </h1>
+          <h1 className="hero-title">
+            Book your perfect nails
+            <span>in just a few clicks</span>
+          </h1>
 
-            <p className="fade-up delay-3">
-              Clean, stylish, and personalized nail services designed to make
-              every appointment feel premium, relaxing, and worth coming back
-              for.
-            </p>
+          <p className="hero-subtext">
+            Professional nail artistry designed for long-lasting beauty,
+            comfort, and confidence.
+          </p>
 
-            <div className="hero-actions fade-up delay-4">
-              <button
-                className="hero-btn hero-btn-primary"
-                onClick={goToBookingPage}
-                type="button"
+          <div className="hero-actions">
+            <button
+              className="btn-primary"
+              onClick={() => navigate("/booking")}
+            >
+              Book Now
+            </button>
+          </div>
+
+          <div className="hero-trust">
+            <span>⭐ 5.0 (200+ Reviews)</span>
+            <span>💅 Certified Artist</span>
+            <span>⚡ Fast Service</span>
+          </div>
+
+          <div className="hero-urgency">Limited slots available daily</div>
+        </div>
+
+        {/* RIGHT */}
+        <div className="hero-right">
+          <div className="hero-card">
+            <div className="hero-card-header">
+              <h3>Studio Location</h3>
+              <p>68 San Guillermo Ave, Pasig City</p>
+            </div>
+
+            <div className="hero-map-wrapper">
+              <iframe
+                className="hero-map"
+                title="Studio Location"
+                loading="lazy"
+                src="https://www.google.com/maps?q=68+San+Guillermo+Ave,+Pasig,+1600+Metro+Manila,+Philippines&output=embed&hl=en&z=18&t=k"
+              />
+            </div>
+
+            {/* FLOATING MAP ACTIONS (better UX) */}
+            <div className="hero-map-actions">
+              <a
+                href="https://www.google.com/maps/search/?api=1&query=68+San+Guillermo+Ave,+Pasig,+1600+Metro+Manila,+Philippines"
+                target="_blank"
+                rel="noreferrer"
               >
-                Book Appointment
-              </button>
+                View Map
+              </a>
 
-              <a href="#portfolio" className="hero-btn hero-btn-secondary">
-                View Works
+              <a
+                href="https://www.google.com/maps/dir/?api=1&destination=68+San+Guillermo+Ave,+Pasig,+1600+Metro+Manila,+Philippines"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Get Directions
               </a>
             </div>
-          </div>
 
-          <div className="hero-visual fade-up delay-3">
-            <div className="hero-visual-card" aria-hidden="true">
-              <span className="hero-orb hero-orb-1" />
-              <span className="hero-orb hero-orb-2" />
-              <span className="hero-orb hero-orb-3" />
-              <span className="hero-orb hero-orb-4" />
-
-              <span className="hero-sparkle sparkle-1" />
-              <span className="hero-sparkle sparkle-2" />
-              <span className="hero-sparkle sparkle-3" />
-
-              <div className="hero-logo-wrap">
-                <img src={logo} alt="UNAiledIt Logo" />
-              </div>
-
-              <div className="hero-chip hero-chip-top">Luxury</div>
-              <div className="hero-chip hero-chip-bottom">Modern Beauty</div>
-            </div>
+            <button
+              onClick={() => navigate("/booking")}
+              className="hero-book-btn"
+            >
+              Book This Location
+            </button>
           </div>
         </div>
+      </div>
+
+      <div className="mobile-cta">
+        <button onClick={() => navigate("/booking")}>Book Appointment</button>
       </div>
     </section>
   );
