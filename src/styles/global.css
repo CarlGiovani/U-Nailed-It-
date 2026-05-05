@@ -220,11 +220,7 @@ ul {
   line-height: 1.7;
 }
 
-/* Portfolio Styles */
-.portfolio {
-  padding: 80px 0;
-  background: linear-gradient(180deg, #fff9fc 0%, #fffdfb 100%);
-}
+
 
 .portfolio-grid {
   display: grid;
@@ -348,5 +344,34 @@ ul {
   .portfolio-grid,
   .promos-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+
+/* ===============================
+   GLOBAL LOADER
+================================ */
+.page-loader {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  font-family: var(--font-body);
+}
+
+.loader-spinner {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  border: 4px solid #eee;
+  border-top: 4px solid var(--gold);
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }

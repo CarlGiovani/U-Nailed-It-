@@ -1,12 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, memo } from "react";
 import { createPortal } from "react-dom";
 import { getActiveAnnouncements } from "../../backend/promosApi";
 import "../styles/promos.css";
-
 import { FaTimes } from "react-icons/fa";
 
-const PromoPreviewModal = ({ image, alt, onClose }) => {
+/* ===============================
+   MODAL (MEMOIZED)
+================================= */
+const PromoPreviewModal = memo(({ image, alt, onClose }) => {
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "Escape") onClose();
@@ -42,16 +44,68 @@ const PromoPreviewModal = ({ image, alt, onClose }) => {
         <img src={image} alt={alt} />
       </div>
     </div>,
-    document.body,
+    document.body
   );
-};
+});
 
+/* ===============================
+   IMAGE GRID (MEMOIZED)
+================================= */
+const ImageGrid = memo(({ images, title, onPreview }) => {
+  return (
+    <div className="note-image-grid">
+      {images.map((img, idx) => (
+        <img
+          key={idx}
+          src={img}
+          alt={`${title} preview ${idx + 1}`}
+          loading="lazy"
+          onClick={() => onPreview(img, title, idx)}
+        />
+      ))}
+    </div>
+  );
+});
+
+/* ===============================
+   ANNOUNCEMENT CARD (MEMOIZED)
+   Prevents list re-renders when modal opens
+================================= */
+const AnnouncementCard = memo(({ item, onPreview }) => {
+  return (
+    <article className="note-card">
+      <div className="pin"></div>
+
+      {item.images?.length > 0 && (
+        <ImageGrid
+          images={item.images}
+          title={item.title}
+          onPreview={onPreview}
+        />
+      )}
+
+      <h3>{item.title}</h3>
+      <p>{item.content}</p>
+
+      <div className="note-footer">
+        {item.end_date ? (
+          <span>📅 Until {item.end_date}</span>
+        ) : (
+          <span>✨ Ongoing</span>
+        )}
+      </div>
+    </article>
+  );
+});
+
+/* ===============================
+   MAIN PAGE
+================================= */
 const Promos = () => {
   const {
     data: announcements = [],
     isLoading,
     isError,
-    error,
   } = useQuery({
     queryKey: ["announcements"],
     queryFn: getActiveAnnouncements,
@@ -60,23 +114,25 @@ const Promos = () => {
     refetchOnWindowFocus: false,
   });
 
-  const [previewImage, setPreviewImage] = useState(null);
-  const [previewAlt, setPreviewAlt] = useState("Promo preview");
+  /* ===============================
+     PREVIEW STATE
+  ================================= */
+  const [preview, setPreview] = useState(null);
 
-  const openPreview = (image, title, index = 0) => {
-    setPreviewImage(image);
-    setPreviewAlt(`${title} image ${index + 1}`);
-  };
+  const openPreview = useCallback((image, title, index = 0) => {
+    setPreview({
+      src: image,
+      alt: `${title} image ${index + 1}`,
+    });
+  }, []);
 
-  const closePreview = () => {
-    setPreviewImage(null);
-    setPreviewAlt("Promo preview");
-  };
+  const closePreview = useCallback(() => {
+    setPreview(null);
+  }, []);
 
-  if (isError) {
-    console.error("Failed to fetch announcements", error);
-  }
-
+  /* ===============================
+     RENDER
+  ================================= */
   return (
     <>
       <section className="bulletin" id="promos">
@@ -89,13 +145,24 @@ const Promos = () => {
             </p>
           </div>
 
+          {/* Loading */}
           {isLoading && (
             <div className="portfolio-state">
               <p className="loading-text">Loading announcements...</p>
             </div>
           )}
 
-          {!isLoading && announcements.length === 0 && (
+          {/* Error UI */}
+          {isError && (
+            <div className="portfolio-state">
+              <p className="error-text">
+                Failed to load announcements. Please try again later.
+              </p>
+            </div>
+          )}
+
+          {/* Empty */}
+          {!isLoading && !isError && announcements.length === 0 && (
             <div className="portfolio-state">
               <p className="loading-text">
                 No announcements available at the moment.
@@ -103,47 +170,26 @@ const Promos = () => {
             </div>
           )}
 
+          {/* List */}
           {!isLoading && !isError && announcements.length > 0 && (
             <div className="bulletin-board">
               {announcements.map((item) => (
-                <article key={item.id} className="note-card">
-                  <div className="pin"></div>
-
-                  {item.images?.length > 0 && (
-                    <div className="note-image-grid">
-                      {item.images.map((img, idx) => (
-                        <img
-                          key={idx}
-                          src={img}
-                          alt={`${item.title} preview ${idx + 1}`}
-                          loading="lazy"
-                          onClick={() => openPreview(img, item.title, idx)}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  <h3>{item.title}</h3>
-                  <p>{item.content}</p>
-
-                  <div className="note-footer">
-                    {item.end_date ? (
-                      <span>📅 Until {item.end_date}</span>
-                    ) : (
-                      <span>✨ Ongoing</span>
-                    )}
-                  </div>
-                </article>
+                <AnnouncementCard
+                  key={item.id}
+                  item={item}
+                  onPreview={openPreview}
+                />
               ))}
             </div>
           )}
         </div>
       </section>
 
-      {previewImage && (
+      {/* Modal */}
+      {preview && (
         <PromoPreviewModal
-          image={previewImage}
-          alt={previewAlt}
+          image={preview.src}
+          alt={preview.alt}
           onClose={closePreview}
         />
       )}

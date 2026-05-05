@@ -5,17 +5,10 @@ export const getAvailableSlots = async (serviceId, date) => {
   const parsedServiceId = Number(serviceId);
 
   if (!parsedServiceId) {
-    console.warn("⚠️ Service ID is required to fetch slots");
     return [];
   }
 
   try {
-    console.log(
-      `📅 Fetching slots for service ${parsedServiceId}, date ${
-        date || "all"
-      }...`
-    );
-
     const response = await api.get("/calendar/slots", {
       params: {
         service_id: parsedServiceId,
@@ -27,7 +20,7 @@ export const getAvailableSlots = async (serviceId, date) => {
   } catch (error) {
     console.error(
       "❌ Error fetching slots:",
-      error.response?.data || error.message
+      error.response?.data || error.message,
     );
     return [];
   }
@@ -37,7 +30,6 @@ export const getMonthlyAvailability = async (serviceId, year, month) => {
   const parsedServiceId = Number(serviceId);
 
   if (!parsedServiceId || !year || !month) {
-    console.warn("⚠️ Service ID, year, and month are required");
     return [];
   }
 
@@ -45,7 +37,7 @@ export const getMonthlyAvailability = async (serviceId, year, month) => {
     const response = await api.get("/calendar/availability", {
       params: {
         service_id: parsedServiceId,
-        year, 
+        year,
         month: String(month).padStart(2, "0"),
       },
     });
@@ -54,7 +46,7 @@ export const getMonthlyAvailability = async (serviceId, year, month) => {
   } catch (error) {
     console.error(
       "❌ Error fetching monthly availability:",
-      error.response?.data || error.message
+      error.response?.data || error.message,
     );
     return [];
   }

@@ -1,271 +1,195 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  memo,
+  useDeferredValue,
+} from "react";
 import { createPortal } from "react-dom";
 import { getAllPortfolio } from "../../backend/portfolioApi";
 
-import "slick-carousel/slick/slick-theme.css";
-import "slick-carousel/slick/slick.css";
 import "../styles/portfolio.css";
-
 import { FaArrowLeft, FaArrowRight, FaTimes } from "react-icons/fa";
 
-const PortfolioPreviewModal = ({
-  images,
-  title,
-  description,
-  currentIndex,
-  onClose,
-  onPrev,
-  onNext,
-}) => {
-  const hasMultiple = images.length > 1;
+/* -------------------------------------------------------------------------- */
+/*  Progressive image component (huge perf gain)                              */
+/* -------------------------------------------------------------------------- */
+const ProgressiveImage = memo(({ src, alt }) => {
+  const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") onClose();
-      if (hasMultiple && event.key === "ArrowRight") onNext();
-      if (hasMultiple && event.key === "ArrowLeft") onPrev();
-    };
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      onLoad={() => setLoaded(true)}
+      className={`portfolio-img ${loaded ? "loaded" : ""}`}
+    />
+  );
+});
 
-    document.addEventListener("keydown", handleKeyDown);
-    document.body.style.overflow = "hidden";
+/* -------------------------------------------------------------------------- */
+/*  MODAL — fixed keyboard navigation (no errors on single image)             */
+/* -------------------------------------------------------------------------- */
+const PortfolioPreviewModal = memo(
+  ({ images, title, description, currentIndex, onClose, onPrev, onNext }) => {
+    const hasMultiple = images.length > 1;
 
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
-    };
-  }, [hasMultiple, onClose, onNext, onPrev]);
+    useEffect(() => {
+      const handler = (e) => {
+        if (e.key === "Escape") onClose();
+        if (hasMultiple && e.key === "ArrowRight") onNext();
+        if (hasMultiple && e.key === "ArrowLeft") onPrev();
+      };
+      window.addEventListener("keydown", handler);
+      document.body.style.overflow = "hidden";
+      return () => {
+        window.removeEventListener("keydown", handler);
+        document.body.style.overflow = "";
+      };
+    }, [hasMultiple, onClose, onNext, onPrev]);
 
-  return createPortal(
-    <div
-      className="portfolio-preview-overlay"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={title || "Portfolio image preview"}
-    >
-      <div
-        className="portfolio-preview-box"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          className="portfolio-preview-close"
-          onClick={onClose}
-          aria-label="Close image preview"
-        >
-          <FaTimes />
-        </button>
+    return createPortal(
+      <div className="portfolio-preview-overlay" onClick={onClose}>
+        <div className="portfolio-preview-box" onClick={(e) => e.stopPropagation()}>
+          <button className="portfolio-preview-close" onClick={onClose}>
+            <FaTimes />
+          </button>
 
-        {hasMultiple && (
-          <>
-            <button
-              type="button"
-              className="portfolio-preview-nav portfolio-preview-prev"
-              onClick={onPrev}
-              aria-label="Previous image"
-            >
-              <FaArrowLeft />
-            </button>
+          {hasMultiple && (
+            <>
+              <button className="portfolio-preview-prev" onClick={onPrev}>
+                <FaArrowLeft />
+              </button>
+              <button className="portfolio-preview-next" onClick={onNext}>
+                <FaArrowRight />
+              </button>
+            </>
+          )}
 
-            <button
-              type="button"
-              className="portfolio-preview-nav portfolio-preview-next"
-              onClick={onNext}
-              aria-label="Next image"
-            >
-              <FaArrowRight />
-            </button>
-          </>
-        )}
+          <img
+            src={images[currentIndex]}
+            alt={title}
+            className="portfolio-preview-img"
+            loading="eager"
+            decoding="async"
+          />
 
-        <img
-          src={images[currentIndex]}
-          alt={`${title || "Portfolio image"} ${currentIndex + 1}`}
-        />
-
-        {(title || description || hasMultiple) && (
           <div className="portfolio-preview-info">
-            {title && <h3>{title}</h3>}
+            <h3>{title}</h3>
+            <p>{description}</p>
+            {hasMultiple && <span>{currentIndex + 1} / {images.length}</span>}
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+);
 
-            {description && <p>{description}</p>}
+/* -------------------------------------------------------------------------- */
+/*  PORTFOLIO ITEM — memoized                                                 */
+/* -------------------------------------------------------------------------- */
+const PortfolioItem = memo(({ item, openPreview }) => {
+  const handleOpen = useCallback(() => openPreview(item), [item, openPreview]);
 
-            {hasMultiple && (
-              <div className="portfolio-preview-count">
-                {currentIndex + 1} / {images.length}
-              </div>
-            )}
+  return (
+    <article className="portfolio-item" onClick={handleOpen}>
+      <div className="portfolio-image-wrap">
+        <ProgressiveImage src={item.images?.[0]} alt={item.title} />
+      </div>
+      <div className="portfolio-overlay">
+        <span className="portfolio-chip">View Set</span>
+        <h3>{item.title}</h3>
+        <p>{item.description || "Tap to view photos."}</p>
+      </div>
+    </article>
+  );
+});
+
+/* -------------------------------------------------------------------------- */
+/*  Skeleton loader component (replaces plain text)                           */
+/* -------------------------------------------------------------------------- */
+const PortfolioSkeleton = () => (
+  <div className="portfolio-skeleton">
+    {Array(6).fill().map((_, i) => (
+      <div key={i} className="skeleton-card" />
+    ))}
+  </div>
+);
+
+/* -------------------------------------------------------------------------- */
+/*  MAIN COMPONENT                                                            */
+/* -------------------------------------------------------------------------- */
+export default function Portfolio() {
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["portfolio"],
+    queryFn: getAllPortfolio,
+    staleTime: 1000 * 60 * 60, // 1 hour
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+
+  const deferredData = useDeferredValue(data);
+  const [modal, setModal] = useState(null);
+
+  const openPreview = useCallback((item) => {
+    if (!item.images?.length) return;
+    setModal({
+      images: item.images,
+      title: item.title,
+      description: item.description,
+      currentIndex: 0,
+    });
+  }, []);
+
+  const closePreview = useCallback(() => setModal(null), []);
+  const nextPreview = useCallback(() => {
+    setModal((prev) => ({
+      ...prev,
+      currentIndex: prev.currentIndex === prev.images.length - 1 ? 0 : prev.currentIndex + 1,
+    }));
+  }, []);
+  const prevPreview = useCallback(() => {
+    setModal((prev) => ({
+      ...prev,
+      currentIndex: prev.currentIndex === 0 ? prev.images.length - 1 : prev.currentIndex - 1,
+    }));
+  }, []);
+
+  const portfolioItems = useMemo(() => deferredData.slice(0, 12), [deferredData]);
+
+  return (
+    <section className="portfolio">
+      <div className="container">
+        <div className="portfolio-header">
+          <span className="portfolio-kicker">Portfolio</span>
+          <h2>Our Work</h2>
+          <p>Our nail art collections.</p>
+        </div>
+
+        {isLoading ? (
+          <PortfolioSkeleton />
+        ) : (
+          <div className="portfolio-grid">
+            {portfolioItems.map((item) => (
+              <PortfolioItem key={item.id} item={item} openPreview={openPreview} />
+            ))}
           </div>
         )}
       </div>
-    </div>,
-    document.body,
-  );
-};
 
-const Portfolio = () => {
-  const {
-    data: portfolioItems = [],
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: ["portfolioItems"],
-    queryFn: getAllPortfolio,
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 15,
-    refetchOnWindowFocus: false,
-  });
-
-  const [previewImages, setPreviewImages] = useState([]);
-  const [previewTitle, setPreviewTitle] = useState("");
-  const [previewDescription, setPreviewDescription] = useState("");
-  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
-
-  const openPreview = (item, startIndex = 0) => {
-    setPreviewImages(item.images || []);
-    setPreviewTitle(item.title || "");
-    setPreviewDescription(item.description || item.content || "");
-    setCurrentPreviewIndex(startIndex);
-    setIsPreviewOpen(true);
-  };
-
-  const closePreview = () => {
-    setIsPreviewOpen(false);
-    setPreviewImages([]);
-    setPreviewTitle("");
-    setPreviewDescription("");
-    setCurrentPreviewIndex(0);
-  };
-  const prevPreview = () => {
-    setCurrentPreviewIndex((prev) =>
-      prev === 0 ? previewImages.length - 1 : prev - 1,
-    );
-  };
-
-  const nextPreview = () => {
-    setCurrentPreviewIndex((prev) =>
-      prev === previewImages.length - 1 ? 0 : prev + 1,
-    );
-  };
-
-  const totalPages = Math.ceil(portfolioItems.length / itemsPerPage);
-  const safeCurrentPage =
-    totalPages === 0 ? 1 : Math.min(currentPage, totalPages);
-
-  const start = (safeCurrentPage - 1) * itemsPerPage;
-  const currentItems = portfolioItems.slice(start, start + itemsPerPage);
-
-  if (isError) {
-    console.error("Failed to load portfolio", error);
-  }
-
-  return (
-    <>
-      <section className="portfolio" id="portfolio">
-        <div className="container">
-          <div className="portfolio-header">
-            <span className="portfolio-kicker">Portfolio</span>
-            <h2>Our Work</h2>
-            <p>
-              A curated look at some of our nail sets, details, and finished
-              designs crafted with care.
-            </p>
-          </div>
-
-          {isLoading ? (
-            <div className="portfolio-state">
-              <p className="loading-text">Loading portfolio...</p>
-            </div>
-          ) : isError ? (
-            <div className="portfolio-state">
-              <p className="loading-text">Failed to load portfolio.</p>
-            </div>
-          ) : portfolioItems.length === 0 ? (
-            <div className="portfolio-state">
-              <p className="loading-text">No portfolio items available.</p>
-            </div>
-          ) : (
-            <>
-              <div className="portfolio-grid">
-                {currentItems.map((item, index) => (
-                  <article
-                    key={item.id}
-                    className={`portfolio-item ${
-                      index === 0 ? "portfolio-item-featured" : ""
-                    }`}
-                    onClick={() => openPreview(item, 0)}
-                  >
-                    <div className="portfolio-image-wrap">
-                      <img
-                        src={item.images?.[0]}
-                        alt={item.title}
-                        loading="lazy"
-                      />
-                    </div>
-
-                    <div className="portfolio-overlay">
-                      <span className="portfolio-chip">View Set</span>
-                      <h3>{item.title}</h3>
-                      <p>
-                        {item.description ||
-                          item.content ||
-                          "Tap to view photos."}
-                      </p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-
-              {totalPages > 1 && (
-                <div className="portfolio-pagination">
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={safeCurrentPage === 1}
-                    aria-label="Previous page"
-                    type="button"
-                  >
-                    Prev
-                  </button>
-
-                  <span>
-                    Page {safeCurrentPage} of {totalPages}
-                  </span>
-
-                  <button
-                    onClick={() =>
-                      setCurrentPage((p) => Math.min(totalPages, p + 1))
-                    }
-                    disabled={safeCurrentPage === totalPages}
-                    aria-label="Next page"
-                    type="button"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </section>
-
-      {isPreviewOpen && previewImages.length > 0 && (
+      {modal && (
         <PortfolioPreviewModal
-          images={previewImages}
-          title={previewTitle}
-          description={previewDescription}
-          currentIndex={currentPreviewIndex}
+          {...modal}
           onClose={closePreview}
-          onPrev={prevPreview}
           onNext={nextPreview}
+          onPrev={prevPreview}
         />
       )}
-    </>
+    </section>
   );
-};
-
-export default Portfolio;
+}

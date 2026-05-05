@@ -1,109 +1,174 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { lazy, Suspense } from "react";
 
-// PAGES / COMPONENTS
-import AboutUs from "./components/AboutUs";
-import Booking from "./components/Booking";
-import CancelBookingPage from "./components/cancelBooking";
-import Footer from "./components/Footer";
 import Header from "./components/header";
-import Hero from "./components/hero";
-import Policies from "./components/Policies";
-import Portfolio from "./components/Portfolio";
-import Promos from "./components/Promos";
-import ReviewPage from "./components/ReviewPage";
-import Reviews from "./components/Reviews";
-
-// HOOK
+import Footer from "./components/Footer";
 import useServices from "./hooks/useServices";
 
-// CSS
-import "./styles/about-us.css";
-import "./styles/booking-system.css";
-import "./styles/check-booking.css";
-import "./styles/footer.css";
 import "./styles/global.css";
 import "./styles/header.css";
+import "./styles/footer.css";
 import "./styles/hero.css";
+import "./styles/about-us.css";
+import "./styles/booking-system.css";
 import "./styles/review-section.css";
 import "./styles/services-section.css";
 
-// =====================
-// HOME PAGE
-// =====================
-function HomePage() {
+/* ===============================
+   LAZY LOAD ALL PAGES (BIG PERFORMANCE BOOST)
+================================ */
+const Hero = lazy(() => import("./components/hero"));
+const AboutUs = lazy(() => import("./components/AboutUs"));
+const Portfolio = lazy(() => import("./components/Portfolio"));
+const Promos = lazy(() => import("./components/Promos"));
+const Booking = lazy(() => import("./components/Booking"));
+const Reviews = lazy(() => import("./components/Reviews"));
+const ReviewPage = lazy(() => import("./components/ReviewPage"));
+const CancelBookingPage = lazy(() => import("./components/cancelBooking"));
+
+/* ===============================
+   GLOBAL PAGE WRAPPER (REUSABLE LAYOUT)
+================================ */
+function PageLayout({ children, showFooter = true }) {
   return (
     <div className="App">
       <Header />
-      <main>
-        <Hero />
-        <Policies />
-        <Portfolio />
-        <Promos />
-        <Reviews />
-      </main>
-      <Footer />
+      <main>{children}</main>
+      {showFooter && <Footer />}
     </div>
   );
 }
 
-// =====================
-// ABOUT PAGE
-// =====================
-function AboutPage() {
+/* ===============================
+   LOADING SCREEN (used by lazy loading)
+================================ */
+function PageLoader() {
   return (
-    <div className="App">
-      <Header />
-      <main>
-        <AboutUs />
-      </main>
-      <Footer />
+    <div className="page-loader">
+      <div className="loader-spinner" />
+      <p>Loading page...</p>
     </div>
   );
 }
 
-// =====================
-// BOOKING PAGE
-// =====================
-function BookingPage({ services }) {
-  return (
-    <div className="App">
-      <Header />
-      <main>
-        <Booking services={services} />
-      </main>
-      <Footer />
-    </div>
-  );
-}
-
-// =====================
-// APP ROUTER
-// =====================
+/* ===============================
+   APP ROUTER
+================================ */
 function App() {
   const { services, loading, error } = useServices();
 
-  if (loading) return <p>Loading services...</p>;
-  if (error) return <p>Error loading services: {error}</p>;
+  /* API LOADING */
+  if (loading)
+    return (
+      <div className="page-loader">
+        <div className="loader-spinner" />
+        <p>Loading services...</p>
+      </div>
+    );
+
+  /* API ERROR */
+  if (error)
+    return (
+      <div className="page-loader">
+        <h2>Something went wrong</h2>
+        <p>{error}</p>
+      </div>
+    );
 
   return (
     <BrowserRouter>
-      <Routes>
-        {/* HOME */}
-        <Route path="/" element={<HomePage />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* HOME */}
+          <Route
+            path="/"
+            element={
+              <PageLayout showFooter={false}>
+                <Hero />
+              </PageLayout>
+            }
+          />
 
-        {/* ABOUT */}
-        <Route path="/about" element={<AboutPage />} />
+          {/* ABOUT */}
+          <Route
+            path="/about"
+            element={
+              <PageLayout>
+                <AboutUs />
+              </PageLayout>
+            }
+          />
 
-        {/* BOOKING */}
-        <Route path="/booking" element={<BookingPage services={services} />} />
+          {/* PORTFOLIO */}
+          <Route
+            path="/portfolio"
+            element={
+              <PageLayout>
+                <Portfolio />
+              </PageLayout>
+            }
+          />
 
-        {/* REVIEW */}
-        <Route path="/review" element={<ReviewPage />} />
+          {/* PROMOS */}
+          <Route
+            path="/promos"
+            element={
+              <PageLayout>
+                <Promos />
+              </PageLayout>
+            }
+          />
 
-        {/* CANCEL BOOKING */}
-        <Route path="/cancel" element={<CancelBookingPage />} />
-        <Route path="/cancel-pending" element={<CancelBookingPage />} />
-      </Routes>
+          {/* BOOKING */}
+          <Route
+            path="/booking"
+            element={
+              <PageLayout>
+                <Booking services={services} />
+              </PageLayout>
+            }
+          />
+
+          {/* REVIEWS */}
+          <Route
+            path="/reviews"
+            element={
+              <PageLayout>
+                <Reviews />
+              </PageLayout>
+            }
+          />
+
+          {/* WRITE REVIEW PAGE */}
+          <Route
+            path="/review"
+            element={
+              <PageLayout>
+                <ReviewPage />
+              </PageLayout>
+            }
+          />
+
+          {/* CANCEL BOOKING */}
+          <Route
+            path="/cancel"
+            element={
+              <PageLayout>
+                <CancelBookingPage />
+              </PageLayout>
+            }
+          />
+
+          <Route
+            path="/cancel-pending"
+            element={
+              <PageLayout>
+                <CancelBookingPage />
+              </PageLayout>
+            }
+          />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

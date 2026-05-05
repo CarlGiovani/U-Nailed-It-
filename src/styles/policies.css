@@ -5,14 +5,12 @@
 .policies {
   position: relative;
   overflow: hidden;
-  padding: 120px 0;
+  padding: 120px 0; 
   margin-top: -60px;
   padding-top: 160px;
   z-index: 1;
+  
 
-  /* background image (base) */
-  background: url("../assets/images/STUDIO/studioImg3.jpg") center/cover
-    no-repeat;
 }
 
 /* soft overlay layer */
@@ -22,15 +20,13 @@
   inset: 0;
   pointer-events: none;
 
-  background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(16px);
+ 
 
-  border: 1px solid rgba(255, 255, 255, 0.18);
+border: 1px solid rgba(255, 255, 255, 0.18);
 
-  box-shadow:
-    0 10px 40px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+box-shadow:
+  0 10px 40px rgba(0, 0, 0, 0.1),
+  inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 /* =========================
@@ -140,7 +136,7 @@
 .policies-header p {
   margin: 0 auto;
   max-width: 720px;
-  color: black;
+ color: black;
   font-size: 1rem;
   line-height: 1.8;
 }

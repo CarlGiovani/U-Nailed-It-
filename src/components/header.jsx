@@ -1,55 +1,23 @@
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import logo from "../assets/images/logo.png";
 import "../styles/header.css";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const toggleMenu = () => setIsMenuOpen((prev) => !prev);
   const closeMenu = () => setIsMenuOpen(false);
 
-  const scrollToSection = (sectionId) => {
+  const go = (path) => {
     closeMenu();
-
-    if (location.pathname !== "/") {
-      navigate("/");
-      setTimeout(() => {
-        const element = document.getElementById(sectionId);
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }, 150);
-    } else {
-      const element = document.getElementById(sectionId);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }
-  };
-
-  const goToBookingPage = () => {
-    closeMenu();
-    navigate("/booking");
-  };
-
-  const handleLogoClick = () => {
-    if (location.pathname === "/") {
-      scrollToSection("home");
-    } else {
-      navigate("/");
-    }
+    navigate(path);
   };
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth > 768) {
-        setIsMenuOpen(false);
-      }
+      if (window.innerWidth > 768) setIsMenuOpen(false);
     };
 
     window.addEventListener("resize", handleResize);
@@ -60,171 +28,42 @@ const Header = () => {
     <>
       <header className="site-header">
         <div className="container header-container">
-          <div className="logo" onClick={handleLogoClick}>
-            <img src={logo} alt="UNAiledIt Logo" />
+          <div className="logo" onClick={() => go("/")}>
+            <img src={logo} alt="Logo" />
           </div>
 
-          {/* desktop nav */}
+          {/* DESKTOP */}
           <nav className="desktop-nav">
-            <a
-              href="#home"
-              onClick={(e) => {
-                e.preventDefault();
-                scrollToSection("home");
-              }}
-            >
-              Home
-            </a>
-
-            <a
-              href="/about"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate("/about");
-                closeMenu();
-              }}
-            >
-              About Us
-            </a>
-
-            <a
-              href="#policies"
-              onClick={(e) => {
-                e.preventDefault();
-                scrollToSection("policies");
-              }}
-            >
-              Policies
-            </a>
-
-            <a
-              href="#portfolio"
-              onClick={(e) => {
-                e.preventDefault();
-                scrollToSection("portfolio");
-              }}
-            >
-              Portfolio
-            </a>
-
-            <a
-              href="#promos"
-              onClick={(e) => {
-                e.preventDefault();
-                scrollToSection("promos");
-              }}
-            >
-              Promos
-            </a>
-
-            <a
-              href="/booking"
-              onClick={(e) => {
-                e.preventDefault();
-                goToBookingPage();
-              }}
-            >
-              Book Now
-            </a>
-
-            <a
-              href="#reviews"
-              onClick={(e) => {
-                e.preventDefault();
-                scrollToSection("reviews");
-              }}
-            >
-              Reviews
-            </a>
+            <a onClick={() => go("/")}>Home</a>
+            <a onClick={() => go("/about")}>About</a>
+            <a onClick={() => go("/portfolio")}>Portfolio</a>
+            <a onClick={() => go("/promos")}>Promos</a>
+            <a onClick={() => go("/booking")}>Book Now</a>
+            <a onClick={() => go("/reviews")}>Reviews</a>
           </nav>
 
           <button
-            className={`mobile-menu-btn ${isMenuOpen ? "open" : ""}`}
-            onClick={toggleMenu}
-            aria-label="Toggle Menu"
+            className="mobile-menu-btn"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
-            {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
+            {isMenuOpen ? <X /> : <Menu />}
           </button>
         </div>
       </header>
 
-      {/* mobile fixed drawer */}
+      {/* MOBILE */}
       <nav className={`nav-menu ${isMenuOpen ? "active" : ""}`}>
-        <a
-          href="#home"
-          onClick={(e) => {
-            e.preventDefault();
-            scrollToSection("home");
-          }}
-        >
-          Home
-        </a>
-
-        <a
-          href="#about-us"
-          onClick={(e) => {
-            e.preventDefault();
-            scrollToSection("about-us");
-          }}
-        >
-          About Us
-        </a>
-
-        <a
-          href="#policies"
-          onClick={(e) => {
-            e.preventDefault();
-            scrollToSection("policies");
-          }}
-        >
-          Policies
-        </a>
-
-        <a
-          href="#portfolio"
-          onClick={(e) => {
-            e.preventDefault();
-            scrollToSection("portfolio");
-          }}
-        >
-          Portfolio
-        </a>
-
-        <a
-          href="#promos"
-          onClick={(e) => {
-            e.preventDefault();
-            scrollToSection("promos");
-          }}
-        >
-          Promos
-        </a>
-
-        <a
-          href="/booking"
-          onClick={(e) => {
-            e.preventDefault();
-            goToBookingPage();
-          }}
-        >
-          Book Now
-        </a>
-
-        <a
-          href="#reviews"
-          onClick={(e) => {
-            e.preventDefault();
-            scrollToSection("reviews");
-          }}
-        >
-          Reviews
-        </a>
+        <a onClick={() => go("/")}>Home</a>
+        <a onClick={() => go("/about")}>About</a>
+        <a onClick={() => go("/portfolio")}>Portfolio</a>
+        <a onClick={() => go("/promos")}>Promos</a>
+        <a onClick={() => go("/booking")}>Book Now</a>
+        <a onClick={() => go("/reviews")}>Reviews</a>
       </nav>
 
-      <div
-        className={`nav-overlay ${isMenuOpen ? "show" : ""}`}
-        onClick={closeMenu}
-      />
+      {isMenuOpen && (
+        <div className="nav-overlay" onClick={closeMenu} />
+      )}
     </>
   );
 };

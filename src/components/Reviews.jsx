@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, memo } from "react";
 import { createPortal } from "react-dom";
 import {
   FaChevronLeft,
@@ -16,37 +16,29 @@ import "../styles/review-section.css";
 import "slick-carousel/slick/slick-theme.css";
 import "slick-carousel/slick/slick.css";
 
-const NextArrow = ({ onClick }) => (
-  <button
-    className="reviews-slider-arrow next"
-    onClick={onClick}
-    aria-label="Next reviews"
-    type="button"
-  >
+/* =========================
+   STATIC COMPONENTS
+========================= */
+const NextArrow = memo(({ onClick }) => (
+  <button className="reviews-slider-arrow next" onClick={onClick} type="button">
     <FaChevronRight />
   </button>
-);
+));
 
-const PrevArrow = ({ onClick }) => (
-  <button
-    className="reviews-slider-arrow prev"
-    onClick={onClick}
-    aria-label="Previous reviews"
-    type="button"
-  >
+const PrevArrow = memo(({ onClick }) => (
+  <button className="reviews-slider-arrow prev" onClick={onClick} type="button">
     <FaChevronLeft />
   </button>
-);
+));
 
-const ReviewPreviewModal = ({ image, alt, onClose }) => {
+/* =========================
+   MODAL (MEMOIZED)
+========================= */
+const ReviewPreviewModal = memo(({ image, alt, onClose }) => {
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-
+    const handleKeyDown = (e) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", handleKeyDown);
     document.body.style.overflow = "hidden";
-
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "";
@@ -54,36 +46,87 @@ const ReviewPreviewModal = ({ image, alt, onClose }) => {
   }, [onClose]);
 
   return createPortal(
-    <div
-      className="review-preview-overlay"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Review image preview"
-    >
+    <div className="review-preview-overlay" onClick={onClose}>
       <div className="review-preview-box" onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          className="review-preview-close"
-          onClick={onClose}
-          aria-label="Close image preview"
-        >
+        <button className="review-preview-close" onClick={onClose}>
           <FaTimes />
         </button>
-
         <img src={image} alt={alt} />
       </div>
     </div>,
-    document.body,
+    document.body
   );
-};
+});
 
+/* =========================
+   STAR RENDERER (MEMO)
+========================= */
+const Stars = memo(({ rating = 0 }) => (
+  <>
+    {[...Array(5)].map((_, i) => (
+      <span key={i} className={`review-star ${i < rating ? "filled" : ""}`}>
+        <FaStar />
+      </span>
+    ))}
+  </>
+));
+
+/* =========================
+   REVIEW CARD (MEMOIZED)
+========================= */
+const ReviewCard = memo(({ review, onPreview }) => {
+  const customerName = review.customer_name?.trim() || "Client";
+  const avatarLabel = customerName.charAt(0).toUpperCase();
+
+  const formattedDate = review.created_at
+    ? new Date(review.created_at).toLocaleDateString()
+    : "Recently";
+
+  return (
+    <article className="review-card">
+      <div className="review-card-glow" />
+
+      <div className="review-top">
+        <div className="review-avatar">{avatarLabel}</div>
+
+        <div className="review-person">
+          <h3 className="review-name">{customerName}</h3>
+          <p className="review-date">{formattedDate}</p>
+        </div>
+
+        <div className="review-quote-badge">
+          <FaQuoteLeft />
+        </div>
+      </div>
+
+      <div className="review-rating">
+        <Stars rating={review.rating} />
+      </div>
+
+      <p className="review-comment">
+        {review.comment || "Lovely service and experience!"}
+      </p>
+
+      {review.image_url && (
+        <button
+          className="review-image"
+          onClick={() => onPreview(review.image_url, customerName)}
+        >
+          <img src={review.image_url} alt={`${customerName} review`} loading="lazy" />
+        </button>
+      )}
+    </article>
+  );
+});
+
+/* =========================
+   MAIN COMPONENT
+========================= */
 const Reviews = () => {
   const [page, setPage] = useState(1);
-  const [previewImage, setPreviewImage] = useState(null);
-  const [previewAlt, setPreviewAlt] = useState("Review preview");
+  const [preview, setPreview] = useState(null);
 
-  const { data, isLoading, isError, error, isFetching } = useQuery({
+  const { data, isLoading, isError, isFetching } = useQuery({
     queryKey: ["approvedReviews", page],
     queryFn: () => getApprovedReviews(page, 6),
     staleTime: 1000 * 60 * 5,
@@ -95,6 +138,14 @@ const Reviews = () => {
   const reviews = data?.data || [];
   const totalPages = data?.totalPages || 1;
 
+  /* Stable preview handlers */
+  const openPreview = useCallback((image, name) => {
+    setPreview({ src: image, alt: `${name}'s review image` });
+  }, []);
+
+  const closePreview = useCallback(() => setPreview(null), []);
+
+  /* Memoized slider settings */
   const sliderSettings = useMemo(
     () => ({
       autoplay: reviews.length > 1,
@@ -105,122 +156,17 @@ const Reviews = () => {
       speed: 500,
       slidesToShow: 1,
       slidesToScroll: 1,
-      adaptiveHeight: false,
       swipeToSlide: true,
       nextArrow: <NextArrow />,
       prevArrow: <PrevArrow />,
     }),
-    [reviews.length],
+    [reviews.length]
   );
-
-  if (isError) {
-    console.error("Failed to load reviews", error);
-  }
-
-  const openPreview = (image, customerName) => {
-    setPreviewImage(image);
-    setPreviewAlt(`${customerName}'s review image`);
-  };
-
-  const closePreview = () => {
-    setPreviewImage(null);
-    setPreviewAlt("Review preview");
-  };
-
-  const renderStars = (rating = 0) =>
-    [...Array(5)].map((_, i) => (
-      <span
-        key={i}
-        className={`review-star ${i < rating ? "filled" : ""}`}
-        aria-hidden="true"
-      >
-        <FaStar />
-      </span>
-    ));
-
-  const renderCard = (review) => {
-    const customerName = review.customer_name?.trim() || "Client";
-    const avatarLabel = customerName.charAt(0).toUpperCase();
-
-    const formattedDate = review.created_at
-      ? new Date(review.created_at).toLocaleDateString()
-      : "Recently";
-
-    return (
-      <article key={review.id} className="review-card">
-        <div className="review-card-glow" />
-
-        <div className="review-top">
-          <div className="review-avatar" aria-hidden="true">
-            {avatarLabel}
-          </div>
-
-          <div className="review-person">
-            <h3 className="review-name">{customerName}</h3>
-            <p className="review-date">{formattedDate}</p>
-          </div>
-
-          <div className="review-quote-badge" aria-hidden="true">
-            <FaQuoteLeft />
-          </div>
-        </div>
-
-        <div
-          className="review-rating"
-          aria-label={`${review.rating} out of 5 stars`}
-        >
-          {renderStars(review.rating)}
-        </div>
-
-        <p className="review-comment">
-          {review.comment || "Lovely service and experience!"}
-        </p>
-
-        {review.image_url && (
-          <button
-            type="button"
-            className="review-image"
-            onClick={() => openPreview(review.image_url, customerName)}
-            aria-label={`Open review image from ${customerName}`}
-          >
-            <img
-              src={review.image_url}
-              alt={`${customerName} review`}
-              loading="lazy"
-            />
-            <span className="review-image-overlay">
-              <FaRegImage />
-              View Photo
-            </span>
-          </button>
-        )}
-      </article>
-    );
-  };
 
   if (isLoading) {
     return (
-      <section className="reviews" id="reviews">
-        <div className="reviews-bg reviews-bg-1" />
-        <div className="reviews-bg reviews-bg-2" />
-
-        <div className="container reviews-shell">
-          <div className="reviews-heading">
-            <span className="reviews-kicker">Client Reviews</span>
-            <h2>What Clients Are Saying</h2>
-            <p>
-              Real feedback from clients who loved their nail sets, service, and
-              overall studio experience.
-            </p>
-          </div>
-
-          <div className="reviews-state">
-            <div className="reviews-state-card">
-              <span className="reviews-state-pill">Please wait</span>
-              <p className="loading-text">Loading reviews...</p>
-            </div>
-          </div>
-        </div>
+      <section className="reviews">
+        <div className="container"><p>Loading reviews...</p></div>
       </section>
     );
   }
@@ -228,80 +174,43 @@ const Reviews = () => {
   return (
     <>
       <section className="reviews" id="reviews">
-        <div className="reviews-bg reviews-bg-1" />
-        <div className="reviews-bg reviews-bg-2" />
-
         <div className="container reviews-shell">
           <div className="reviews-heading">
             <span className="reviews-kicker">Client Reviews</span>
             <h2>What Clients Are Saying</h2>
-            <p>
-              Real feedback from clients who shared their experience, service
-              satisfaction, and finished nail results.
-            </p>
           </div>
 
-          {isFetching && !isLoading && (
-            <div className="reviews-fetching">
-              <p className="loading-text">Loading new page...</p>
-            </div>
-          )}
+          {isFetching && <p className="loading-text">Loading new page...</p>}
 
           {isError ? (
-            <div className="reviews-state">
-              <div className="reviews-state-card">
-                <span className="reviews-state-pill">Something went wrong</span>
-                <p className="loading-text">Failed to load reviews.</p>
-              </div>
-            </div>
-          ) : reviews.length === 0 ? (
-            <div className="reviews-state">
-              <div className="reviews-state-card">
-                <span className="reviews-state-pill">No content yet</span>
-                <p className="loading-text">No reviews available.</p>
-              </div>
-            </div>
+            <p className="loading-text">Failed to load reviews.</p>
           ) : (
             <>
               <div className="reviews-grid desktop-only">
-                {reviews.map(renderCard)}
+                {reviews.map((r) => (
+                  <ReviewCard key={r.id} review={r} onPreview={openPreview} />
+                ))}
               </div>
 
               <div className="reviews-mobile mobile-only">
                 <Slider {...sliderSettings}>
-                  {reviews.map((review) => (
-                    <div key={review.id} className="reviews-slide">
-                      {renderCard(review)}
+                  {reviews.map((r) => (
+                    <div key={r.id}>
+                      <ReviewCard review={r} onPreview={openPreview} />
                     </div>
                   ))}
                 </Slider>
               </div>
 
               <div className="reviews-pagination">
-                <button
-                  type="button"
-                  className="pagination-btn"
-                  disabled={page === 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  <FaChevronLeft />
-                  <span>Prev</span>
+                <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
+                  <FaChevronLeft /> Prev
                 </button>
 
-                <div className="pagination-status">
-                  <span className="pagination-current">{page}</span>
-                  <span className="pagination-divider">/</span>
-                  <span className="pagination-total">{totalPages}</span>
-                </div>
+                <span>{page} / {totalPages}</span>
 
-                <button
-                  type="button"
-                  className="pagination-btn"
-                  disabled={page === totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  <span>Next</span>
-                  <FaChevronRight />
+                <button disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>
+                  Next <FaChevronRight />
                 </button>
               </div>
             </>
@@ -309,12 +218,8 @@ const Reviews = () => {
         </div>
       </section>
 
-      {previewImage && (
-        <ReviewPreviewModal
-          image={previewImage}
-          alt={previewAlt}
-          onClose={closePreview}
-        />
+      {preview && (
+        <ReviewPreviewModal image={preview.src} alt={preview.alt} onClose={closePreview} />
       )}
     </>
   );
