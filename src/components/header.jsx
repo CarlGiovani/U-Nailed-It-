@@ -77,10 +77,11 @@ const Header = () => {
             </a>
 
             <a
-              href="#about-us"
+              href="/about"
               onClick={(e) => {
                 e.preventDefault();
-                scrollToSection("about-us");
+                navigate("/about");
+                closeMenu();
               }}
             >
               About Us

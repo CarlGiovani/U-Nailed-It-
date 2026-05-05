@@ -1,4 +1,6 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+
+// PAGES / COMPONENTS
 import AboutUs from "./components/AboutUs";
 import Booking from "./components/Booking";
 import CancelBookingPage from "./components/cancelBooking";
@@ -10,9 +12,11 @@ import Portfolio from "./components/Portfolio";
 import Promos from "./components/Promos";
 import ReviewPage from "./components/ReviewPage";
 import Reviews from "./components/Reviews";
+
+// HOOK
 import useServices from "./hooks/useServices";
 
-// Import CSS files
+// CSS
 import "./styles/about-us.css";
 import "./styles/booking-system.css";
 import "./styles/check-booking.css";
@@ -23,13 +27,15 @@ import "./styles/hero.css";
 import "./styles/review-section.css";
 import "./styles/services-section.css";
 
+// =====================
+// HOME PAGE
+// =====================
 function HomePage() {
   return (
     <div className="App">
       <Header />
       <main>
         <Hero />
-        <AboutUs />
         <Policies />
         <Portfolio />
         <Promos />
@@ -40,6 +46,24 @@ function HomePage() {
   );
 }
 
+// =====================
+// ABOUT PAGE
+// =====================
+function AboutPage() {
+  return (
+    <div className="App">
+      <Header />
+      <main>
+        <AboutUs />
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+// =====================
+// BOOKING PAGE
+// =====================
 function BookingPage({ services }) {
   return (
     <div className="App">
@@ -52,6 +76,9 @@ function BookingPage({ services }) {
   );
 }
 
+// =====================
+// APP ROUTER
+// =====================
 function App() {
   const { services, loading, error } = useServices();
 
@@ -61,9 +88,19 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* HOME */}
         <Route path="/" element={<HomePage />} />
+
+        {/* ABOUT */}
+        <Route path="/about" element={<AboutPage />} />
+
+        {/* BOOKING */}
         <Route path="/booking" element={<BookingPage services={services} />} />
+
+        {/* REVIEW */}
         <Route path="/review" element={<ReviewPage />} />
+
+        {/* CANCEL BOOKING */}
         <Route path="/cancel" element={<CancelBookingPage />} />
         <Route path="/cancel-pending" element={<CancelBookingPage />} />
       </Routes>
