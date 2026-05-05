@@ -49,6 +49,18 @@
   z-index: 0;
   will-change: filter;
 }
+
+.about-glow {
+  animation: floatGlow 14s ease-in-out infinite;
+}
+
+.a2 {
+  animation-delay: 3s;
+}
+
+.a3 {
+  animation-delay: 6s;
+}
 .a1 {
   width: clamp(180px, 30vw, 320px);
   height: clamp(180px, 30vw, 320px);
@@ -144,6 +156,25 @@
 .card:hover {
   transform: translateY(-5px);
   box-shadow: var(--shadow-md);
+}
+
+.card:hover {
+  transform: translateY(-6px) scale(1.01);
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at top, rgba(255,192,219,0.25), transparent 60%);
+  opacity: 0;
+  transition: opacity .35s ease;
+  pointer-events: none;
+}
+
+.card:hover::after {
+  opacity: 1;
 }
 .founder-card {
   grid-row: span 2;
@@ -306,6 +337,7 @@
   box-shadow:
     0 0 0 4px rgba(255, 79, 163, 0.12),
     0 8px 18px rgba(255, 79, 163, 0.35);
+     animation: softPulse 3.5s ease-in-out infinite;
 }
 .journey-content {
   background: #fff;
@@ -476,10 +508,10 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.4s;
+   transition: transform .6s ease;
 }
 .studio-slide:hover img {
-  transform: scale(1.05);
+   transform: scale(1.08);
 }
 .studio-overlay {
   position: absolute;
@@ -711,6 +743,10 @@
   flex-wrap: wrap;
 }
 .btn-primary,
+.cta-inner {
+  background-size: 200% 200%;
+  animation: shimmer 12s linear infinite;
+}
 .btn-secondary {
   padding: 12px 20px;
   border-radius: 40px;
@@ -727,7 +763,7 @@
 }
 .btn-primary:hover {
   background: #b23e6f;
-  transform: translateY(-2px);
+ transform: translateY(-3px) scale(1.03);
 }
 .btn-secondary {
   background: transparent;
@@ -739,20 +775,27 @@
 }
 
 /* ========================================
-   REVEAL ANIMATION
+   REVEAL ANIMATION (UPGRADED)
 ======================================== */
+
 .reveal {
   opacity: 0;
-  transform: translateY(24px);
-  transition:
-    opacity 0.5s ease,
-    transform 0.5s ease;
-  will-change: transform, opacity;
+  transform: translateY(30px) scale(0.98);
+  transition: opacity 0.6s ease, transform 0.6s ease;
 }
+
 .reveal.show {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
 }
+
+/* stagger delays */
+.reveal:nth-child(1) { transition-delay: 0.05s; }
+.reveal:nth-child(2) { transition-delay: 0.1s; }
+.reveal:nth-child(3) { transition-delay: 0.15s; }
+.reveal:nth-child(4) { transition-delay: 0.2s; }
+.reveal:nth-child(5) { transition-delay: 0.25s; }
+.reveal:nth-child(6) { transition-delay: 0.3s; }
 
 /* ========================================
    RESPONSIVE BREAKPOINTS (Consolidated)
@@ -911,4 +954,60 @@
   .cta-buttons .btn-primary {
     width: auto;            /* prevent full-width */
   }
+}
+
+
+/* ========================================
+   GLOBAL ANIMATIONS
+======================================== */
+
+/* fade + slide up (used on scroll reveal) */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* gentle floating glow */
+@keyframes floatGlow {
+  0% { transform: translateY(0px) translateX(0px); }
+  50% { transform: translateY(-18px) translateX(8px); }
+  100% { transform: translateY(0px) translateX(0px); }
+}
+
+/* soft pulse */
+@keyframes softPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+/* slow gradient shimmer */
+@keyframes shimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+.social-pill:hover {
+  transform: translateY(-4px) scale(1.02);
+}
+.social-icon {
+  transition: transform .3s ease;
+}
+.social-pill:hover .social-icon {
+  transform: rotate(8deg) scale(1.08);
+}
+
+.slide img {
+  transition: transform .5s ease, filter .4s ease;
+}
+
+.slide:hover img {
+  transform: scale(1.06);
+  filter: brightness(1.05) saturate(1.05);
 }
