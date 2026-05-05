@@ -245,7 +245,7 @@ const Services = () => {
   });
 
   const updateCategoryMutation = useMutation({
-    mutationFn: ({ id, name  }) => updateCategory(id, name),
+    mutationFn: ({ id, payload }) => updateCategory(id, payload),
     onSuccess: invalidateServices,
   });
 
@@ -430,7 +430,7 @@ const Services = () => {
       if (modal.id) {
         await updateCategoryMutation.mutateAsync({
           id: modal.id,
-          payload: { name: modal.name.trim() },
+          payload: { name: modal.name },
         });
       } else {
         await createCategoryMutation.mutateAsync({
