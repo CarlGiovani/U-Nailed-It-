@@ -1,49 +1,41 @@
 /* =========================
-   POLICIES - LUXURY PINK STUDIO VERSION
+   POLICIES - LUXURY PINK STUDIO VERSION (OPTIMIZED)
 ========================= */
 
 .policies {
   position: relative;
   overflow: hidden;
   padding: 120px 0;
-  background:
-    radial-gradient(
-      circle at 10% 18%,
-      rgba(255, 155, 202, 0.2),
-      transparent 24%
-    ),
-    radial-gradient(
-      circle at 88% 14%,
-      rgba(255, 198, 224, 0.17),
-      transparent 22%
-    ),
-    radial-gradient(
-      circle at 82% 84%,
-      rgba(255, 224, 236, 0.24),
-      transparent 26%
-    ),
-    linear-gradient(
-      135deg,
-      #fff7fb 0%,
-      #fff0f6 22%,
-      #ffe7f0 48%,
-      #fff4f9 74%,
-      #fffdfd 100%
-    );
+  margin-top: -60px;
+  padding-top: 160px;
+  z-index: 1;
+
+  /* background image (base) */
+  background: url("../assets/images/STUDIO/studioImg3.jpg") center/cover
+    no-repeat;
 }
 
+/* soft overlay layer */
 .policies::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.24) 0%,
-    rgba(255, 255, 255, 0.05) 28%,
-    rgba(255, 255, 255, 0.13) 100%
-  );
+
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(16px);
+
+  border: 1px solid rgba(255, 255, 255, 0.18);
+
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
+
+/* =========================
+   BACKGROUND GLOWS
+========================= */
 
 .policies-bg-glow {
   position: absolute;
@@ -77,17 +69,27 @@
   background: rgba(255, 221, 235, 0.26);
 }
 
+/* =========================
+   PATTERN
+========================= */
+
 .policies-pattern {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.14;
+  opacity: 0.12;
+
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.44) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.28) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.2) 1px, transparent 1px);
+
   background-size: 42px 42px;
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.2), transparent 88%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.25), transparent 90%);
 }
+
+/* =========================
+   LAYOUT WRAPPER
+========================= */
 
 .policies-shell {
   position: relative;
@@ -111,12 +113,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+
   margin-bottom: 18px;
   padding: 10px 16px;
+
   border-radius: 999px;
   background: rgba(255, 247, 251, 0.9);
   border: 1px solid rgba(255, 194, 221, 0.64);
-  box-shadow: 0 14px 28px rgba(221, 110, 164, 0.12);
+
   color: #c55c8d;
   font-size: 0.76rem;
   font-weight: 800;
@@ -126,23 +130,23 @@
 
 .policies-header h2 {
   margin: 0 0 14px;
-  color: #351822;
+  color: #2b141d;
   font-size: clamp(2.2rem, 4vw, 3.9rem);
+  font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.03em;
-  font-weight: 800;
 }
 
 .policies-header p {
   margin: 0 auto;
   max-width: 720px;
-  color: rgba(53, 24, 34, 0.72);
+  color: black;
   font-size: 1rem;
-  line-height: 1.82;
+  line-height: 1.8;
 }
 
 /* =========================
-   STATE CARDS
+   STATE
 ========================= */
 
 .policies-state {
@@ -156,16 +160,15 @@
   max-width: 540px;
   width: 100%;
   text-align: center;
+
   padding: 28px 24px;
   border-radius: 28px;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.84) 0%,
-    rgba(255, 245, 249, 0.94) 100%
-  );
-  border: 1px solid rgba(255, 192, 220, 0.44);
+
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+
+  border: 1px solid rgba(255, 192, 220, 0.44);
+
   box-shadow:
     0 16px 36px rgba(221, 110, 164, 0.1),
     0 8px 18px rgba(0, 0, 0, 0.03);
@@ -175,10 +178,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+
   margin-bottom: 14px;
   padding: 8px 13px;
+
   border-radius: 999px;
   background: rgba(255, 205, 227, 0.3);
+
   color: #c65a8d;
   font-size: 0.74rem;
   font-weight: 800;
@@ -186,15 +192,8 @@
   text-transform: uppercase;
 }
 
-.loading-text {
-  margin: 0;
-  color: rgba(53, 24, 34, 0.74);
-  font-size: 1rem;
-  line-height: 1.72;
-}
-
 /* =========================
-   FEATURED POLICY
+   FEATURED
 ========================= */
 
 .policy-featured {
@@ -204,71 +203,37 @@
 .policy-featured-inner {
   position: relative;
   overflow: hidden;
+
   padding: 34px;
   border-radius: 32px;
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(255, 217, 233, 0.5),
-      transparent 28%
-    ),
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.88) 0%,
-      rgba(255, 244, 249, 0.96) 50%,
-      rgba(255, 238, 245, 0.98) 100%
-    );
+
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.9),
+    rgba(255, 245, 250, 0.95)
+  );
+
   border: 1px solid rgba(255, 191, 220, 0.5);
   backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+
   box-shadow:
     0 18px 42px rgba(221, 110, 164, 0.12),
     0 10px 24px rgba(0, 0, 0, 0.04);
 }
 
-.policy-featured-inner::after {
-  content: "";
-  position: absolute;
-  top: -60px;
-  right: -60px;
-  width: 180px;
-  height: 180px;
-  border-radius: 999px;
-  background: radial-gradient(
-    circle,
-    rgba(255, 194, 221, 0.42) 0%,
-    rgba(255, 194, 221, 0) 70%
-  );
-  pointer-events: none;
-}
-
-.policy-featured-badge-wrap {
-  margin-bottom: 18px;
-}
-
-.policy-badge-featured {
-  background: linear-gradient(135deg, #f9b1d1 0%, #ef81b2 100%);
-  color: #fff;
-  box-shadow: 0 12px 24px rgba(221, 110, 164, 0.18);
-}
-
 .policy-featured-title {
   margin: 0 0 14px;
-  color: #32151f;
+  color: #2b141d;
   font-size: clamp(1.55rem, 2.4vw, 2rem);
-  line-height: 1.2;
   font-weight: 800;
-  letter-spacing: -0.02em;
-  max-width: 760px;
+  line-height: 1.2;
 }
 
 .policy-featured-text {
   margin: 0;
-  max-width: 920px;
-  color: rgba(53, 24, 34, 0.74);
+  color: rgba(43, 20, 29, 0.72);
   font-size: 1rem;
   line-height: 1.85;
-  white-space: pre-line;
 }
 
 /* =========================
@@ -279,90 +244,53 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
-  align-items: stretch;
 }
 
 .policy-item {
   display: flex;
-  min-width: 0;
 }
 
 /* =========================
-   STANDARD CARDS
+   CARD
 ========================= */
 
 .policy-card {
-  position: relative;
   width: 100%;
-  min-height: 100%;
   padding: 26px;
   border-radius: 28px;
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(255, 220, 235, 0.34),
-      transparent 26%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.82) 0%,
-      rgba(255, 245, 249, 0.95) 100%
-    );
-  border: 1px solid rgba(255, 190, 219, 0.46);
+
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+
+  border: 1px solid rgba(255, 190, 219, 0.46);
+
   box-shadow:
     0 16px 36px rgba(221, 110, 164, 0.1),
     0 8px 18px rgba(0, 0, 0, 0.03);
+
   transition:
-    transform 0.24s ease-out,
-    box-shadow 0.24s ease-out,
-    border-color 0.24s ease-out;
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .policy-card:hover {
-  transform: translate3d(0, -4px, 0);
-  box-shadow:
-    0 22px 46px rgba(221, 110, 164, 0.14),
-    0 10px 22px rgba(0, 0, 0, 0.04);
-  border-color: rgba(237, 127, 179, 0.7);
-}
-
-.policy-card-top {
-  display: flex;
-  align-items: center;
-  margin-bottom: 18px;
-}
-
-.policy-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 7px 12px;
-  border-radius: 999px;
-  background: rgba(255, 202, 225, 0.34);
-  color: #c1588b;
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  transform: translateY(-4px);
+  box-shadow: 0 22px 46px rgba(221, 110, 164, 0.14);
 }
 
 .policy-title {
   margin: 0 0 12px;
-  color: #351822;
-  font-size: 1.24rem;
+  color: #2b141d;
+  font-size: 1.2rem;
   font-weight: 800;
-  line-height: 1.35;
-  letter-spacing: -0.01em;
+  text-align: center;
 }
 
 .policy-content {
   margin: 0;
-  color: rgba(53, 24, 34, 0.74);
+  color: rgba(43, 20, 29, 0.72);
   font-size: 0.97rem;
-  line-height: 1.82;
-  white-space: pre-line;
+  line-height: 1.8;
 }
 
 /* =========================
@@ -371,134 +299,39 @@
 
 .reveal {
   opacity: 0;
-  transform: translate3d(0, 16px, 0);
-  transition:
-    opacity 0.4s ease-out,
-    transform 0.4s ease-out;
-  will-change: transform, opacity;
+  transform: translateY(16px);
+  transition: 0.4s ease;
 }
 
 .reveal.show {
   opacity: 1;
-  transform: translate3d(0, 0, 0);
+  transform: translateY(0);
 }
 
 /* =========================
    RESPONSIVE
 ========================= */
 
-@media (max-width: 1200px) {
-  .policies-shell {
-    width: min(100% - 32px, 1200px);
-  }
-}
-
 @media (max-width: 900px) {
   .policies {
     padding: 92px 0;
-  }
-
-  .policies-shell {
-    width: min(100% - 24px, 100%);
-  }
-
-  .policies-header {
-    margin-bottom: 44px;
+    text-align: center;
   }
 
   .policies-list {
     grid-template-columns: 1fr;
-    gap: 18px;
-  }
-
-  .policy-featured-inner {
-    padding: 26px;
-    border-radius: 24px;
-  }
-}
-
-@media (max-width: 768px) {
-  .policies {
-    padding: 74px 0;
-  }
-
-  .policy-card {
-    padding: 22px;
-    border-radius: 22px;
-  }
-
-  .policy-title {
-    font-size: 1.12rem;
-  }
-
-  .policy-content,
-  .policy-featured-text {
-    font-size: 0.94rem;
-    line-height: 1.74;
-  }
-
-  .policy-featured-title {
-    font-size: 1.35rem;
-  }
-
-  .policy-state-card {
-    padding: 22px 18px;
-    border-radius: 22px;
   }
 }
 
 @media (max-width: 576px) {
   .policies {
     padding: 60px 0;
-  }
-
-  .policies-header h2 {
-    font-size: 1.95rem;
-    line-height: 1.14;
-  }
-
-  .policies-header p {
-    font-size: 0.94rem;
+    text-align: center;
   }
 
   .policy-card,
   .policy-featured-inner {
     padding: 18px;
     border-radius: 18px;
-  }
-
-  .policy-badge {
-    font-size: 0.68rem;
-    padding: 6px 10px;
-  }
-
-  .policy-title {
-    font-size: 1rem;
-  }
-
-  .policy-content,
-  .policy-featured-text {
-    font-size: 0.92rem;
-  }
-
-  .policy-featured-title {
-    font-size: 1.18rem;
-  }
-
-  .policy-state-card {
-    padding: 18px 16px;
-    border-radius: 18px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal,
-  .reveal.show,
-  .policy-card,
-  .policy-card:hover,
-  .policy-featured-inner {
-    transition: none !important;
-    animation: none !important;
-    transform: none !important;
   }
 }
