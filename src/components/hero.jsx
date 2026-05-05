@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 const Hero = () => {
   const navigate = useNavigate();
 
-  const studioAddress = "68 San Guillermo Ave, Pasig, 1600 Metro Manila, Philippines";
+  const studioAddress =
+    "H338+Q9V, 118 San Guillermo Ave, Pasig, 1600 Metro Manila";
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(studioAddress)}`;
 
   return (
@@ -28,7 +29,10 @@ const Hero = () => {
 
           {/* BUTTON + LOCATION LINK – side by side, left aligned */}
           <div className="hero-actions">
-            <button className="btn-primary" onClick={() => navigate("/booking")}>
+            <button
+              className="btn-primary"
+              onClick={() => navigate("/booking")}
+            >
               Book Now
             </button>
             <a
