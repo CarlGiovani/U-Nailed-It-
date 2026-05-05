@@ -1,3 +1,4 @@
+/* ========== HERO SECTION – DESKTOP: LEFT ALIGNED, MOBILE: CENTERED ========== */
 .hero {
   position: relative;
   min-height: 100vh;
@@ -5,32 +6,41 @@
   align-items: center;
   padding: 80px 0;
   overflow: hidden;
-  background: url("../assets/images/hero-background.png") center/cover no-repeat;
-  will-change: transform;
+  background: url("../assets/images/STUDIO/studioImg1.jpg") center/cover
+    no-repeat;
 }
 
 .hero-overlay {
   position: absolute;
   inset: 0;
+
   background: linear-gradient(
     to right,
-    rgba(255, 255, 255, 0.9),
-    rgba(255, 255, 255, 0.6),
-    rgba(255, 255, 255, 0.2)
+    rgba(0, 0, 0, 0.65),
+    rgba(0, 0, 0, 0.35),
+    rgba(0, 0, 0, 0.1)
   );
 }
+ 
 
-/* GRID */
+/* GRID – desktop: left aligned */
 .hero-grid {
   position: relative;
   z-index: 2;
-  display: grid;
-  grid-template-columns: 1.3fr 0.7fr;
-  gap: 50px;
-  align-items: center;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 40px;
+  display: flex;
+  justify-content: flex-start;
 }
 
-/* LEFT */
+.hero-left {
+  max-width: 620px;
+  width: 100%;
+  text-align: left; /* desktop: left */
+}
+
+/* BADGE */
 .hero-badge {
   display: inline-block;
   padding: 6px 12px;
@@ -38,35 +48,41 @@
   background: #fff;
   font-size: 12px;
   font-weight: 600;
+  margin-bottom: 20px;
 }
 
+/* TITLE */
 .hero-title {
   font-size: clamp(2.5rem, 5vw, 4rem);
   font-weight: 900;
   line-height: 1.1;
-  margin-top: 15px;
+  color: rgba(255, 255, 255, 0.95);
 }
-
 .hero-title span {
   display: block;
   color: #d4af37;
 }
 
+/* SUBTEXT */
 .hero-subtext {
-  margin-top: 14px;
-  max-width: 500px;
-  color: rgba(0, 0, 0, 0.65);
+  margin-top: 16px;
+  max-width: 540px;
+color: white;
   line-height: 1.6;
 }
 
-/* CTA */
+/* BUTTON + LOCATION LINK – DESKTOP: side by side, left aligned */
 .hero-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 20px;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
   flex-wrap: wrap;
+  margin: 32px 0 24px;
+  justify-content: flex-start;
 }
 
+/* PRIMARY BUTTON */
 .btn-primary {
   background: linear-gradient(90deg, #ff69b4, #d4af37);
   color: white;
@@ -75,233 +91,105 @@
   font-weight: 700;
   border: none;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(255, 105, 180, 0.3);
 }
 
-.btn-secondary {
-  padding: 12px 20px;
-  border-radius: 999px;
-  border: 1px solid #ff69b4;
-  color: #ff69b4;
+/* LOCATION LINK (WITH PIN) */
+.location-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #c6588b;
   text-decoration: none;
+  background: rgba(255, 245, 250, 0.9);
+  padding: 10px 20px;
+  border-radius: 40px;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 192, 219, 0.6);
+}
+.location-link:hover {
+  background: #ffecf3;
+  transform: translateY(-2px);
+  color: #b23e6f;
+}
+.pin-icon {
+  font-size: 1.2rem;
 }
 
-/* TRUST */
+/* TRUST BADGES – desktop: left aligned */
 .hero-trust {
   display: flex;
-  gap: 10px;
+  justify-content: flex-start;
+  gap: 24px;
   flex-wrap: wrap;
-  margin-top: 20px;
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.hero-urgency {
-  margin-top: 10px;
-  font-size: 12px;
-  color: #b76e79;
-}
-
-/* CARD */
-.hero-card {
-  background: white;
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.hero-card-header {
-  padding: 12px;
-}
-
-.hero-card-header h3 {
-  margin: 0;
-  font-size: 15px;
-}
-
-.hero-card-header p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  opacity: 0.6;
-}
-
-.hero-map {
-  width: 100%;
-  height: 280px;
-  border: 0;
-}
-
-/* MAP ACTIONS */
-.hero-map-actions {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px;
-  font-size: 12px;
-}
-
-.hero-map-actions a {
-  color: #ff69b4;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-/* BOOK BUTTON */
-.hero-book-btn {
-  width: 100%;
-  padding: 14px;
-  border: none;
-  background: linear-gradient(90deg, #ff69b4, #d4af37);
+  margin: 20px 0 12px;
+  font-size: 13px;
+  opacity: 0.75;
   color: white;
-  font-weight: 700;
-  cursor: pointer;
+}
+.hero-urgency {
+  font-size: 13px;
+color: white;
+  font-weight: 500;
 }
 
-/* MOBILE */
-.mobile-cta {
-  display: none;
-}
-
-@media (max-width: 900px) {
-  .hero {
-    padding: 70px 0 110px;
-  }
-
+/* ========== MOBILE (≤768px) – CENTERED LAHAT ========== */
+@media (max-width: 768px) {
   .hero-grid {
-    grid-template-columns: 1fr;
+    justify-content: center; /* i-center ang grid */
+    padding: 0 24px;
     text-align: center;
-    gap: 28px;
   }
-
-  /* BADGE */
+  .hero-left {
+    text-align: center; /* center text */
+    max-width: 100%;
+  }
   .hero-badge {
-    margin: 0 auto;
+    margin-left: auto;
+    margin-right: auto;
   }
-
-  /* TITLE */
-  .hero-title {
-    font-size: 2.2rem;
-    line-height: 1.15;
-    margin-top: 14px;
-  }
-
   .hero-subtext {
-    font-size: 14px;
-    max-width: 90%;
-    margin: 12px auto 0;
+    margin-left: auto;
+    margin-right: auto;
   }
-
-  /* CTA STACK (IMPORTANT UX FIX) */
   .hero-actions {
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    margin-top: 18px;
+    flex-direction: column; /* magkapatong ang buttons */
+    align-items: center; /* i-center ang mga button */
+    justify-content: center;
+    gap: 12px;
   }
-
   .btn-primary,
-  .btn-secondary {
-    width: 90%;
-    max-width: 320px;
-    text-align: center;
+  .location-link {
+    width: auto; /* hindi full width, pero centered */
+    min-width: 200px;
+    justify-content: center;
   }
-
-  /* TRUST BECOMES CHIP STYLE */
   .hero-trust {
-    justify-content: center;
-    gap: 8px;
-    font-size: 11px;
-    opacity: 0.75;
+    justify-content: center; /* center ang trust badges */
+    gap: 16px;
   }
-
-  /* CARD SPACING */
-  .hero-card {
-    width: 92%;
-    margin: 0 auto;
-    border-radius: 16px;
-  }
-
-  .hero-map {
-    height: 220px;
-  }
-
-  /* MAP ACTIONS BECOME BUTTONS (BETTER UX) */
-  .hero-map-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    padding: 12px;
-  }
-
-  .hero-map-actions a {
-    flex: 1;
+  .hero-urgency {
     text-align: center;
-    padding: 8px 10px;
-    border-radius: 10px;
-    background: rgba(255, 105, 180, 0.08);
   }
+}
 
-  /* BOOK BUTTON BIGGER (PRIMARY ACTION ON MOBILE) */
-  .hero-book-btn {
-    padding: 16px;
-    font-size: 15px;
+/* Extra small devices (≤480px) – mas maliliit na screen, full width buttons para madali pindutin */
+@media (max-width: 480px) {
+  .hero {
+    padding: 60px 0 80px;
   }
-
-  /* MOBILE CTA IMPROVED (VERY IMPORTANT) */
-  .mobile-cta {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(8px);
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
-    z-index: 100;
-  }
-
-  .mobile-cta button {
+  .hero-actions {
     width: 100%;
-    padding: 16px;
-    border-radius: 14px;
-    font-size: 15px;
-    font-weight: 800;
   }
-}
-/* MAP WRAPPER = better visual framing */
-.hero-map-wrapper {
-  position: relative;
-  overflow: hidden;
-}
-
-/* MAP */
-.hero-map {
-  width: 100%;
-  height: 300px;
-  border: 0;
-  display: block;
-  filter: contrast(1.05) saturate(1.1);
-}
-
-/* MAP ACTIONS = pill style (modern booking apps) */
-.hero-map-actions {
-  display: flex;
-  gap: 10px;
-  padding: 10px;
-  justify-content: space-between;
-}
-
-.hero-map-actions a {
-  flex: 1;
-  text-align: center;
-  padding: 10px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: none;
-  background: rgba(255, 105, 180, 0.08);
-  color: #ff69b4;
-  transition: 0.2s ease;
-}
-
-.hero-map-actions a:hover {
-  background: rgba(255, 105, 180, 0.15);
+  .btn-primary,
+  .location-link {
+    width: 100%; /* full width sa sobrang liit na screen */
+    max-width: 280px; /* pero hindi sobrang lawak, centered pa rin */
+  }
 }

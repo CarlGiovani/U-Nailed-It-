@@ -890,3 +890,25 @@
     opacity: 0.8;
   }
 }
+
+/* Center the button and prevent full-width stretching on mobile */
+.cta-buttons {
+  justify-content: center;
+}
+
+.cta-buttons .btn-primary {
+  display: inline-flex;   /* or inline-block */
+  width: auto;            /* ensures button takes content width */
+  margin: 0 auto;         /* extra safety for centering */
+}
+
+/* On mobile (max-width: 480px), override the flex-direction column */
+@media (max-width: 480px) {
+  .cta-buttons {
+    flex-direction: row;    /* keep buttons in a row */
+    justify-content: center;
+  }
+  .cta-buttons .btn-primary {
+    width: auto;            /* prevent full-width */
+  }
+}

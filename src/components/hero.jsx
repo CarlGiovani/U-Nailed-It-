@@ -1,12 +1,10 @@
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const Hero = () => {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    document.documentElement.classList.add("hero-ready");
-  }, []);
+  const studioAddress = "68 San Guillermo Ave, Pasig, 1600 Metro Manila, Philippines";
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(studioAddress)}`;
 
   return (
     <section className="hero">
@@ -14,7 +12,7 @@ const Hero = () => {
       <div className="hero-overlay" />
 
       <div className="container hero-grid">
-        {/* LEFT */}
+        {/* LEFT CONTENT – aligned to the left, no centering */}
         <div className="hero-left">
           <div className="hero-badge">✨ Trusted Nail Studio Nearby</div>
 
@@ -28,13 +26,19 @@ const Hero = () => {
             comfort, and confidence.
           </p>
 
+          {/* BUTTON + LOCATION LINK – side by side, left aligned */}
           <div className="hero-actions">
-            <button
-              className="btn-primary"
-              onClick={() => navigate("/booking")}
-            >
+            <button className="btn-primary" onClick={() => navigate("/booking")}>
               Book Now
             </button>
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="location-link"
+            >
+              <span className="pin-icon">📍</span> View Location
+            </a>
           </div>
 
           <div className="hero-trust">
@@ -45,55 +49,6 @@ const Hero = () => {
 
           <div className="hero-urgency">Limited slots available daily</div>
         </div>
-
-        {/* RIGHT */}
-        <div className="hero-right">
-          <div className="hero-card">
-            <div className="hero-card-header">
-              <h3>Studio Location</h3>
-              <p>68 San Guillermo Ave, Pasig City</p>
-            </div>
-
-            <div className="hero-map-wrapper">
-              <iframe
-                className="hero-map"
-                title="Studio Location"
-                loading="lazy"
-                src="https://www.google.com/maps?q=68+San+Guillermo+Ave,+Pasig,+1600+Metro+Manila,+Philippines&output=embed&hl=en&z=18&t=k"
-              />
-            </div>
-
-            {/* FLOATING MAP ACTIONS (better UX) */}
-            <div className="hero-map-actions">
-              <a
-                href="https://www.google.com/maps/search/?api=1&query=68+San+Guillermo+Ave,+Pasig,+1600+Metro+Manila,+Philippines"
-                target="_blank"
-                rel="noreferrer"
-              >
-                View Map
-              </a>
-
-              <a
-                href="https://www.google.com/maps/dir/?api=1&destination=68+San+Guillermo+Ave,+Pasig,+1600+Metro+Manila,+Philippines"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Get Directions
-              </a>
-            </div>
-
-            <button
-              onClick={() => navigate("/booking")}
-              className="hero-book-btn"
-            >
-              Book This Location
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="mobile-cta">
-        <button onClick={() => navigate("/booking")}>Book Appointment</button>
       </div>
     </section>
   );
