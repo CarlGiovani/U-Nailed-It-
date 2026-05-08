@@ -27,6 +27,7 @@ const authUrl = oauth2Client.generateAuthUrl({
 console.log("\n👉 OPEN THIS URL:\n", authUrl);
 open(authUrl);
 
+
 // Step 3: callback route (THIS FIXES YOUR ERROR)
 app.get("/oauth2callback", async (req, res) => {
   const code = req.query.code;

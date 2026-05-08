@@ -16,9 +16,6 @@ const formatDisplayTime = (bookingTime) => {
   return bookingTime;
 };
 
-
-
-
 /* =========================
    SHARED EMAIL UI
 ========================= */
@@ -36,7 +33,14 @@ const emailShell = ({
   buttonText = "View Booking",
   buttonLink = "#",
   footerText = "Please arrive on time. We look forward to seeing you.",
-}) => `
+  studioAddress = "H338+Q9V, 118 San Guillermo Ave, Pasig, 1600 Metro Manila",
+}) => {
+
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+    studioAddress
+  )}`;
+
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -93,15 +97,7 @@ const emailShell = ({
                 <span style="color:#111111;"> ${titleDark}</span> ${emoji}
               </h2>
 
-              <div
-                style="
-                  width:70px;
-                  height:4px;
-                  background:#C9A24D;
-                  border-radius:10px;
-                  margin:0 0 18px 0;
-                "
-              ></div>
+              <div style="width:70px;height:4px;background:#C9A24D;border-radius:10px;margin:0 0 18px 0;"></div>
 
               <p style="margin:0 0 12px 0; font-size:15px;">
                 Hi <b>${name}</b>,
@@ -112,70 +108,37 @@ const emailShell = ({
               </p>
 
               <!-- Booking Details -->
-              <table
-                width="100%"
-                cellpadding="0"
-                cellspacing="0"
-                style="
-                  background:#FFF6F8;
-                  border-left:4px solid #E8A1B2;
-                  border-radius:14px;
-                  margin:0 0 22px 0;
-                  border:1px solid #f1d7dd;
-                "
-              >
+              <table width="100%" style="background:#FFF6F8;border-left:4px solid #E8A1B2;border-radius:14px;margin:0 0 22px 0;">
                 <tr>
                   <td style="padding:18px;">
                     <p style="margin:0 0 10px 0; font-size:13px; letter-spacing:1px; color:#7a4a57;">
                       APPOINTMENT DETAILS
                     </p>
-                    <p style="margin:6px 0; font-size:14px;"><b>Service:</b> ${service}</p>
-                    <p style="margin:6px 0; font-size:14px;"><b>Date:</b> ${date}</p>
-                    <p style="margin:6px 0; font-size:14px;"><b>Time:</b> ${time}</p>
+                    <p style="margin:6px 0;"><b>Service:</b> ${service}</p>
+                    <p style="margin:6px 0;"><b>Date:</b> ${date}</p>
+                    <p style="margin:6px 0;"><b>Time:</b> ${time}</p>
                   </td>
                 </tr>
               </table>
 
-              <!-- Note Box -->
-              <table
-                width="100%"
-                cellpadding="0"
-                cellspacing="0"
-                style="
-                  background:#fafafa;
-                  border-left:4px solid #C9A24D;
-                  border-radius:12px;
-                  margin-bottom:26px;
-                  border:1px solid #eee;
-                "
-              >
+              <!-- Note -->
+              <table width="100%" style="background:#fafafa;border-left:4px solid #C9A24D;border-radius:12px;margin-bottom:26px;">
                 <tr>
-                  <td style="padding:16px; font-size:14px; color:#333; line-height:1.6;">
+                  <td style="padding:16px;font-size:14px;color:#333;">
                     ${note}
                   </td>
                 </tr>
               </table>
 
-              <!-- CTA -->
+              <!-- CTA BUTTON -->
               ${
                 buttonLink && buttonLink !== "#"
                   ? `
-              <table align="center" cellpadding="0" cellspacing="0">
+              <table align="center">
                 <tr>
-                  <td style="background:#C9A24D; border-radius:30px;">
-                    <a
-                      href="${buttonLink}"
-                      style="
-                        display:inline-block;
-                        padding:14px 30px;
-                        color:#111111;
-                        font-size:14px;
-                        font-weight:bold;
-                        letter-spacing:0.6px;
-                        text-decoration:none;
-                        font-family:Arial, Helvetica, sans-serif;
-                      "
-                    >
+                  <td style="background:#C9A24D;border-radius:30px;">
+                    <a href="${buttonLink}"
+                      style="display:inline-block;padding:14px 30px;color:#111;text-decoration:none;font-weight:bold;">
                       ${buttonText}
                     </a>
                   </td>
@@ -185,7 +148,19 @@ const emailShell = ({
                   : ""
               }
 
-              <p style="margin:22px 0 0 0; font-size:13px; color:#666; line-height:1.7;">
+              <!-- 📍 NEW LOCATION BUTTON -->
+              <table align="center" style="margin-top:12px;">
+                <tr>
+                  <td style="background:#E8A1B2;border-radius:30px;">
+                    <a href="${mapsUrl}"
+                      style="display:inline-block;padding:14px 30px;color:#111;text-decoration:none;font-weight:bold;">
+                      📍 View Location
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:22px 0 0 0;font-size:13px;color:#666;">
                 ${footerText}
               </p>
             </td>
@@ -193,16 +168,7 @@ const emailShell = ({
 
           <!-- Footer -->
           <tr>
-            <td
-              align="center"
-              style="
-                padding:18px;
-                font-size:11px;
-                color:#888;
-                background:#fafafa;
-                font-family:Arial, Helvetica, sans-serif;
-              "
-            >
+            <td align="center" style="padding:18px;font-size:11px;color:#888;background:#fafafa;">
               © ${new Date().getFullYear()} UNailedit by Alliyah. All rights reserved.
             </td>
           </tr>
@@ -213,10 +179,7 @@ const emailShell = ({
 </body>
 </html>
 `;
-
-
-
-
+};
 
 /* =========================
    EMAIL TEMPLATES
@@ -238,7 +201,7 @@ const bookingReminder24hTemplate = ({
     service,
     date,
     time,
-    note: "Please make sure to arrive on time and prepare ahead for your scheduled service.",
+    note: "Please arrive on time.",
     footerText: "We’re excited to see you soon at UNailedit.",
   });
 
@@ -259,21 +222,9 @@ const bookingReminderSameDayTemplate = ({
     service,
     date,
     time,
-    note: "We’re looking forward to seeing you today. Kindly arrive a few minutes early for a smoother experience.",
+    note: "Please arrive a few minutes early.",
     footerText: "Thank you for choosing UNailedit.",
   });
-
-
-
-
-
-
-
-
-
-
-
-
 
 /* =========================
    24H REMINDER
@@ -284,8 +235,7 @@ export const send24hReminders = async () => {
 
   const { data: bookings, error } = await supabase
     .from("bookings")
-    .select(
-      `
+    .select(`
       id,
       customer_name,
       customer_email,
@@ -293,12 +243,8 @@ export const send24hReminders = async () => {
       booking_time,
       reminder_24h_sent_at,
       status,
-      services (
-        id,
-        name
-      )
-    `,
-    )
+      services (id, name)
+    `)
     .eq("status", "approved")
     .is("reminder_24h_sent_at", null)
     .not("customer_email", "is", null);
@@ -310,7 +256,7 @@ export const send24hReminders = async () => {
   for (const booking of bookings || []) {
     const appointmentDateTime = toManilaDateTime(
       booking.booking_date,
-      booking.booking_time,
+      booking.booking_time
     );
 
     if (appointmentDateTime > now && appointmentDateTime <= next24h) {
@@ -325,14 +271,10 @@ export const send24hReminders = async () => {
         }),
       });
 
-      const { error: updateError } = await supabase
+      await supabase
         .from("bookings")
-        .update({
-          reminder_24h_sent_at: new Date().toISOString(),
-        })
+        .update({ reminder_24h_sent_at: new Date().toISOString() })
         .eq("id", booking.id);
-
-      if (updateError) throw new Error(updateError.message);
 
       sentCount++;
     }
@@ -356,8 +298,7 @@ export const sendSameDayReminders = async () => {
 
   const { data: bookings, error } = await supabase
     .from("bookings")
-    .select(
-      `
+    .select(`
       id,
       customer_name,
       customer_email,
@@ -365,12 +306,8 @@ export const sendSameDayReminders = async () => {
       booking_time,
       reminder_same_day_sent_at,
       status,
-      services (
-        id,
-        name
-      )
-    `,
-    )
+      services (id, name)
+    `)
     .eq("status", "approved")
     .eq("booking_date", todayInManila)
     .is("reminder_same_day_sent_at", null)
@@ -392,14 +329,10 @@ export const sendSameDayReminders = async () => {
       }),
     });
 
-    const { error: updateError } = await supabase
+    await supabase
       .from("bookings")
-      .update({
-        reminder_same_day_sent_at: new Date().toISOString(),
-      })
+      .update({ reminder_same_day_sent_at: new Date().toISOString() })
       .eq("id", booking.id);
-
-    if (updateError) throw new Error(updateError.message);
 
     sentCount++;
   }

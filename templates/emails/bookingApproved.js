@@ -4,7 +4,17 @@ export const bookingApprovedTemplate = ({
   date = "",
   time = "",
   cancelLink = "#",
-}) => `
+  studioAddress = "H338+Q9V, 118 San Guillermo Ave, Pasig, 1600 Metro Manila",
+  supportEmail = "yourbusiness@gmail.com",
+}) => {
+
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+    studioAddress
+  )}`;
+
+  const mailTo = `mailto:${supportEmail}?subject=Booking Inquiry&body=Hello! I have a question about my booking.`;
+
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -59,6 +69,23 @@ export const bookingApprovedTemplate = ({
                 </tr>
               </table>
 
+              <!-- ACTION BUTTONS -->
+              <div style="text-align:center; margin:25px 0;">
+
+                <!-- MAPS BUTTON -->
+                <a href="${mapsUrl}"
+                  style="display:inline-block; background:#E8A1B2; padding:12px 20px; border-radius:30px; text-decoration:none; color:#111; font-weight:bold; margin:5px;">
+                  📍 View Location
+                </a>
+
+                <!-- EMAIL BUTTON -->
+                <a href="${mailTo}"
+                  style="display:inline-block; background:#C9A24D; padding:12px 20px; border-radius:30px; text-decoration:none; color:#111; font-weight:bold; margin:5px;">
+                  ✉️ Contact Us
+                </a>
+
+              </div>
+
               <!-- RULE -->
               <table width="100%" style="background:#fafafa; border-left:4px solid #C9A24D; border-radius:12px;">
                 <tr>
@@ -73,9 +100,10 @@ export const bookingApprovedTemplate = ({
                 We look forward to serving you!
               </p>
 
-              <!-- BUTTON -->
+              <!-- CANCEL BUTTON -->
               <div style="text-align:center; margin-top:20px;">
-                <a href="${cancelLink}" style="background:#C9A24D; padding:14px 30px; border-radius:30px; text-decoration:none; color:#111; font-weight:bold;">
+                <a href="${cancelLink}"
+                  style="background:#C9A24D; padding:14px 30px; border-radius:30px; text-decoration:none; color:#111; font-weight:bold;">
                   Cancel My Booking
                 </a>
               </div>
@@ -105,3 +133,4 @@ export const bookingApprovedTemplate = ({
 </body>
 </html>
 `;
+};
