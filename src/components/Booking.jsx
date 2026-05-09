@@ -1345,38 +1345,46 @@ const handleProceedToPayment = useCallback(async () => {
     });
 
   } catch (error) {
-    console.error("Booking creation error:", error);
+  console.error("Booking creation error:", error);
 
-    const backendData = error.response?.data;
+  const backendData = error.response?.data;
 
-    const formattedErrors = Array.isArray(backendData?.errors)
-      ? backendData.errors
-          .map((err) => {
-            if (typeof err === "string") return err;
-            return err.msg || err.message || JSON.stringify(err);
-          })
-          .join("\n")
-      : null;
+  const formattedErrors = Array.isArray(backendData?.errors)
+    ? backendData.errors
+        .map((err) => {
+          if (typeof err === "string") return err;
+          return err.msg || err.message || JSON.stringify(err);
+        })
+        .join("\n")
+    : null;
 
-    const rawErrorMessage =
-      backendData?.error ||
-      formattedErrors ||
-      error.message ||
-      "Something went wrong while creating your booking.";
+  const rawErrorMessage =
+    backendData?.error ||
+    formattedErrors ||
+    error.message ||
+    "Something went wrong while creating your booking.";
 
-    const normalizedErrorMessage = String(rawErrorMessage).toLowerCase();
+  const normalizedErrorMessage = String(rawErrorMessage).toLowerCase();
 
-    const errorMessage =
-      normalizedErrorMessage.includes("restricted") ||
-      normalizedErrorMessage.includes("blocked")
-        ? "This email is currently restricted from making new bookings. Please contact support if you believe this is a mistake."
-        : rawErrorMessage;
+  const errorMessage =
+    normalizedErrorMessage.includes("restricted") ||
+    normalizedErrorMessage.includes("blocked")
+      ? "This email is currently restricted from making new bookings. Please contact support if you believe this is a mistake."
+      : rawErrorMessage;
 
-    showAlert("Unable to Continue", errorMessage, null, "danger");
+  showAlert(
+    "Unable to Continue",
+    errorMessage,
+    () => {
+      hardRestart();
+      setStep(1);
+    },
+    "danger",
+  );
 
-  } finally {
-    setLoading(false);
-  }
+} finally {
+  setLoading(false);
+}
 }, [
   validateForm,
   hasOpenedTerms,
@@ -1385,6 +1393,7 @@ const handleProceedToPayment = useCallback(async () => {
   formData,
   showAlert,
   loading,
+  hardRestart,
 ]);
 
   /* ===============================
