@@ -233,6 +233,20 @@ export const send24hReminders = async () => {
   const now = new Date();
   const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
+  const todayManila = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+
+  const tomorrowManila = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(next24h);
+
   const { data: bookings, error } = await supabase
     .from("bookings")
     .select(`
@@ -247,7 +261,9 @@ export const send24hReminders = async () => {
     `)
     .eq("status", "approved")
     .is("reminder_24h_sent_at", null)
-    .not("customer_email", "is", null);
+    .not("customer_email", "is", null)
+    .gte("booking_date", todayManila)
+    .lte("booking_date", tomorrowManila); // ← IMPORTANT SEMICOLON
 
   if (error) throw new Error(error.message);
 
