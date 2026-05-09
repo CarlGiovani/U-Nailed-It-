@@ -268,10 +268,14 @@ export const createBookingWithCustomer = async (bookingData) => {
     return refreshedBooking;
   }
 
-  // 2) Create new booking if none found
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+// 2) Create new booking if none found
+const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
-  const { data: booking, error: bookingError } = await supabaseAdmin
+let booking;
+let bookingError;
+
+try {
+  const result = await supabaseAdmin
     .from("bookings")
     .insert([
       {
@@ -324,11 +328,26 @@ export const createBookingWithCustomer = async (bookingData) => {
           )
         )
       )
-    `,
+      `,
     )
     .single();
 
-  if (bookingError) throw new Error(bookingError.message);
+  booking = result.data;
+  bookingError = result.error;
+} catch (err) {
+  bookingError = err;
+}
+
+if (bookingError) {
+  // DOUBLE BOOKING CATCHER
+  if (bookingError.message?.includes("duplicate key value")) {
+    throw new Error(
+      "Sorry 😔 kakakuha lang ng ibang customer ng time slot na ito. Please choose another time."
+    );
+  }
+
+  throw new Error(bookingError.message);
+}
 
   if (service_category_id && service_variant_id && booking.services) {
     booking.services.service_categories = booking.services.service_categories
@@ -345,6 +364,9 @@ export const createBookingWithCustomer = async (bookingData) => {
 
   return booking;
 };
+
+
+
 /* ==========================================
    STEP 3: Confirm booking using payment_intent
    - Atomic lock (first come first serve)
