@@ -7,6 +7,48 @@ export const bookingApprovedTemplate = ({
   studioAddress = "H338+Q9V, 118 San Guillermo Ave, Pasig, 1600 Metro Manila",
   supportEmail = "unaileditbyalliyah@gmail.com",
 }) => {
+  // ----- PHILIPPINES DATE & TIME NORMALIZATION -----
+  const formatPhilippineDate = (dateString) => {
+    if (!dateString) return "";
+    try {
+      const parsedDate = new Date(dateString);
+      if (isNaN(parsedDate.getTime())) return dateString;
+      return parsedDate.toLocaleDateString("en-PH", {
+        timeZone: "Asia/Manila",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatPhilippineTime = (timeString) => {
+    if (!timeString) return "";
+    try {
+      let date;
+      if (timeString.includes("T") || timeString.includes(":")) {
+        date = new Date(`2000-01-01T${timeString}`);
+        if (isNaN(date.getTime())) date = new Date(timeString);
+      } else {
+        date = new Date(`2000-01-01T${timeString}`);
+      }
+      if (isNaN(date.getTime())) return timeString;
+      return date.toLocaleTimeString("en-PH", {
+        timeZone: "Asia/Manila",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch {
+      return timeString;
+    }
+  };
+
+  const normalizedDate = formatPhilippineDate(date);
+  const normalizedTime = formatPhilippineTime(time);
+
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
     studioAddress,
   )}`;
@@ -86,24 +128,24 @@ export const bookingApprovedTemplate = ({
                       </tr>
                       <tr>
                         <td style="padding-bottom: 12px; vertical-align: top;"><strong style="color:#2C241A;">📅 Date</strong></td>
-                        <td style="padding-bottom: 12px; color: #3F3325;">${date || "TBD — check your booking portal"}</td>
+                        <td style="padding-bottom: 12px; color: #3F3325;">${normalizedDate || "TBD — check your booking portal"}</td>
                       </tr>
                       <tr>
                         <td style="padding-bottom: 12px; vertical-align: top;"><strong style="color:#2C241A;">⏰ Time</strong></td>
-                        <td style="padding-bottom: 12px; color: #3F3325;">${time || "To be arranged"} <span style="font-size: 13px; color:#A1866B;">(local time)</span></td>
+                        <td style="padding-bottom: 12px; color: #3F3325;">${normalizedTime || "To be arranged"} <span style="font-size: 13px; color:#A1866B;">(PHT)</span></td>
                       </tr>
                       <tr>
                         <td style="padding-bottom: 8px; vertical-align: top;"><strong style="color:#2C241A;">📍 Studio</strong></td>
                         <td style="padding-bottom: 8px; color: #3F3325; line-height: 1.4;">${studioAddress}</td>
-                      </tr>
+                       </tr>
                       <tr>
                         <td style="vertical-align: top;"><strong style="color:#2C241A;">🔖 Status</strong></td>
                         <td><span style="background:#E8F0E7; color:#2F6B2F; padding: 4px 10px; border-radius: 30px; font-size: 13px; font-weight: 600;">✓ Approved</span></td>
                       </tr>
                     </table>
-                  </td>
-                </tr>
-              </table>
+                   </td>
+                 </tr>
+               </table>
 
               <!-- ACTION BUTTON GROUP (Map + Contact) with better spacing -->
               <div style="text-align: center; margin: 20px 0 28px 0;">
@@ -117,9 +159,9 @@ export const bookingApprovedTemplate = ({
                   <td style="padding: 18px 22px;">
                     <p style="margin: 0 0 6px 0; font-weight: 800; color: #C17B8C;">📌 Cancellation policy</p>
                     <p style="margin: 0; font-size: 14px; line-height: 1.45; color: #4A3F32;">⏰ You may cancel your booking up to <strong>24 hours before your scheduled appointment</strong>. If your appointment is already within 24 hours, cancellation is no longer allowed.</p>
-                  </td>
-                </tr>
-              青少年
+                   </td>
+                 </tr>
+               </table>
 
               <!-- CANCEL BUTTON (standalone, easy to find) -->
               <div style="text-align: center; margin: 8px 0 20px;">
@@ -132,21 +174,21 @@ export const bookingApprovedTemplate = ({
               <p style="font-size: 13px; color: #967A62; border-top: 1px solid #F0E4DA; padding-top: 18px; margin-top: 18px;">If the cancel button doesn't work, copy this link into your browser:</p>
               <p style="font-size: 12px; word-break: break-all; background: #F9F3ED; padding: 8px 12px; border-radius: 12px; color: #735F4B;">${cancelLink}</p>
 
-            </td>
-          </tr>
+             </td>
+           </tr>
 
           <!-- FOOTER (Streamlined) -->
           <tr>
             <td align="center" style="background: #FEFAF5; padding: 18px 20px; border-top: 1px solid #F1E6DC;">
               <p style="margin: 0; font-size: 12px; color: #A88E76;">© ${new Date().getFullYear()} UNailedit by Alliyah — Glow with confidence ✨</p>
               <p style="margin: 8px 0 0 0; font-size: 11px; color: #BCA48C;">Need changes? Reply to this email or reach us at ${supportEmail}</p>
-            </td>
-          </tr>
-        </table>
+             </td>
+           </tr>
+         </table>
 
-      </td>
-    </tr>
-  </table>
+       </td>
+     </tr>
+   </table>
 </body>
 </html>
 `;
