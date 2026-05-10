@@ -15,30 +15,30 @@ const Footer = memo(() => {
   /* Memoized static data → prevents re-creation every render */
   const socialLinks = useMemo(
     () => [
-      { icon: FaFacebookF, href: "#", label: "Facebook" },
-      { icon: FaInstagram, href: "#", label: "Instagram" },
-      { icon: FaTiktok, href: "#", label: "TikTok" },
+      { icon: FaFacebookF, href: "https://web.facebook.com/UNAILEDitbyAlliyah", label: "Facebook" },
+      { icon: FaInstagram, href: "https://www.instagram.com/unaileditbyalliyah", label: "Instagram" },
+      { icon: FaTiktok, href: "https://www.tiktok.com/@unaileditbyalliyah", label: "TikTok" },
     ],
     []
   );
 
   const quickLinks = useMemo(
     () => [
-      { name: "Home", href: "#home" },
-      { name: "Services", href: "#services" },
-      { name: "Book Appointment", href: "#booking" },
-      { name: "Reviews", href: "#reviews" },
-      { name: "Check My Booking", href: "#check-booking" },
+      { name: "Home", href: "/" },
+      { name: "About Us", href: "/about" },
+      { name: "Book Appointment", href: "/booking" },
+      { name: "Reviews", href: "/reviews" },
+      { name: "Portfolio", href: "/portfolio" },
     ],
     []
   );
 
   const contactInfo = useMemo(
     () => [
-      { icon: FaMapMarkerAlt, text: "123 Beauty Street, Makati City, Philippines" },
+      { icon: FaMapMarkerAlt, text: "H338+Q9V, 118 San Guillermo Ave, Pasig, 1600 Metro Manila" },
       { icon: FaPhoneAlt, text: "(02) 8123-4567" },
-      { icon: FaEnvelope, text: "hello@unailedit.com" },
-      { icon: FaClock, text: "Open Tue-Sun: 10:00 AM - 7:00 PM" },
+      { icon: FaEnvelope, text: "unaileditbyalliyah@gmail.com" },
+      { icon: FaClock, text: "Open depends on slot" },
     ],
     []
   );
@@ -113,8 +113,10 @@ const Footer = memo(() => {
         <div className="footer-bottom">
           <p>&copy; {currentYear} UNailedIt. All rights reserved.</p>
           <div className="footer-bottom-links">
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms & Conditions</a>
+            <a href="/policies">Terms & Conditions & Policies</a>
+          </div>
+          <div>
+            <p>Designed and Developed by SeanSaints</p>
           </div>
         </div>
       </div>

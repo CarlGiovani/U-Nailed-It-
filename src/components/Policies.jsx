@@ -88,7 +88,7 @@ const Policies = () => {
           ref={(el) => (itemsRef.current[0] = el)}
         >
           <span className="policies-kicker">Policies</span>
-          <h2>Studio Policies</h2>
+          <h2> Our Policies</h2>
           <p>
             Please read these important reminders before booking your
             appointment. These policies help protect your schedule, your

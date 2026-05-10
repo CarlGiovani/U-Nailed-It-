@@ -25,6 +25,7 @@ const Booking = lazy(() => import("./components/Booking"));
 const Reviews = lazy(() => import("./components/Reviews"));
 const ReviewPage = lazy(() => import("./components/ReviewPage"));
 const CancelBookingPage = lazy(() => import("./components/cancelBooking"));
+import Policies from "./components/Policies";
 
 /* ===============================
    GLOBAL PAGE WRAPPER (REUSABLE LAYOUT)
@@ -145,6 +146,15 @@ function App() {
             element={
               <PageLayout>
                 <ReviewPage />
+              </PageLayout>
+            }
+          />
+
+                  <Route
+            path="/policies"
+            element={
+              <PageLayout>
+                <Policies />
               </PageLayout>
             }
           />
