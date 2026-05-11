@@ -398,6 +398,34 @@
   font-weight: 800;
 }
 
+/* Empty / warning messages inside slot panel */
+.empty-slots-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 32px 20px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 24px;
+  text-align: center;
+  color: var(--gray-600);
+  font-weight: 500;
+  margin: 16px 0 8px;
+  border: 1px dashed var(--gray-300);
+}
+
+.empty-slots-message.warning {
+  background: var(--danger-soft);
+  color: #b42318;
+  border-color: rgba(231, 76, 60, 0.3);
+}
+
+.empty-slots-message .btn-outline {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+}
+
 .blocked-badge {
   display: inline-flex;
   align-items: center;
@@ -545,6 +573,15 @@
   box-shadow: var(--shadow-md);
 }
 
+/* Non‑interactive slots (booked / past) */
+.slot-card.slot-non-interactive {
+  cursor: not-allowed;
+}
+
+.slot-time {
+  display: inline-block;
+}
+
 .slot-available {
   background: linear-gradient(145deg, #effcf4, #dcf7e7);
   color: #1e8f4a;
@@ -573,6 +610,7 @@
   opacity: 0.78;
 }
 
+/* Badge variants */
 .slot-badge {
   position: absolute;
   top: 6px;
@@ -587,8 +625,16 @@
   line-height: 1;
 }
 
-.past-badge {
+.slot-badge.booked-badge {
+  background: #e74c3c;
+}
+
+.slot-badge.past-badge {
   background: #7f8c8d;
+}
+
+.slot-badge.blocked-badge {
+  background: #e67e22;
 }
 
 /* ======================================================
@@ -732,6 +778,32 @@
   box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
 }
 
+/* Extra input styling for edit time field */
+.time-input-field {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1.5px solid var(--gray-300);
+  font-size: 0.95rem;
+  transition: all var(--transition);
+}
+
+.time-input-field:focus {
+  border-color: var(--gold-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+}
+
+.error-text {
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--danger-soft);
+  color: #c0392b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 .checkbox-row {
   display: flex;
   align-items: center;
@@ -856,6 +928,28 @@
 
 .bg-pink-soft {
   background: var(--pink-soft);
+}
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.82);
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.modal-busy {
+  opacity: 0.82;
+}
+
+.modal-busy .warning-text,
+.modal-busy h3,
+.modal-busy p,
+.modal-busy label {
+  transition: opacity 0.2s ease;
 }
 
 /* ======================================================
@@ -1090,28 +1184,6 @@
   .generator-inline-actions {
     grid-template-columns: 1fr;
   }
-}
-
-.btn-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.82);
-  border-top: 2px solid transparent;
-  border-radius: 50%;
-  display: inline-block;
-  animation: spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
-.modal-busy {
-  opacity: 0.82;
-}
-
-.modal-busy .warning-text,
-.modal-busy h3,
-.modal-busy p,
-.modal-busy label {
-  transition: opacity 0.2s ease;
 }
 
 /* ======================================================

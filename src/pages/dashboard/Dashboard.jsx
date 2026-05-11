@@ -122,7 +122,7 @@ const Dashboard = () => {
   });
 
   // 👉 DITO MO ILAGAY
-  console.log("📦 snapshotRaw:", snapshotRaw);
+  ("📦 snapshotRaw:", snapshotRaw);
 
   const stats = useMemo(
     () => ({
@@ -340,7 +340,7 @@ const Dashboard = () => {
         () => invalidateDashboard(),
       )
       .subscribe((status) => {
-        console.log("Dashboard realtime status:", status);
+        ("Dashboard realtime status:", status);
       });
 
     realtimeChannelRef.current = channel;
@@ -1777,7 +1777,7 @@ const Dashboard = () => {
                         <tbody>
                           {dayGroup.bookings.map((b) => (
                             <tr key={b.id}>
-                              <td>{b.formatted_time }</td>
+                              <td>{b.formatted_time}</td>
                               <td>
                                 {b.customer?.full_name || "—"}
                                 <br />
@@ -1963,7 +1963,7 @@ const Dashboard = () => {
                         paginatedBookings.map((booking) => (
                           <tr key={booking.id}>
                             <td>{booking.id}</td>
-                            <td>{booking.customer_name|| "N/A"}</td>
+                            <td>{booking.customer_name || "N/A"}</td>
                             <td>{booking.services?.name || "N/A"}</td>
                             <td>
                               <span className={getStatusClass(booking.status)}>
@@ -2213,7 +2213,8 @@ const Dashboard = () => {
               >
                 {actionLoadingEmail ? "Blocking..." : "Confirm Block"}
               </button>
-            </div>z
+            </div>
+            z
           </div>
         </div>
       )}

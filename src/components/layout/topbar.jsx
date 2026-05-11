@@ -5,11 +5,11 @@ import {
   FaBell,
   FaBullhorn,
   FaCalendarAlt,
+  FaEnvelopeOpenText,
   FaStar,
+  FaTimes,
   FaTrash,
   FaUserCircle,
-  FaTimes,
-  FaEnvelopeOpenText,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -276,7 +276,7 @@ const Topbar = ({ setMobileOpen }) => {
         },
       )
       .subscribe((status) => {
-        console.log("Notifications realtime status:", status);
+        ("Notifications realtime status:", status);
       });
 
     realtimeChannelRef.current = channel;
@@ -535,7 +535,9 @@ const Topbar = ({ setMobileOpen }) => {
           <div className="icon-wrapper" ref={notifRef}>
             <FaBell onClick={handleToggleNotifications} />
 
-            {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
+            {notifCount > 0 && (
+              <span className="notif-badge">{notifCount}</span>
+            )}
 
             {notifOpen && (
               <div className="notifications-dropdown">
@@ -703,10 +705,7 @@ const Topbar = ({ setMobileOpen }) => {
 
       {monthlyReportModal.open && (
         <div className="report-modal-overlay" onClick={closeMonthlyReportModal}>
-          <div
-            className="report-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="report-modal" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               className="report-modal-close"

@@ -128,15 +128,21 @@ const AdminCalendar = () => {
     onConfirm: null,
   });
 
-  const servicesQueryKey = ["admin-calendar-services"];
-  const bookingsQueryKey = ["admin-calendar-bookings"];
-  const monthQueryKey = [
-    "admin-calendar-month",
-    selectedService,
-    currentDate.getFullYear(),
-    currentDate.getMonth() + 1,
-  ];
-  const slotsQueryKey = ["admin-calendar-slots", selectedService, selectedDate];
+  const servicesQueryKey = useMemo(() => ["admin-calendar-services"], []);
+  const bookingsQueryKey = useMemo(() => ["admin-calendar-bookings"], []);
+  const monthQueryKey = useMemo(
+    () => [
+      "admin-calendar-month",
+      selectedService,
+      currentDate.getFullYear(),
+      currentDate.getMonth() + 1,
+    ],
+    [selectedService, currentDate],
+  );
+  const slotsQueryKey = useMemo(
+    () => ["admin-calendar-slots", selectedService, selectedDate],
+    [selectedService, selectedDate],
+  );
 
   /* ================= QUERIES ================= */
   const { data: services = [], isLoading: servicesLoading } = useQuery({
@@ -251,8 +257,8 @@ const AdminCalendar = () => {
 
       return {
         title: day.available
-          ? `Available (${count} booked)`
-          : `Blocked (${count} booked)`,
+          ? `${count} booking${count !== 1 ? "s" : ""}`
+          : `🚫 Blocked (${count})`,
         start: new Date(day.date),
         end: new Date(day.date),
         allDay: true,
@@ -346,7 +352,7 @@ const AdminCalendar = () => {
       queryKey: bookingsQueryKey,
       exact: true,
     });
-  }, [queryClient]);
+  }, [queryClient, bookingsQueryKey]);
 
   const refreshMonth = useCallback(async () => {
     await queryClient.invalidateQueries({
@@ -487,17 +493,16 @@ const AdminCalendar = () => {
   );
 
   const isDuplicateTime = useCallback(
-    (time) => {
+    (time, excludeSlotId = null) => {
       const normalizedTarget = normalizeTime(time);
 
       return slots.some((slot) => {
-        return (
-          normalizeTime(slot.time) === normalizedTarget &&
-          slot.id !== selectedSlot?.id
-        );
+        const timeMatches = normalizeTime(slot.time) === normalizedTarget;
+        const isSameSlot = excludeSlotId !== null && slot.id === excludeSlotId;
+        return timeMatches && !isSameSlot;
       });
     },
-    [slots, selectedSlot],
+    [slots],
   );
 
   /* ================= DAY STYLE ================= */
@@ -601,11 +606,13 @@ const AdminCalendar = () => {
   const toggleSlot = useCallback(
     async (slot) => {
       if (isSlotBooked(slot)) {
-        return toast.error("Cannot modify. Slot has active booking.");
+        toast.error("Cannot modify. Slot has active booking.");
+        return;
       }
 
       if (isPastTime(slot)) {
-        return toast.error("Cannot modify past time.");
+        toast.error("Cannot modify past time.");
+        return;
       }
 
       try {
@@ -618,7 +625,9 @@ const AdminCalendar = () => {
 
         await refreshCalendarData(selectedDate);
         setShowSlotModal(false);
-        toast.success("Slot updated.");
+        toast.success(
+          `Slot ${slot.is_available ? "blocked" : "unblocked"} successfully.`,
+        );
       } catch (err) {
         console.error("Error toggling slot:", err);
         toast.error(err?.response?.data?.error || "Failed to update slot.");
@@ -639,16 +648,18 @@ const AdminCalendar = () => {
     if (!selectedSlot) return;
 
     if (isSlotBooked(selectedSlot)) {
-      return toast.error("Cannot delete. Slot has active booking.");
+      toast.error("Cannot delete. Slot has active booking.");
+      return;
     }
 
     if (isPastTime(selectedSlot)) {
-      return toast.error("Cannot delete past slot.");
+      toast.error("Cannot delete past slot.");
+      return;
     }
 
     openConfirmModal({
       title: "Delete Slot",
-      message: `Are you sure you want to delete the slot at ${formatTime12h(selectedSlot.time)}?`,
+      message: `Are you sure you want to delete the slot at ${formatTime12h(selectedSlot.time)}? This action cannot be undone.`,
       confirmText: "Delete",
       cancelText: "Cancel",
       variant: "danger",
@@ -659,7 +670,7 @@ const AdminCalendar = () => {
           await refreshCalendarData(selectedDate);
           setShowSlotModal(false);
           closeConfirmModal();
-          toast.success("Slot deleted.");
+          toast.success("Slot deleted successfully.");
         } catch (err) {
           console.error("Error deleting slot:", err);
           toast.error(err?.response?.data?.error || "Failed to delete slot.");
@@ -685,7 +696,7 @@ const AdminCalendar = () => {
 
     openConfirmModal({
       title: "Block Day",
-      message: `Are you sure you want to block all slots for ${selectedDate}?`,
+      message: `Are you sure you want to block all slots for ${selectedDate}? Customers will not be able to book on this day.`,
       confirmText: "Block Day",
       cancelText: "Cancel",
       variant: "danger",
@@ -695,7 +706,7 @@ const AdminCalendar = () => {
           await blockDayMutation.mutateAsync(selectedDate);
           await refreshCalendarData(selectedDate);
           closeConfirmModal();
-          toast.success("Day blocked.");
+          toast.success("Day blocked successfully.");
         } catch (err) {
           console.error("Error blocking day:", err);
           toast.error(err?.response?.data?.error || "Failed to block day.");
@@ -717,7 +728,7 @@ const AdminCalendar = () => {
 
     openConfirmModal({
       title: "Unblock Day",
-      message: `Are you sure you want to unblock ${selectedDate}?`,
+      message: `Are you sure you want to unblock ${selectedDate}? Slots will become available based on existing schedules.`,
       confirmText: "Unblock Day",
       cancelText: "Cancel",
       variant: "success",
@@ -727,7 +738,7 @@ const AdminCalendar = () => {
           await unblockDayMutation.mutateAsync(selectedDate);
           await refreshCalendarData(selectedDate);
           closeConfirmModal();
-          toast.success("Day unblocked.");
+          toast.success("Day unblocked successfully.");
         } catch (err) {
           console.error("Error unblocking day:", err);
           toast.error(err?.response?.data?.error || "Failed to unblock day.");
@@ -772,7 +783,9 @@ const AdminCalendar = () => {
         setShowGenerator(false);
         setTimeInputs([""]);
         closeConfirmModal();
-        toast.success("Slots generated!");
+        toast.success(
+          `Slots generated successfully for ${rangeStart} ${finalEnd !== rangeStart ? `to ${finalEnd}` : ""}!`,
+        );
       } catch (err) {
         console.error("Error generating slots:", err);
         toast.error(err?.response?.data?.error || "Failed to generate slots.");
@@ -791,18 +804,21 @@ const AdminCalendar = () => {
 
   const handleGenerate = useCallback(async () => {
     if (isBlocked) {
-      return toast.error("Cannot generate. Day is blocked.");
+      toast.error("Cannot generate slots. This day is blocked.");
+      return;
     }
 
     const times = timeInputs.map((time) => normalizeTime(time)).filter(Boolean);
 
     if (!times.length) {
-      return toast.error("Enter times.");
+      toast.error("Please enter at least one time slot.");
+      return;
     }
 
     const uniqueTimes = [...new Set(times)];
     if (uniqueTimes.length !== times.length) {
-      return toast.error("Duplicate times are not allowed.");
+      toast.error("Duplicate times are not allowed.");
+      return;
     }
 
     let finalEnd;
@@ -816,11 +832,10 @@ const AdminCalendar = () => {
     if (!weeklyRecurring && slots.length > 0) {
       openConfirmModal({
         title: "Overwrite Existing Slots",
-        message:
-          "Slots already exist for this date. Do you want to continue generating new slots?",
-        confirmText: "Continue",
+        message: `Slots already exist for ${rangeStart}. Generating new slots will replace existing ones. Do you want to continue?`,
+        confirmText: "Yes, Overwrite",
         cancelText: "Cancel",
-        variant: "primary",
+        variant: "danger",
         onConfirm: async () => {
           await submitGenerateSlots(uniqueTimes, finalEnd);
         },
@@ -840,21 +855,105 @@ const AdminCalendar = () => {
     submitGenerateSlots,
   ]);
 
+  /* ================= HELPER FOR SLOT MODAL ================= */
+  const handleEditTimeChange = (e) => {
+    const newTime = e.target.value;
+    setEditedTime(newTime);
+
+    if (!newTime) {
+      setEditError("Please select a time.");
+      return;
+    }
+
+    if (isDuplicateTime(newTime, selectedSlot?.id)) {
+      setEditError("A slot with this time already exists for this day.");
+      return;
+    }
+
+    if (isTimeGloballyBooked(selectedDate, newTime)) {
+      setEditError(
+        "This time is already booked by a customer and cannot be used.",
+      );
+      return;
+    }
+
+    const isPast = (() => {
+      const slotDateTime = buildSlotDateTime(selectedDate, newTime);
+      return slotDateTime ? slotDateTime < new Date() : false;
+    })();
+
+    if (isPast) {
+      setEditError("Cannot set slot to a past time.");
+      return;
+    }
+
+    setEditError("");
+  };
+
+  const handleSaveEditedTime = async () => {
+    const normalizedEditedTime = normalizeTime(editedTime);
+
+    if (!normalizedEditedTime) {
+      toast.error("Please enter a valid time.");
+      return;
+    }
+
+    if (isDuplicateTime(normalizedEditedTime, selectedSlot?.id)) {
+      toast.error("A slot with this time already exists for this day.");
+      return;
+    }
+
+    if (isTimeGloballyBooked(selectedDate, normalizedEditedTime)) {
+      toast.error("This time is already booked and cannot be used.");
+      return;
+    }
+
+    const isPast = (() => {
+      const slotDateTime = buildSlotDateTime(
+        selectedDate,
+        normalizedEditedTime,
+      );
+      return slotDateTime ? slotDateTime < new Date() : false;
+    })();
+
+    if (isPast) {
+      toast.error("Cannot move slot to a past time.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await updateSlotMutation.mutateAsync({
+        id: selectedSlot.id,
+        payload: { time: normalizedEditedTime },
+      });
+      await refreshCalendarData(selectedDate);
+      setEditMode(false);
+      setShowSlotModal(false);
+      toast.success("Slot time updated successfully!");
+    } catch (err) {
+      console.error("Error updating slot:", err);
+      toast.error(err?.response?.data?.error || "Failed to update slot time.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AdminLayout>
-      <Toaster position="top-right" />
+      <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
 
       <div className="calendar-container">
         <div className="calendar-header card">
           <div>
-            <h1>Calendar Management</h1>
+            <h1>📅 Calendar Management</h1>
             <p className="subtitle">
-              Manage availability, slots and recurring schedules
+              Manage availability, slots, and recurring schedules
             </p>
           </div>
 
           <div className="service-select">
-            <label>Service</label>
+            <label>Select Service</label>
             <select
               value={selectedService || ""}
               onChange={(e) => setSelectedService(Number(e.target.value))}
@@ -877,11 +976,19 @@ const AdminCalendar = () => {
             views={[Views.MONTH, Views.WEEK]}
             selectable
             date={currentDate}
-            style={{ height: "100%" }}
+            style={{ height: "100%", minHeight: "650px" }}
             onSelectSlot={handleSelectSlot}
             onNavigate={setCurrentDate}
             dayPropGetter={dayPropGetter}
             longPressThreshold={10}
+            popup
+            messages={{
+              next: "▶",
+              previous: "◀",
+              today: "Today",
+              month: "Month",
+              week: "Week",
+            }}
           />
         </div>
 
@@ -889,10 +996,12 @@ const AdminCalendar = () => {
           <div className="card slot-panel">
             <div className="slot-header">
               <div>
-                <h3>Slots for {selectedDate}</h3>
-                {isBlocked && (
-                  <span className="blocked-badge">Day Blocked</span>
-                )}
+                <h3>
+                  📆 Slots for {selectedDate}
+                  {isBlocked && (
+                    <span className="blocked-badge">Day Blocked</span>
+                  )}
+                </h3>
               </div>
 
               <div className="calendar-actions">
@@ -902,7 +1011,7 @@ const AdminCalendar = () => {
                     setTimeInputs([""]);
                     setShowGenerator(true);
                   }}
-                  disabled={loading}
+                  disabled={loading || isBlocked}
                 >
                   {loading ? (
                     <>
@@ -910,7 +1019,7 @@ const AdminCalendar = () => {
                       Processing...
                     </>
                   ) : (
-                    "Create Slots"
+                    "✨ Create Slots"
                   )}
                 </button>
 
@@ -925,7 +1034,7 @@ const AdminCalendar = () => {
                       Processing...
                     </>
                   ) : (
-                    "Bulk Block Day"
+                    "🚫 Block Day"
                   )}
                 </button>
 
@@ -940,7 +1049,7 @@ const AdminCalendar = () => {
                       Processing...
                     </>
                   ) : (
-                    "Bulk Unblock"
+                    "✅ Unblock Day"
                   )}
                 </button>
               </div>
@@ -948,6 +1057,28 @@ const AdminCalendar = () => {
 
             {(loading || slotsLoading || bookingsLoading) && (
               <div className="loading-spinner"></div>
+            )}
+
+            {!slotsLoading && slots.length === 0 && !isBlocked && (
+              <div className="empty-slots-message">
+                <span>🕒 No slots available for this day.</span>
+                <button
+                  className="btn-outline"
+                  onClick={() => {
+                    setTimeInputs([""]);
+                    setShowGenerator(true);
+                  }}
+                  style={{ marginLeft: "12px", padding: "6px 12px" }}
+                >
+                  Create Slots
+                </button>
+              </div>
+            )}
+
+            {isBlocked && slots.length === 0 && (
+              <div className="empty-slots-message warning">
+                ⚠️ This day is blocked. Unblock it to manage slots.
+              </div>
             )}
 
             <div className="slot-grid">
@@ -959,6 +1090,14 @@ const AdminCalendar = () => {
 
                 const booked = meta.booked;
                 const past = meta.past;
+                const isInteractive = !booked && !past && !loading;
+
+                let tooltipText = "";
+                if (booked) tooltipText = "🔒 This slot is already booked";
+                else if (past) tooltipText = "⏰ This time has already passed";
+                else if (!slot.is_available)
+                  tooltipText = "🚫 This slot is blocked";
+                else tooltipText = "Click to manage this slot";
 
                 return (
                   <div
@@ -967,22 +1106,33 @@ const AdminCalendar = () => {
                       slot.is_available ? "slot-available" : "slot-blocked"
                     } ${booked ? "slot-booked" : ""} ${
                       past ? "slot-past" : ""
-                    }`}
+                    } ${!isInteractive ? "slot-non-interactive" : ""}`}
                     onClick={() => {
                       if (booked || past || loading) return;
-
                       setEditMode(false);
                       setEditedTime("");
                       setEditError("");
                       setSelectedSlot(slot);
                       setShowSlotModal(true);
                     }}
+                    title={tooltipText}
+                    role="button"
+                    aria-disabled={!isInteractive}
+                    tabIndex={isInteractive ? 0 : -1}
                   >
-                    <span>{formatTime12h(slot.time)}</span>
+                    <span className="slot-time">
+                      {formatTime12h(slot.time)}
+                      {!slot.is_available && !booked && !past && " 🔒"}
+                    </span>
 
-                    {booked && <div className="slot-badge">BOOKED</div>}
+                    {booked && (
+                      <div className="slot-badge booked-badge">BOOKED</div>
+                    )}
                     {past && !booked && (
                       <div className="slot-badge past-badge">PAST</div>
+                    )}
+                    {!slot.is_available && !booked && !past && (
+                      <div className="slot-badge blocked-badge">BLOCKED</div>
                     )}
                   </div>
                 );
@@ -995,18 +1145,20 @@ const AdminCalendar = () => {
           <div className="modal-overlay">
             <div className={`slot-modal ${loading ? "modal-busy" : ""}`}>
               <h3>
-                {editMode ? "Edit Slot" : formatTime12h(selectedSlot.time)}
+                {editMode
+                  ? "✏️ Edit Slot"
+                  : `🕒 ${formatTime12h(selectedSlot.time)}`}
               </h3>
 
               {isSlotBooked(selectedSlot) && (
                 <div className="warning-text">
-                  This slot has an active booking.
+                  🔒 This slot has an active booking and cannot be modified.
                 </div>
               )}
 
-              {isPastTime(selectedSlot) && (
+              {isPastTime(selectedSlot) && !isSlotBooked(selectedSlot) && (
                 <div className="warning-text">
-                  This time has already passed.
+                  ⏰ This time has already passed and cannot be modified.
                 </div>
               )}
 
@@ -1016,21 +1168,10 @@ const AdminCalendar = () => {
                     type="time"
                     value={editedTime}
                     disabled={loading}
-                    onChange={(e) => {
-                      const newTime = e.target.value;
-                      setEditedTime(newTime);
-
-                      if (!newTime) {
-                        setEditError("Please select a time.");
-                      } else if (isDuplicateTime(newTime)) {
-                        setEditError("Time already exists for this day.");
-                      } else {
-                        setEditError("");
-                      }
-                    }}
+                    onChange={handleEditTimeChange}
+                    className="time-input-field"
                   />
-
-                  {editError && <div className="warning-text">{editError}</div>}
+                  {editError && <div className="error-text">{editError}</div>}
                 </>
               )}
 
@@ -1045,6 +1186,7 @@ const AdminCalendar = () => {
                   onClick={() => {
                     setEditedTime(selectedSlot.time);
                     setEditMode(true);
+                    setEditError("");
                   }}
                 >
                   Edit Time
@@ -1055,44 +1197,7 @@ const AdminCalendar = () => {
                 <button
                   className="btn-primary"
                   disabled={!editedTime || !!editError || loading}
-                  onClick={async () => {
-                    const normalizedEditedTime = normalizeTime(editedTime);
-
-                    if (!normalizedEditedTime) {
-                      return toast.error("Enter valid time.");
-                    }
-
-                    if (isDuplicateTime(normalizedEditedTime)) {
-                      return toast.error("Time already exists.");
-                    }
-
-                    if (isPastTime({ time: normalizedEditedTime })) {
-                      return toast.error("Cannot move to past time.");
-                    }
-
-                    try {
-                      setLoading(true);
-
-                      await updateSlotMutation.mutateAsync({
-                        id: selectedSlot.id,
-                        payload: {
-                          time: normalizedEditedTime,
-                        },
-                      });
-
-                      await refreshCalendarData(selectedDate);
-                      setEditMode(false);
-                      setShowSlotModal(false);
-                      toast.success("Slot updated!");
-                    } catch (err) {
-                      console.error("Error updating slot:", err);
-                      toast.error(
-                        err?.response?.data?.error || "Something went wrong.",
-                      );
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
+                  onClick={handleSaveEditedTime}
                 >
                   {loading ? (
                     <>
@@ -1106,7 +1211,7 @@ const AdminCalendar = () => {
               )}
 
               <button
-                className="btn-primary"
+                className={`btn-${selectedSlot.is_available ? "danger" : "success"}`}
                 disabled={
                   isSlotBooked(selectedSlot) ||
                   isPastTime(selectedSlot) ||
@@ -1164,14 +1269,14 @@ const AdminCalendar = () => {
         {showGenerator && (
           <div className="modal-overlay">
             <div className={`generator-modal ${loading ? "modal-busy" : ""}`}>
-              <h3>Bulk Slot Generator</h3>
+              <h3>✨ Bulk Slot Generator</h3>
 
               <div className="range-preview">
                 <p>
-                  <strong>From:</strong> {rangeStart}
+                  <strong>📅 From:</strong> {rangeStart}
                 </p>
                 <p>
-                  <strong>To:</strong>{" "}
+                  <strong>📅 To:</strong>{" "}
                   {weeklyRecurring
                     ? format(addWeeks(new Date(rangeStart), 4), "yyyy-MM-dd")
                     : rangeEnd || rangeStart}
@@ -1189,8 +1294,8 @@ const AdminCalendar = () => {
                         handleTimeInputChange(index, e.target.value)
                       }
                       className="time-row-input"
+                      placeholder="HH:MM"
                     />
-
                     {timeInputs.length > 1 && (
                       <button
                         type="button"
@@ -1216,7 +1321,6 @@ const AdminCalendar = () => {
                 >
                   + Add Time
                 </button>
-
                 <button
                   type="button"
                   className="btn-outline"
@@ -1234,7 +1338,7 @@ const AdminCalendar = () => {
                   disabled={loading}
                   onChange={() => setWeeklyRecurring(!weeklyRecurring)}
                 />
-                Weekly Recurring (4 weeks)
+                🔁 Weekly Recurring (4 weeks)
               </label>
 
               <div className="modal-actions">
@@ -1249,10 +1353,9 @@ const AdminCalendar = () => {
                       Generating...
                     </>
                   ) : (
-                    "Generate"
+                    "Generate Slots"
                   )}
                 </button>
-
                 <button
                   className="btn-outline"
                   disabled={loading}
@@ -1282,7 +1385,6 @@ const AdminCalendar = () => {
                 >
                   {confirmModal.cancelText}
                 </button>
-
                 <button
                   className={
                     confirmModal.variant === "danger"
