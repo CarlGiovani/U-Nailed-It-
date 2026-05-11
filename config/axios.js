@@ -11,9 +11,6 @@ const api = axios.create({
 // Add request interceptor for debugging
 api.interceptors.request.use(
   (config) => {
-    console.log(`📡 API Request: ${config.method.toUpperCase()} ${config.url}`);
-    console.log("📦 Request Data:", config.data);
-    console.log("🔍 Request Params:", config.params);
     return config;
   },
   (error) => {
@@ -25,8 +22,6 @@ api.interceptors.request.use(
 // Add response interceptor for debugging
 api.interceptors.response.use(
   (response) => {
-    console.log(`✅ API Response: ${response.status} ${response.config.url}`);
-    console.log("📦 Response Data:", response.data);
     return response;
   },
   (error) => {

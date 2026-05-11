@@ -6,8 +6,6 @@ const ReviewPage = () => {
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
 
-  console.log("🔑 TOKEN FROM URL:", token);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [booking, setBooking] = useState(null);
@@ -27,32 +25,32 @@ const ReviewPage = () => {
   useEffect(() => {
     let isMounted = true;
 
-    console.log("🚀 useEffect RUNNING");
+    ("🚀 useEffect RUNNING");
 
     const verify = async () => {
-      console.log("🟡 VERIFY START");
+      ("🟡 VERIFY START");
 
       if (!token) {
-        console.log("❌ NO TOKEN FOUND");
+        ("❌ NO TOKEN FOUND");
         setError("Invalid review link");
         setLoading(false);
         return;
       }
 
       try {
-        console.log("📡 CALLING verifyReviewToken...");
+        ("📡 CALLING verifyReviewToken...");
 
         const data = await verifyReviewToken(token);
 
-        console.log("✅ API RESPONSE:", data);
+        ("✅ API RESPONSE:", data);
 
         if (isMounted) {
           setBooking(data);
           setLoading(false);
-          console.log("🟢 BOOKING SET + LOADING FALSE");
+          ("🟢 BOOKING SET + LOADING FALSE");
         }
       } catch (err) {
-        console.log("❌ VERIFY ERROR:", err);
+        ("❌ VERIFY ERROR:", err);
 
         if (isMounted) {
           setError(err.message || "Invalid or expired review link");
@@ -64,7 +62,7 @@ const ReviewPage = () => {
     verify();
 
     return () => {
-      console.log("🧹 CLEANUP RUN");
+      ("🧹 CLEANUP RUN");
       isMounted = false;
     };
   }, [token]);
@@ -75,7 +73,7 @@ const ReviewPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    console.log("📤 SUBMIT CLICKED");
+    ("📤 SUBMIT CLICKED");
 
     try {
       setUploading(true);
@@ -83,12 +81,12 @@ const ReviewPage = () => {
       let image_url = null;
 
       if (imageFile) {
-        console.log("🖼️ UPLOADING IMAGE...");
+        ("🖼️ UPLOADING IMAGE...");
         image_url = await uploadReviewImage(imageFile);
-        console.log("✅ IMAGE URL:", image_url);
+        ("✅ IMAGE URL:", image_url);
       }
 
-      console.log("📡 CREATING REVIEW...");
+      ("📡 CREATING REVIEW...");
 
       await createReview({
         token,
@@ -97,11 +95,11 @@ const ReviewPage = () => {
         image_url,
       });
 
-      console.log("✅ REVIEW SUBMITTED");
+      ("✅ REVIEW SUBMITTED");
 
       setSubmitted(true);
     } catch (err) {
-      console.log("❌ SUBMIT ERROR:", err);
+      ("❌ SUBMIT ERROR:", err);
       alert(err.message || "Failed to submit review");
     } finally {
       setUploading(false);
@@ -112,12 +110,12 @@ const ReviewPage = () => {
   // STATES
   // =========================
   if (loading) {
-    console.log("⏳ RENDER: LOADING");
+    ("⏳ RENDER: LOADING");
     return <div style={{ textAlign: "center", marginTop: 60 }}>Loading...</div>;
   }
 
   if (error) {
-    console.log("⚠️ RENDER: ERROR", error);
+    ("⚠️ RENDER: ERROR", error);
     return (
       <div style={{ textAlign: "center", marginTop: 60, color: "red" }}>
         {error}
@@ -126,7 +124,7 @@ const ReviewPage = () => {
   }
 
   if (submitted) {
-    console.log("🎉 RENDER: SUBMITTED");
+    ("🎉 RENDER: SUBMITTED");
     return (
       <div style={{ textAlign: "center", marginTop: 60 }}>
         <h2>Thank you for your review 💖</h2>
@@ -138,7 +136,7 @@ const ReviewPage = () => {
   // =========================
   // UI
   // =========================
-  console.log("🎨 RENDER: FORM DISPLAY");
+  ("🎨 RENDER: FORM DISPLAY");
 
   return (
     <div
@@ -200,8 +198,6 @@ const ReviewPage = () => {
           onChange={(e) => {
             const file = e.target.files[0];
             if (!file) return;
-
-            console.log("🖼️ FILE SELECTED:", file);
 
             setImageFile(file);
             setImagePreview(URL.createObjectURL(file));
