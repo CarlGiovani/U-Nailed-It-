@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FaBars,
   FaBullhorn,
@@ -17,17 +17,43 @@ import logo from "../../assets/logo.png";
 import { adminLogout } from "../../services/BACKEND/adminAuthApi";
 import "../../styles/sidebar.css";
 
-const Sidebar = ({ mobileOpen, setMobileOpen }) => {
+// Debounce utility
+const debounce = (fn, delay) => {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+};
+
+const Sidebar = React.memo(({ mobileOpen, setMobileOpen }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth <= 768;
-      setIsMobile(mobile);
+  // Memoize static nav items
+  const navItems = useMemo(
+    () => [
+      { to: "/dashboard", icon: <FaTachometerAlt />, label: "Dashboard" },
+      { to: "/calendar", icon: <FaCalendarAlt />, label: "Calendar" },
+      { to: "/bookings", icon: <FaClipboardList />, label: "Bookings" },
+      { to: "/services", icon: <FaServicestack />, label: "Services" },
+      { to: "/reviews", icon: <FaStar />, label: "Reviews" },
+      { to: "/portfolio", icon: <FaImages />, label: "Portfolio" },
+      { to: "/announcements", icon: <FaBullhorn />, label: "Announcements" },
+      { to: "/policies", icon: <FaFileAlt />, label: "Policies" },
+      { to: "/settings", icon: <FaCog />, label: "Settings" },
+    ],
+    [],
+  );
 
+  // Use matchMedia + debounced listener for mobile detection
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
+    const handleChange = (e) => {
+      const mobile = e.matches;
+      setIsMobile(mobile);
       if (mobile) {
         setCollapsed(false);
       } else {
@@ -35,19 +61,22 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
       }
     };
 
-    handleResize();
-    window.addEventListener("resize", handleResize);
+    // Debounced handler to avoid rapid updates
+    const debouncedHandler = debounce(handleChange, 100);
+    mediaQuery.addEventListener("change", debouncedHandler);
+    handleChange(mediaQuery); // initial call
 
-    return () => window.removeEventListener("resize", handleResize);
+    return () => mediaQuery.removeEventListener("change", debouncedHandler);
   }, [setMobileOpen]);
 
+  // Close mobile sidebar on route change
   useEffect(() => {
     if (isMobile) {
       setMobileOpen(false);
     }
   }, [location.pathname, isMobile, setMobileOpen]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       await adminLogout();
     } catch (error) {
@@ -57,23 +86,17 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
       localStorage.removeItem("admin_user");
       navigate("/");
     }
-  };
+  }, [navigate]);
 
-  const handleNavClick = () => {
+  const handleNavClick = useCallback(() => {
     if (isMobile) setMobileOpen(false);
-  };
+  }, [isMobile, setMobileOpen]);
 
-  const navItems = [
-    { to: "/dashboard", icon: <FaTachometerAlt />, label: "Dashboard" },
-    { to: "/calendar", icon: <FaCalendarAlt />, label: "Calendar" },
-    { to: "/bookings", icon: <FaClipboardList />, label: "Bookings" },
-    { to: "/services", icon: <FaServicestack />, label: "Services" },
-    { to: "/reviews", icon: <FaStar />, label: "Reviews" },
-    { to: "/portfolio", icon: <FaImages />, label: "Portfolio" },
-    { to: "/announcements", icon: <FaBullhorn />, label: "Announcements" },
-    { to: "/policies", icon: <FaFileAlt />, label: "Policies" },
-    { to: "/settings", icon: <FaCog />, label: "Settings" },
-  ];
+  const toggleCollapse = useCallback(() => {
+    if (!isMobile) {
+      setCollapsed((prev) => !prev);
+    }
+  }, [isMobile]);
 
   return (
     <>
@@ -94,7 +117,7 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
           <div className="sidebar-header">
             <div className="brand">
               <div className="brand-icon">
-                <img src={logo} alt="UNAILEDIT Logo" />
+                <img src={logo} alt="UNAILEDIT Logo" loading="eager" />
               </div>
 
               {(!collapsed || isMobile) && (
@@ -109,7 +132,7 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
               <button
                 type="button"
                 className="collapse-btn"
-                onClick={() => setCollapsed((prev) => !prev)}
+                onClick={toggleCollapse}
                 aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                 title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
@@ -168,6 +191,6 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
       </aside>
     </>
   );
-};
+});
 
 export default Sidebar;

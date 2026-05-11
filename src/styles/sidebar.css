@@ -592,3 +592,35 @@
 .nav-link .nav-icon svg {
   color: #1a1a1a;
 }
+
+
+/* Force GPU acceleration for sidebar animations */
+.sidebar,
+.sidebar-shell,
+.nav-link,
+.logout-btn {
+  will-change: transform, opacity;
+}
+
+/* Replace width transition with transform on mobile (faster) */
+@media (max-width: 768px) {
+  .sidebar {
+    transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+}
+
+/* Desktop collapsed width transition – keep but limit repaint */
+.sidebar {
+  transition: width 0.28s ease, min-width 0.28s ease;
+}
+
+/* Disable hover transforms on touch devices to prevent lag */
+@media (hover: none) and (pointer: coarse) {
+  .nav-link:hover,
+  .logout-btn:hover {
+    transform: none;
+  }
+}
