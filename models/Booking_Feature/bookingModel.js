@@ -73,11 +73,12 @@ export const createBookingWithCustomer = async (bookingData) => {
   /* ==========================================
      BLOCKED EMAIL CHECK
   ========================================== */
-  const { data: blockedCustomer, error: blockedCheckError } = await supabaseAdmin
-    .from("customers")
-    .select("id, full_name, email, is_blocked, blocked_reason")
-    .eq("email", normalizedEmail)
-    .maybeSingle();
+  const { data: blockedCustomer, error: blockedCheckError } =
+    await supabaseAdmin
+      .from("customers")
+      .select("id, full_name, email, is_blocked, blocked_reason")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
 
   if (blockedCheckError) {
     throw new Error(blockedCheckError.message);
@@ -268,49 +269,49 @@ export const createBookingWithCustomer = async (bookingData) => {
     return refreshedBooking;
   }
 
-// 2) Create new booking if none found
-const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  // 2) Create new booking if none found
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
-let booking;
-let bookingError;
+  let booking;
+  let bookingError;
 
-try {
-  const result = await supabaseAdmin
-    .from("bookings")
-    .insert([
-      {
-        customer_id: customer.id,
-        customer_name: full_name,
-        customer_email: normalizedEmail,
-        customer_phone: phone,
-        customer_facebook_link: facebook_link,
+  try {
+    const result = await supabaseAdmin
+      .from("bookings")
+      .insert([
+        {
+          customer_id: customer.id,
+          customer_name: full_name,
+          customer_email: normalizedEmail,
+          customer_phone: phone,
+          customer_facebook_link: facebook_link,
 
-        service_id,
-        service_variant_id: service_variant_id || null,
+          service_id,
+          service_variant_id: service_variant_id || null,
 
-        service_name_snapshot: serviceRow.name || null,
-        service_description_snapshot: serviceRow.description || null,
-        service_duration_snapshot: serviceRow.duration || null,
-        service_image_url_snapshot: serviceRow.image_url || null,
+          service_name_snapshot: serviceRow.name || null,
+          service_description_snapshot: serviceRow.description || null,
+          service_duration_snapshot: serviceRow.duration || null,
+          service_image_url_snapshot: serviceRow.image_url || null,
 
-        category_name_snapshot: variantRow?.service_categories?.name || null,
-        variant_body_part_snapshot: variantRow?.body_part || null,
-        variant_size_snapshot: variantRow?.size || null,
-        variant_price_snapshot: variantRow?.price ?? total_price ?? null,
-        variant_downpayment_snapshot:
-          variantRow?.downpayment ?? downpayment ?? null,
+          category_name_snapshot: variantRow?.service_categories?.name || null,
+          variant_body_part_snapshot: variantRow?.body_part || null,
+          variant_size_snapshot: variantRow?.size || null,
+          variant_price_snapshot: variantRow?.price ?? total_price ?? null,
+          variant_downpayment_snapshot:
+            variantRow?.downpayment ?? downpayment ?? null,
 
-        booking_date,
-        booking_time,
-        total_price,
-        downpayment,
-        notes,
-        status: "pending_payment",
-        expires_at: expiresAt,
-      },
-    ])
-    .select(
-      `
+          booking_date,
+          booking_time,
+          total_price,
+          downpayment,
+          notes,
+          status: "pending_payment",
+          expires_at: expiresAt,
+        },
+      ])
+      .select(
+        `
       *,
       customers(*),
       services(
@@ -329,25 +330,25 @@ try {
         )
       )
       `,
-    )
-    .single();
+      )
+      .single();
 
-  booking = result.data;
-  bookingError = result.error;
-} catch (err) {
-  bookingError = err;
-}
-
-if (bookingError) {
-  // DOUBLE BOOKING CATCHER
-  if (bookingError.message?.includes("duplicate key value")) {
-    throw new Error(
-      "Sorry 😔 kakakuha lang ng ibang customer ng time slot na ito. Please choose another time."
-    );
+    booking = result.data;
+    bookingError = result.error;
+  } catch (err) {
+    bookingError = err;
   }
 
-  throw new Error(bookingError.message);
-}
+  if (bookingError) {
+    // DOUBLE BOOKING CATCHER
+    if (bookingError.message?.includes("duplicate key value")) {
+      throw new Error(
+        "Sorry 😔 kakakuha lang ng ibang customer ng time slot na ito. Please choose another time.",
+      );
+    }
+
+    throw new Error(bookingError.message);
+  }
 
   if (service_category_id && service_variant_id && booking.services) {
     booking.services.service_categories = booking.services.service_categories
@@ -364,8 +365,6 @@ if (bookingError) {
 
   return booking;
 };
-
-
 
 /* ==========================================
    STEP 3: Confirm booking using payment_intent
@@ -641,9 +640,9 @@ export const approveBooking = async (id) => {
     .select()
     .maybeSingle();
 
-  console.log("[approveBooking] id:", id);
-  console.log("[approveBooking] updated:", updated);
-  console.log("[approveBooking] error:", error);
+  ("[approveBooking] id:", id);
+  ("[approveBooking] updated:", updated);
+  ("[approveBooking] error:", error);
 
   if (error) {
     throw new Error(`Approve failed: ${error.message}`);
@@ -704,9 +703,9 @@ export const rejectBooking = async (id) => {
     .select("booking_date, booking_time")
     .maybeSingle();
 
-  console.log("[rejectBooking] id:", id);
-  console.log("[rejectBooking] updated:", updated);
-  console.log("[rejectBooking] error:", error);
+  ("[rejectBooking] id:", id);
+  ("[rejectBooking] updated:", updated);
+  ("[rejectBooking] error:", error);
 
   if (error) {
     throw new Error(`Reject failed: ${error.message}`);
@@ -774,7 +773,7 @@ export const cancelBookingByToken = async (token, reason) => {
     throw new Error("Only approved bookings can be cancelled");
   }
 
-  if (booking.status === "completed"){
+  if (booking.status === "completed") {
     throw new Error("Booking already completed, cancellation not allowed");
   }
 
@@ -853,11 +852,9 @@ export const cancelPendingApprovalBookingById = async (
   if (booking.status !== "pending_approval") {
     throw new Error("Only pending approval bookings can be cancelled");
   }
-  if (booking.status === "completed"){
+  if (booking.status === "completed") {
     throw new Error("Booking already completed, cancellation not allowed");
   }
-
-  
 
   const now = new Date();
 
@@ -1079,13 +1076,15 @@ export const completeBooking = async (id) => {
   }
 
   // insert revenue log
-  const { error: revenueError } = await supabaseAdmin.from("revenue_logs").insert([
-    {
-      booking_id: updated.id,
-      amount: updated.total_price,
-      note: "Revenue recorded from completed booking",
-    },
-  ]);
+  const { error: revenueError } = await supabaseAdmin
+    .from("revenue_logs")
+    .insert([
+      {
+        booking_id: updated.id,
+        amount: updated.total_price,
+        note: "Revenue recorded from completed booking",
+      },
+    ]);
 
   if (revenueError) {
     throw new Error(revenueError.message);

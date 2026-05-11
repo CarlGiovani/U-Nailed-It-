@@ -156,7 +156,6 @@ export const createVariant = async (req, res) => {
   // ---- VALIDATION ----
   const errors = validate(variantSchema, req.body);
   if (errors) return res.status(400).json({ errors });
-c
   try {
     const variant = await Services.createVariant(req.body);
     res.json({ message: "Variant created!", variant });

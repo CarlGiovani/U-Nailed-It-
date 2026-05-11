@@ -11,7 +11,7 @@ export const scheduleSlotCleanup = () => {
   // =========================
   cron.schedule("0 0 * * *", async () => {
     if (isCleanupRunning) {
-      console.log("[CRON CLEANUP] Skipped: previous cleanup is still running.");
+      ("[CRON CLEANUP] Skipped: previous cleanup is still running.");
       return;
     }
 
@@ -20,7 +20,7 @@ export const scheduleSlotCleanup = () => {
     const now = new Date();
     const todayStr = formatLocalDate(now);
 
-    console.log(
+    (
       `[CRON CLEANUP] Started | Date: ${todayStr} | Time: ${now.toLocaleTimeString()}`,
     );
 
@@ -36,7 +36,7 @@ export const scheduleSlotCleanup = () => {
       let deletedCount = 0;
       let keptCount = 0;
 
-      console.log(
+      (
         `[CRON CLEANUP] Found ${totalPastSlots} past slot(s) to check.`,
       );
 
@@ -65,7 +65,7 @@ export const scheduleSlotCleanup = () => {
         }
       }
 
-      console.log(
+      (
         `[CRON CLEANUP] Finished | Checked: ${totalPastSlots} | Deleted: ${deletedCount} | Kept: ${keptCount}`,
       );
     } catch (err) {
@@ -80,7 +80,7 @@ export const scheduleSlotCleanup = () => {
   // =========================
   cron.schedule("*/5 * * * *", async () => {
     if (isBlockRunning) {
-      console.log("[CRON BLOCK] Skipped: previous block job is still running.");
+      ("[CRON BLOCK] Skipped: previous block job is still running.");
       return;
     }
 
@@ -90,7 +90,7 @@ export const scheduleSlotCleanup = () => {
     const todayStr = formatLocalDate(now);
     const currentTime = now.toTimeString().slice(0, 5);
 
-    console.log(
+    (
       `[CRON BLOCK] Started | Date: ${todayStr} | Current Time: ${currentTime}`,
     );
 
@@ -107,12 +107,12 @@ export const scheduleSlotCleanup = () => {
 
       const blockedCount = todayData?.length || 0;
 
-      console.log(
+      (
         `[CRON BLOCK] Finished | Newly blocked slot(s): ${blockedCount}`,
       );
 
       if (blockedCount > 0) {
-        console.log(
+        (
           `[CRON BLOCK] Blocked times: ${todayData.map((slot) => slot.time).join(", ")}`,
         );
       }

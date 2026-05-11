@@ -13,20 +13,20 @@ export const scheduleBookingExpiry = () => {
         hour12: false,
       });
 
-      console.log(
+      (
         `[CRON BLOCK] Started | Date: ${phDate} | Current Time: ${phTime}`,
       );
-      console.log("[CRON] Running booking expiry cleanup...");
+      ("[CRON] Running booking expiry cleanup...");
 
       const { data, error } = await supabase.rpc("expire_pending_bookings");
 
       if (error) {
         console.error("Expire bookings error:", error.message);
       } else {
-        console.log(`[CRON] Expired bookings: ${data}`);
+        (`[CRON] Expired bookings: ${data}`);
       }
 
-      console.log("[CRON] Booking expiry cleanup done");
+      ("[CRON] Booking expiry cleanup done");
     } catch (err) {
       console.error("[CRON] Unexpected error:", err.message);
     }

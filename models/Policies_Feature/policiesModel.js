@@ -1,10 +1,11 @@
-import supabase from "../../utils/supabaseClient.js";
+import { supabaseAdmin } from "../../utils/supabaseClient.js";
+
 
 /* ==========================================
    PUBLIC: fetch active policies
 ========================================== */
 export const fetchtActivePolicies = async (params) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("policies")
     .select("*")
     .eq("is_active", true)
@@ -18,7 +19,7 @@ export const fetchtActivePolicies = async (params) => {
    ADMIN : fetch all policies
 ========================================== */
 export const fetchAllPolicies = async (params) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("policies")
     .select("*")
     .order("created_at", { ascending: false });
@@ -31,7 +32,7 @@ export const fetchAllPolicies = async (params) => {
    ADMIN : insert Policy
 ========================================== */
 export const insertPolicy = async ({ title, content, is_active }) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("policies")
     .insert([{ title, content, is_active }])
     .select()
@@ -46,7 +47,7 @@ export const insertPolicy = async ({ title, content, is_active }) => {
 ========================================== */
 
 export const updatePolicyById = async (id, payload) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("policies")
     .update({
       ...payload,
@@ -54,7 +55,7 @@ export const updatePolicyById = async (id, payload) => {
     })
     .eq("id", id)
     .select()
-    .single();
+    
 
   if (error) throw new Error(error.message);
   return data;
@@ -64,7 +65,7 @@ export const updatePolicyById = async (id, payload) => {
    ADMIN : delete id policy
 ========================================== */
 export const deletePolicyById = async (id) => {
-  const { data, error } = await supabase.from("policies").delete().eq("id", id);
+  const { data, error } = await supabaseAdmin.from("policies").delete().eq("id", id);
 
   if (error) throw new Error(error.message);
 };

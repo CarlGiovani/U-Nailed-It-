@@ -24,9 +24,8 @@ const authUrl = oauth2Client.generateAuthUrl({
 });
 
 // Step 2: open browser
-console.log("\n👉 OPEN THIS URL:\n", authUrl);
+("\n👉 OPEN THIS URL:\n", authUrl);
 open(authUrl);
-
 
 // Step 3: callback route (THIS FIXES YOUR ERROR)
 app.get("/oauth2callback", async (req, res) => {
@@ -39,10 +38,10 @@ app.get("/oauth2callback", async (req, res) => {
   try {
     const { tokens } = await oauth2Client.getToken(code);
 
-    console.log("\n=================================");
-    console.log("✅ REFRESH TOKEN:");
-    console.log(tokens.refresh_token);
-    console.log("=================================\n");
+    ("\n=================================");
+    ("✅ REFRESH TOKEN:");
+    tokens.refresh_token;
+    ("=================================\n");
 
     res.send(`
       <h2>Success!</h2>
@@ -56,5 +55,5 @@ app.get("/oauth2callback", async (req, res) => {
 
 // Start server
 app.listen(5000, () => {
-  console.log("🚀 Server running on http://localhost:5000");
+  ("🚀 Server running on http://localhost:5000");
 });

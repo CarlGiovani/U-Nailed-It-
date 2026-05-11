@@ -1,4 +1,4 @@
-import supabase from "../../utils/supabaseClient.js";
+import { supabaseAdmin } from "../../utils/supabaseClient.js";
 
 const BUCKET_NAME = "announcement-images";
 
@@ -38,7 +38,7 @@ const deleteFilesFromStorage = async (
 
   console.log(`[${context}] Deleting file paths:`, filePaths);
 
-  const { error } = await supabase.storage.from(BUCKET_NAME).remove(filePaths);
+  const { error } = await supabaseAdmin.storage.from(BUCKET_NAME).remove(filePaths);
 
   if (error) {
     console.error(`[${context}] Storage delete failed:`, error);
@@ -55,7 +55,7 @@ export const getActiveAnnouncements = async () => {
   const today = new Date().toISOString().split("T")[0];
   console.log("[ANNOUNCEMENT][GET ACTIVE] Today:", today);
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin 
     .from("announcements")
     .select("*")
     .eq("is_active", true)
@@ -77,7 +77,7 @@ export const getActiveAnnouncements = async () => {
 export const getAllAnnouncements = async () => {
   console.log("[ANNOUNCEMENT][GET ALL] Fetching all announcements...");
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("announcements")
     .select("*")
     .order("created_at", { ascending: false });
@@ -97,7 +97,7 @@ export const getAllAnnouncements = async () => {
 export const createAnnouncement = async (payload) => {
   console.log("[ANNOUNCEMENT][CREATE] Payload:", payload);
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("announcements")
     .insert([payload])
     .select()
@@ -121,7 +121,7 @@ export const updateAnnouncement = async (id, payload) => {
   console.log("[ANNOUNCEMENT][UPDATE] Payload:", payload);
 
   // 1. Get existing record first
-  const { data: existing, error: fetchError } = await supabase
+  const { data: existing, error: fetchError } = await supabaseAdmin   
     .from("announcements")
     .select("*")
     .eq("id", id)
@@ -146,7 +146,7 @@ export const updateAnnouncement = async (id, payload) => {
   console.log("[ANNOUNCEMENT][UPDATE] New images:", newImages);
 
   // 2. Update DB row without forcing returned row
-  const { error: updateError } = await supabase
+  const { error: updateError } = await supabaseAdmin
     .from("announcements")
     .update(payload)
     .eq("id", id);
@@ -159,7 +159,7 @@ export const updateAnnouncement = async (id, payload) => {
   console.log("[ANNOUNCEMENT][UPDATE] Update query success");
 
   // 3. Re-fetch updated row
-  const { data: updatedRow, error: refetchError } = await supabase
+  const { data: updatedRow, error: refetchError } = await supabaseAdmin
     .from("announcements")
     .select("*")
     .eq("id", id)
@@ -207,7 +207,7 @@ export const deleteAnnouncement = async (id) => {
   console.log("[ANNOUNCEMENT][DELETE] ID:", id);
 
   // 1. Get existing record first
-  const { data: existing, error: fetchError } = await supabase
+  const { data: existing, error: fetchError } = await supabaseAdmin   
     .from("announcements")
     .select("*")
     .eq("id", id)
@@ -236,7 +236,7 @@ export const deleteAnnouncement = async (id) => {
   }
 
   // 3. Delete DB row
-  const { error } = await supabase.from("announcements").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("announcements").delete().eq("id", id);
 
   if (error) {
     console.error("[ANNOUNCEMENT][DELETE] DB delete error:", error);
