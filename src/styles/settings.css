@@ -368,8 +368,7 @@
   outline: none;
   transition:
     border-color var(--settings-transition),
-    box-shadow var(--settings-transition),
-    transform var(--settings-transition);
+    box-shadow var(--settings-transition);
   box-sizing: border-box;
   color: var(--settings-text-main);
 }
@@ -481,38 +480,6 @@
 
 .settings-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-}
-
-/* EMAIL SETTINGS */
-.email-settings-intro {
-  margin-bottom: 14px;
-}
-
-.email-settings-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 28px;
-  padding: 4px 12px;
-  border-radius: 999px;
-  background: linear-gradient(
-    135deg,
-    rgba(244, 159, 195, 0.16),
-    rgba(212, 175, 55, 0.16)
-  );
-  color: #8f3360;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.35px;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-
-.email-settings-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 
 /* ADMINS */
@@ -802,8 +769,7 @@
   }
 
   .danger-box,
-  .settings-pagination,
-  .email-settings-actions {
+  .settings-pagination {
     flex-direction: column;
     align-items: stretch;
   }
@@ -814,10 +780,6 @@
 
   .settings-btn,
   .settings-pagination-info {
-    width: 100%;
-  }
-
-  .email-settings-actions .settings-btn {
     width: 100%;
   }
 }
