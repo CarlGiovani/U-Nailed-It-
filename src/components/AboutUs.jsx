@@ -363,7 +363,7 @@ export default function AboutUs() {
         <div className="values-section">
           <div className="section-header reveal" ref={(el) => (cardsRef.current[10] = el)}>
             <span className="badge">Our Ethos</span>
-            <h3>What makes us DIFFERENTt</h3>
+            <h3>What makes us different</h3>
             <p>Four pillars that define every appointment.</p>
           </div>
           <div className="values-grid">
