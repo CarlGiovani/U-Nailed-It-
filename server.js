@@ -49,35 +49,35 @@ app.set("trust proxy", 1);
 /* ======================================================
    CORS CONFIG (PRODUCTION SAFE)
 ====================================================== */
-// const allowedOrigins = [
-//   process.env.FRONTEND_URL,
-//   process.env.ADMIN_FRONTEND_URL,
-// ].filter(Boolean);
-
-// app.use(
-//   cors({
-//     origin: allowedOrigins,
-//     credentials: true,
-//   }),
-// );
-
-const allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.ADMIN_FRONTEND_URL,
+].filter(Boolean);
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (Postman, mobile apps)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(new Error("CORS not allowed"));
-    },
+    origin: allowedOrigins,
     credentials: true,
   }),
 );
+
+// const allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
+
+// app.use(
+//   cors({
+//     origin: function (origin, callback) {
+//       // allow requests with no origin (Postman, mobile apps)
+//       if (!origin) return callback(null, true);
+
+//       if (allowedOrigins.includes(origin)) {
+//         return callback(null, true);
+//       }
+
+//       return callback(new Error("CORS not allowed"));
+//     },
+//     credentials: true,
+//   }),
+// );
 
 /* ======================================================
    BODY PARSERS
