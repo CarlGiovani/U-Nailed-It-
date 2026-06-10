@@ -3505,3 +3505,144 @@ a {
     max-height: calc(100dvh - 210px);
   }
 }
+
+/* ==========================================
+   IMAGE VIEWER / LIGHTBOX
+========================================== */
+.clickable-preview-image {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.clickable-preview-image:hover {
+  transform: scale(1.02);
+}
+
+.image-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.image-viewer-content {
+  position: relative;
+  max-width: 95vw;
+  max-height: 95vh;
+}
+
+.image-viewer-content img {
+  max-width: 95vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 14px;
+  background: white;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.35),
+    0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.image-viewer-close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: white;
+  color: #222;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.image-viewer-close:hover {
+  transform: scale(1.08);
+}
+
+.image-viewer-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  color: #222;
+  font-size: 26px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.image-viewer-prev {
+  left: 16px;
+}
+
+.image-viewer-next {
+  right: 16px;
+}
+
+.image-viewer-counter {
+  position: absolute;
+  left: 50%;
+  bottom: -38px;
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: white;
+  color: #222;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+
+.image-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 18, 22, 0.85);
+  backdrop-filter: blur(8px);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 99999;
+  padding: 20px;
+}
+
+.image-viewer-content {
+  position: relative;
+
+  max-width: min(90vw, 1000px);
+  max-height: 85vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-viewer-content img {
+  display: block;
+
+  width: auto;
+  height: auto;
+
+  max-width: 100%;
+  max-height: 85vh;
+
+  object-fit: contain;
+  border-radius: 24px;
+}
+

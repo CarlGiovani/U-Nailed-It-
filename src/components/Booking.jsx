@@ -13,9 +13,9 @@ import {
   getMonthlyAvailability,
 } from "../../backend/calendarApi.js";
 import { getActivePolicies } from "../../backend/policiesApi.js";
+import QR from "../assets/images/QR.png";
 import supabase from "../config/supabaseClient.js";
 import "../styles/booking-system.css";
-import QR from "../assets/images/QR.png";
 /* ===============================
    CONSTANTS
 =============================== */
@@ -187,6 +187,12 @@ const Booking = ({ services: servicesProp = [] }) => {
   const [proofPreviewUrl, setProofPreviewUrl] = useState(null);
   const [selectedProofFile, setSelectedProofFile] = useState(null);
 
+  const [imageViewer, setImageViewer] = useState({
+    open: false,
+    images: [],
+    index: 0,
+  });
+
   const [collapsedReview, setCollapsedReview] = useState({
     service: false,
     schedule: false,
@@ -241,6 +247,30 @@ const Booking = ({ services: servicesProp = [] }) => {
   const hardRestartRef = useRef(null);
 
   useEffect(() => {
+    if (!imageViewer.open) return;
+
+    const scrollY = window.scrollY;
+
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.width = "";
+      document.body.style.overflow = "";
+
+      window.scrollTo(0, scrollY);
+    };
+  }, [imageViewer.open]);
+
+  useEffect(() => {
     bookingIdRef.current = bookingId;
   }, [bookingId]);
 
@@ -268,6 +298,10 @@ const Booking = ({ services: servicesProp = [] }) => {
         `https://via.placeholder.com/300x200?text=${encodeURIComponent(
           service.name,
         )}`,
+      images: [
+        service.image_url || service.image,
+        ...(Array.isArray(service.images) ? service.images : []),
+      ].filter(Boolean),
       service_categories:
         service.service_categories?.map((category) => ({
           id: category.id,
@@ -1227,174 +1261,172 @@ const Booking = ({ services: servicesProp = [] }) => {
   /* ===============================
      STEP 3 => STEP 4
   =============================== */
-const handleProceedToPayment = useCallback(async () => {
-  if (!validateForm(3)) return;
-
-  // =========================
-  // TERMS VALIDATION
-  // =========================
-  if (!hasOpenedTerms) {
-    showAlert(
-      "Terms & Conditions Required",
-      "Please open and review the Terms & Conditions before proceeding.",
-      null,
-      "warning",
-    );
-    return;
-  }
-
-  if (!hasScrolledTermsToBottom) {
-    showAlert(
-      "Please Review the Terms",
-      "Please scroll through the Terms & Conditions before proceeding.",
-      null,
-      "warning",
-    );
-    return;
-  }
-
-  if (!acceptedTerms) {
-    showAlert(
-      "Agreement Required",
-      "You must agree to the Terms & Conditions before proceeding.",
-      null,
-      "warning",
-    );
-    return;
-  }
-
-  // =========================
-  // DOUBLE SUBMIT GUARD
-  // =========================
-  if (loading) return;
-  setLoading(true);
-
-  try {
-    // =========================
-    // CREATE BOOKING (SOURCE OF TRUTH IS BACKEND)
-    // =========================
-    const payload = {
-      service_id: formData.service_id,
-      service_category_id: formData.service_category_id,
-      service_variant_id: formData.service_variant_id,
-      booking_date: formData.booking_date,
-      booking_time: formData.booking_time,
-      total_price: formData.total_price,
-      downpayment: formData.downpayment,
-      notes: formData.notes,
-      full_name: formData.full_name,
-      email: formData.email,
-      phone: formData.phone,
-      facebook_link: formData.facebook_link,
-    };
-
-    const result = await createBooking(payload);
-
-    if (!result?.id) {
-      throw new Error("Booking creation failed. No ID returned.");
-    }
+  const handleProceedToPayment = useCallback(async () => {
+    if (!validateForm(3)) return;
 
     // =========================
-    // OPTIONAL BACKEND GUARD (ONLY FOR SAFETY MESSAGE, NOT DECISION LOGIC)
+    // TERMS VALIDATION
     // =========================
-    const invalidStatuses = ["rejected", "cancelled", "expired"];
-    const allowedStatuses = [
-      "pending_payment",
-      "pending_approval",
-      "approved",
-    ];
-
-    const status = result.status;
-
-    if (invalidStatuses.includes(status)) {
+    if (!hasOpenedTerms) {
       showAlert(
-        "Slot Unavailable",
-        "This slot was already taken or rejected. Please choose another schedule.",
+        "Terms & Conditions Required",
+        "Please open and review the Terms & Conditions before proceeding.",
         null,
-        "danger",
+        "warning",
       );
       return;
     }
 
-    if (!allowedStatuses.includes(status)) {
+    if (!hasScrolledTermsToBottom) {
       showAlert(
-        "Booking Failed",
-        "Hindi nag-success ang booking. Pakisubukan ulit.",
+        "Please Review the Terms",
+        "Please scroll through the Terms & Conditions before proceeding.",
         null,
-        "danger",
+        "warning",
+      );
+      return;
+    }
+
+    if (!acceptedTerms) {
+      showAlert(
+        "Agreement Required",
+        "You must agree to the Terms & Conditions before proceeding.",
+        null,
+        "warning",
       );
       return;
     }
 
     // =========================
-    // SAFE STATE UPDATE (NO RE-FETCH, ATOMIC RESPONSE TRUST)
+    // DOUBLE SUBMIT GUARD
     // =========================
-    setBookingId(result.id);
-    setBookingPreview(result);
+    if (loading) return;
+    setLoading(true);
 
-    saveActiveBooking({
-      bookingId: result.id,
-      expiresAt: result.expires_at,
-    });
+    try {
+      // =========================
+      // CREATE BOOKING (SOURCE OF TRUTH IS BACKEND)
+      // =========================
+      const payload = {
+        service_id: formData.service_id,
+        service_category_id: formData.service_category_id,
+        service_variant_id: formData.service_variant_id,
+        booking_date: formData.booking_date,
+        booking_time: formData.booking_time,
+        total_price: formData.total_price,
+        downpayment: formData.downpayment,
+        notes: formData.notes,
+        full_name: formData.full_name,
+        email: formData.email,
+        phone: formData.phone,
+        facebook_link: formData.facebook_link,
+      };
 
-    // =========================
-    // STEP NAVIGATION (UI SAFE TRANSITION)
-    // =========================
-    requestAnimationFrame(() => {
-      setStep(4);
-    });
+      const result = await createBooking(payload);
 
-  } catch (error) {
-  console.error("Booking creation error:", error);
+      if (!result?.id) {
+        throw new Error("Booking creation failed. No ID returned.");
+      }
 
-  const backendData = error.response?.data;
+      // =========================
+      // OPTIONAL BACKEND GUARD (ONLY FOR SAFETY MESSAGE, NOT DECISION LOGIC)
+      // =========================
+      const invalidStatuses = ["rejected", "cancelled", "expired"];
+      const allowedStatuses = [
+        "pending_payment",
+        "pending_approval",
+        "approved",
+      ];
 
-  const formattedErrors = Array.isArray(backendData?.errors)
-    ? backendData.errors
-        .map((err) => {
-          if (typeof err === "string") return err;
-          return err.msg || err.message || JSON.stringify(err);
-        })
-        .join("\n")
-    : null;
+      const status = result.status;
 
-  const rawErrorMessage =
-    backendData?.error ||
-    formattedErrors ||
-    error.message ||
-    "Something went wrong while creating your booking.";
+      if (invalidStatuses.includes(status)) {
+        showAlert(
+          "Slot Unavailable",
+          "This slot was already taken or rejected. Please choose another schedule.",
+          null,
+          "danger",
+        );
+        return;
+      }
 
-  const normalizedErrorMessage = String(rawErrorMessage).toLowerCase();
+      if (!allowedStatuses.includes(status)) {
+        showAlert(
+          "Booking Failed",
+          "Hindi nag-success ang booking. Pakisubukan ulit.",
+          null,
+          "danger",
+        );
+        return;
+      }
 
-  const errorMessage =
-    normalizedErrorMessage.includes("restricted") ||
-    normalizedErrorMessage.includes("blocked")
-      ? "This email is currently restricted from making new bookings. Please contact support if you believe this is a mistake."
-      : rawErrorMessage;
+      // =========================
+      // SAFE STATE UPDATE (NO RE-FETCH, ATOMIC RESPONSE TRUST)
+      // =========================
+      setBookingId(result.id);
+      setBookingPreview(result);
 
-  showAlert(
-    "Unable to Continue",
-    errorMessage,
-    () => {
-      hardRestart();
-      setStep(1);
-    },
-    "danger",
-  );
+      saveActiveBooking({
+        bookingId: result.id,
+        expiresAt: result.expires_at,
+      });
 
-} finally {
-  setLoading(false);
-}
-}, [
-  validateForm,
-  hasOpenedTerms,
-  hasScrolledTermsToBottom,
-  acceptedTerms,
-  formData,
-  showAlert,
-  loading,
-  hardRestart,
-]);
+      // =========================
+      // STEP NAVIGATION (UI SAFE TRANSITION)
+      // =========================
+      requestAnimationFrame(() => {
+        setStep(4);
+      });
+    } catch (error) {
+      console.error("Booking creation error:", error);
+
+      const backendData = error.response?.data;
+
+      const formattedErrors = Array.isArray(backendData?.errors)
+        ? backendData.errors
+            .map((err) => {
+              if (typeof err === "string") return err;
+              return err.msg || err.message || JSON.stringify(err);
+            })
+            .join("\n")
+        : null;
+
+      const rawErrorMessage =
+        backendData?.error ||
+        formattedErrors ||
+        error.message ||
+        "Something went wrong while creating your booking.";
+
+      const normalizedErrorMessage = String(rawErrorMessage).toLowerCase();
+
+      const errorMessage =
+        normalizedErrorMessage.includes("restricted") ||
+        normalizedErrorMessage.includes("blocked")
+          ? "This email is currently restricted from making new bookings. Please contact support if you believe this is a mistake."
+          : rawErrorMessage;
+
+      showAlert(
+        "Unable to Continue",
+        errorMessage,
+        () => {
+          hardRestart();
+          setStep(1);
+        },
+        "danger",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    validateForm,
+    hasOpenedTerms,
+    hasScrolledTermsToBottom,
+    acceptedTerms,
+    formData,
+    showAlert,
+    loading,
+    hardRestart,
+  ]);
 
   /* ===============================
      PAYMENT
@@ -2262,6 +2294,36 @@ const handleProceedToPayment = useCallback(async () => {
     );
   };
 
+  const openImageViewer = useCallback((images = [], index = 0) => {
+    setImageViewer({
+      open: true,
+      images,
+      index,
+    });
+  }, []);
+
+  const closeImageViewer = useCallback(() => {
+    setImageViewer({
+      open: false,
+      images: [],
+      index: 0,
+    });
+  }, []);
+
+  const goToPrevImage = useCallback(() => {
+    setImageViewer((prev) => ({
+      ...prev,
+      index: prev.index === 0 ? prev.images.length - 1 : prev.index - 1,
+    }));
+  }, []);
+
+  const goToNextImage = useCallback(() => {
+    setImageViewer((prev) => ({
+      ...prev,
+      index: prev.index === prev.images.length - 1 ? 0 : prev.index + 1,
+    }));
+  }, []);
+
   /* ===============================
      STEP 1
   =============================== */
@@ -2332,19 +2394,32 @@ const handleProceedToPayment = useCallback(async () => {
                   }`}
                   onClick={() => handleServiceSelect(service)}
                 >
-                  <div className="service-image premium">
+                  <div
+                    className="service-image premium"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      openImageViewer(service.images, 0);
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  >
                     <img
                       src={service.image}
                       alt={service.name}
                       loading="lazy"
+                      className="clickable-preview-image"
                       onError={(e) => {
                         e.currentTarget.src = `https://via.placeholder.com/300x200?text=${encodeURIComponent(
                           service.name,
                         )}`;
                       }}
                     />
+
                     <div className="service-overlay premium">
-                      <span className="select-label">Select Service</span>
+                      <span className="select-label">Preview Images</span>
                     </div>
                   </div>
 
@@ -3325,11 +3400,7 @@ const handleProceedToPayment = useCallback(async () => {
               <div className="qr-container">
                 <div className="qr-placeholder premium">
                   <div className="qr-mock">
-                    <img
-                      src={QR}
-                      alt="GCash QR Code"
-                      className="qr-image"
-                    />
+                    <img src={QR} alt="GCash QR Code" className="qr-image" />
                   </div>
 
                   <div className="qr-hint">
@@ -3338,7 +3409,6 @@ const handleProceedToPayment = useCallback(async () => {
                     <br />
                     <strong>AL****H B.</strong>
                     <strong>0918 578 **</strong>
-                  
                     <br />
                     Reference: <strong>BOOK-{bookingId}</strong>
                   </div>
@@ -3771,6 +3841,49 @@ const handleProceedToPayment = useCallback(async () => {
       <ResumeModal />
       <TermsModal />
 
+      {imageViewer.open &&
+        createPortal(
+          <div className="image-viewer-overlay" onClick={closeImageViewer}>
+            <div
+              className="image-viewer-content"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="image-viewer-close"
+                onClick={closeImageViewer}
+              >
+                ✕
+              </button>
+
+              {imageViewer.images.length > 1 && (
+                <button
+                  type="button"
+                  className="image-viewer-nav image-viewer-prev"
+                  onClick={goToPrevImage}
+                >
+                  ‹
+                </button>
+              )}
+
+              <img
+                src={imageViewer.images[imageViewer.index]}
+                alt="Service preview"
+              />
+
+              {imageViewer.images.length > 1 && (
+                <button
+                  type="button"
+                  className="image-viewer-nav image-viewer-next"
+                  onClick={goToNextImage}
+                >
+                  ›
+                </button>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
       <div className="booking-header premium">
         <h1>Book an Appointment</h1>
         <p>Complete the steps below to secure your appointment.</p>
