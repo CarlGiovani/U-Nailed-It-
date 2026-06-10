@@ -41,15 +41,19 @@ export const getServicesAdmin = async (req, res) => {
 
 // CREATE service
 export const createService = async (req, res) => {
-  // ---- VALIDATION ----
   const errors = validate(serviceSchema, req.body);
   if (errors) return res.status(400).json({ errors });
 
   try {
+    const file = req.files?.file?.[0] || req.file || null;
+    const galleryImages = req.files?.galleryImages || [];
+
     const newService = await Services.createService({
-      file: req.file,
+      file,
+      galleryImages,
       ...req.body,
     });
+
     res.json({ message: "Service created!", service: newService });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -58,16 +62,21 @@ export const createService = async (req, res) => {
 
 // UPDATE service
 export const updateService = async (req, res) => {
-  // ---- VALIDATION ----
   const errors = validate(serviceSchema, req.body);
   if (errors) return res.status(400).json({ errors });
 
   const { id } = req.params;
+
   try {
+    const file = req.files?.file?.[0] || req.file || null;
+    const galleryImages = req.files?.galleryImages || [];
+
     const updatedService = await Services.updateService(id, {
       ...req.body,
-      file: req.file, // multer file kung may image
+      file,
+      galleryImages,
     });
+
     res.json({ message: "Service updated!", service: updatedService });
   } catch (err) {
     res.status(500).json({ error: err.message });

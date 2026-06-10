@@ -20,13 +20,20 @@ router.get("/:id", ServicesController.getService);
 router.post(
   "/",
   verifyAdmin,
-  serviceImageUpload.single("file"),
+  serviceImageUpload.fields([
+    { name: "file", maxCount: 1 },
+    { name: "galleryImages", maxCount: 10 },
+  ]),
   ServicesController.createService,
 );
+
 router.put(
   "/:id",
   verifyAdmin,
-  serviceImageUpload.single("file"),
+  serviceImageUpload.fields([
+    { name: "file", maxCount: 1 },
+    { name: "galleryImages", maxCount: 10 },
+  ]),
   ServicesController.updateService,
 );
 router.delete("/:id", verifyAdmin, ServicesController.deleteService);

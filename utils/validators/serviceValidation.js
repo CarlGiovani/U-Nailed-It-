@@ -5,6 +5,7 @@ export const serviceSchema = Joi.object({
   name: Joi.string().required(),
   description: Joi.string().allow(""),
   duration: Joi.string().allow(null, ""),
+  images: Joi.string().optional().allow(""),
 });
 
 // ------------------ CATEGORY VALIDATION ------------------
