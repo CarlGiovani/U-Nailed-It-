@@ -67,6 +67,7 @@ const ServiceCard = memo(function ServiceCard({
   onEdit,
   onManage,
   onToggle,
+  onPreview,
 }) {
   const isToggling = togglingId === service.id;
   const isLocked = service.hasBookings;
@@ -78,8 +79,16 @@ const ServiceCard = memo(function ServiceCard({
           <img
             src={service.image_url}
             alt={service.name}
-            className="service-image"
+            className="service-image clickable-preview-image"
             loading="lazy"
+            onClick={() => {
+              const allImages = [
+                service.image_url,
+                ...(Array.isArray(service.images) ? service.images : []),
+              ].filter(Boolean);
+
+              onPreview(allImages, 0);
+            }}
           />
         </div>
       )}
@@ -150,7 +159,9 @@ const Pagination = memo(function Pagination({
           return (
             <button
               key={page}
-              className={`pagination-number ${currentPage === page ? "active" : ""}`}
+              className={`pagination-number ${
+                currentPage === page ? "active" : ""
+              }`}
               onClick={() => onPageChange(page)}
             >
               {page}
@@ -194,12 +205,19 @@ const ModalShell = memo(function ModalShell({ children, onClose }) {
 const Services = () => {
   const [modal, setModal] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+  const [galleryPreviews, setGalleryPreviews] = useState([]);
+  const [imageViewer, setImageViewer] = useState({
+    open: false,
+    images: [],
+    index: 0,
+  });
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   const queryClient = useQueryClient();
   const objectUrlRef = useRef(null);
+  const galleryObjectUrlsRef = useRef([]);
 
   const { data: services = [], isLoading } = useQuery({
     queryKey: ["admin-services"],
@@ -276,14 +294,22 @@ const Services = () => {
     }
   }, []);
 
+  const clearGalleryObjectUrls = useCallback(() => {
+    galleryObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    galleryObjectUrlsRef.current = [];
+    setGalleryPreviews([]);
+  }, []);
+
   const closeModal = useCallback(() => {
     clearPreviewObjectUrl();
+    clearGalleryObjectUrls();
     setModal(null);
     setPreviewImage(null);
-  }, [clearPreviewObjectUrl]);
+  }, [clearPreviewObjectUrl, clearGalleryObjectUrls]);
 
   const openCreateServiceModal = useCallback(() => {
     clearPreviewObjectUrl();
+    clearGalleryObjectUrls();
     setPreviewImage(null);
     setModal({
       type: MODAL_TYPES.SERVICE,
@@ -291,21 +317,31 @@ const Services = () => {
       description: "",
       duration: DEFAULT_SERVICE_DURATION,
       image: null,
+      galleryImages: [],
+      images: [],
     });
-  }, [clearPreviewObjectUrl]);
+  }, [clearPreviewObjectUrl, clearGalleryObjectUrls]);
 
   const openEditServiceModal = useCallback(
     (service) => {
       clearPreviewObjectUrl();
+      clearGalleryObjectUrls();
+
+      const existingImages = Array.isArray(service.images)
+        ? service.images
+        : [];
+
       setPreviewImage(service.image_url || null);
       setModal({
         ...service,
         type: MODAL_TYPES.SERVICE,
         duration: normalizeDurationForInput(service.duration),
         image: null,
+        galleryImages: [],
+        images: existingImages,
       });
     },
-    [clearPreviewObjectUrl],
+    [clearPreviewObjectUrl, clearGalleryObjectUrls],
   );
 
   const openManageModal = useCallback(
@@ -313,13 +349,14 @@ const Services = () => {
       const freshService = getFreshServiceFromMap(service, servicesById);
 
       clearPreviewObjectUrl();
+      clearGalleryObjectUrls();
       setPreviewImage(null);
       setModal({
         type: MODAL_TYPES.MANAGE,
         service: freshService,
       });
     },
-    [clearPreviewObjectUrl, servicesById],
+    [clearPreviewObjectUrl, clearGalleryObjectUrls, servicesById],
   );
 
   const openCategoryCreateModal = useCallback((serviceId) => {
@@ -383,6 +420,70 @@ const Services = () => {
     [clearPreviewObjectUrl],
   );
 
+  const handleGalleryImagesChange = useCallback(
+    (e) => {
+      const files = Array.from(e.target.files || []);
+
+      clearGalleryObjectUrls();
+
+      const previews = files.map((file) => {
+        const objectUrl = URL.createObjectURL(file);
+        galleryObjectUrlsRef.current.push(objectUrl);
+
+        return {
+          name: file.name,
+          url: objectUrl,
+        };
+      });
+
+      setGalleryPreviews(previews);
+
+      setModal((prev) => ({
+        ...prev,
+        galleryImages: files,
+      }));
+    },
+    [clearGalleryObjectUrls],
+  );
+
+  const removeExistingGalleryImage = useCallback((imageUrl) => {
+    setModal((prev) => ({
+      ...prev,
+      images: Array.isArray(prev?.images)
+        ? prev.images.filter((url) => url !== imageUrl)
+        : [],
+    }));
+  }, []);
+
+  const openImageViewer = useCallback((images = [], index = 0) => {
+    setImageViewer({
+      open: true,
+      images,
+      index,
+    });
+  }, []);
+
+  const closeImageViewer = useCallback(() => {
+    setImageViewer({
+      open: false,
+      images: [],
+      index: 0,
+    });
+  }, []);
+
+  const goToPrevImage = useCallback(() => {
+    setImageViewer((prev) => ({
+      ...prev,
+      index: prev.index === 0 ? prev.images.length - 1 : prev.index - 1,
+    }));
+  }, []);
+
+  const goToNextImage = useCallback(() => {
+    setImageViewer((prev) => ({
+      ...prev,
+      index: prev.index === prev.images.length - 1 ? 0 : prev.index + 1,
+    }));
+  }, []);
   const handleServiceSave = useCallback(async () => {
     if (!modal) return;
 
@@ -396,6 +497,17 @@ const Services = () => {
 
       if (modal.image) {
         formData.append("file", modal.image);
+      }
+
+      formData.append(
+        "images",
+        JSON.stringify(Array.isArray(modal.images) ? modal.images : []),
+      );
+
+      if (modal.galleryImages?.length) {
+        modal.galleryImages.forEach((file) => {
+          formData.append("galleryImages", file);
+        });
       }
 
       if (modal.id) {
@@ -415,7 +527,9 @@ const Services = () => {
       closeModal();
     } catch (err) {
       console.error(err);
-      alert(err?.response?.data?.error || err?.message || "Failed to save service.");
+      alert(
+        err?.response?.data?.error || err?.message || "Failed to save service.",
+      );
     } finally {
       setSaving(false);
     }
@@ -442,7 +556,11 @@ const Services = () => {
       closeModal();
     } catch (err) {
       console.error(err);
-      alert(err?.response?.data?.error || err?.message || "Failed to save category.");
+      alert(
+        err?.response?.data?.error ||
+          err?.message ||
+          "Failed to save category.",
+      );
     } finally {
       setSaving(false);
     }
@@ -530,7 +648,9 @@ const Services = () => {
       closeModal();
     } catch (err) {
       console.error(err);
-      alert(err?.response?.data?.error || err?.message || "Failed to save variant.");
+      alert(
+        err?.response?.data?.error || err?.message || "Failed to save variant.",
+      );
     } finally {
       setSaving(false);
     }
@@ -553,7 +673,11 @@ const Services = () => {
         }
       } catch (err) {
         console.error(err);
-        alert(err?.response?.data?.error || err?.message || "Failed to update service.");
+        alert(
+          err?.response?.data?.error ||
+            err?.message ||
+            "Failed to update service.",
+        );
       } finally {
         setTogglingId(null);
       }
@@ -587,8 +711,9 @@ const Services = () => {
   useEffect(() => {
     return () => {
       clearPreviewObjectUrl();
+      clearGalleryObjectUrls();
     };
-  }, [clearPreviewObjectUrl]);
+  }, [clearPreviewObjectUrl, clearGalleryObjectUrls]);
 
   useEffect(() => {
     if (!modal) return;
@@ -618,8 +743,8 @@ const Services = () => {
         </span>
         <h2>{modal?.id ? "Edit Service" : "Create Service"}</h2>
         <p>
-          Add a service with description, estimated duration, and a display
-          image.
+          Add a service with description, estimated duration, a cover image, and
+          optional gallery images.
         </p>
       </div>
 
@@ -663,7 +788,7 @@ const Services = () => {
 
           <div className="field-group">
             <div className="form-label-row">
-              <label className="field-label">Service Image</label>
+              <label className="field-label">Cover Image</label>
               <span>1 file</span>
             </div>
 
@@ -672,7 +797,7 @@ const Services = () => {
                 <span className="upload-icon">🖼️</span>
                 <div>
                   <strong>
-                    {modal?.image ? modal.image.name : "Choose image"}
+                    {modal?.image ? modal.image.name : "Choose cover image"}
                   </strong>
                   <small>JPG, PNG, WEBP supported.</small>
                 </div>
@@ -691,12 +816,122 @@ const Services = () => {
 
         {previewImage ? (
           <div className="image-preview enhanced-image-preview">
-            <img src={previewImage} alt="preview" />
+            <img
+              src={previewImage}
+              alt="preview"
+              className="clickable-preview-image"
+              onClick={() =>
+                openImageViewer(
+                  [
+                    previewImage,
+                    ...(Array.isArray(modal.images) ? modal.images : []),
+                    ...galleryPreviews.map((preview) => preview.url),
+                  ].filter(Boolean),
+                  0,
+                )
+              }
+            />
           </div>
         ) : (
           <div className="empty-preview-state service-empty-preview">
             <span className="empty-preview-icon">🖼️</span>
-            <p>No image selected yet.</p>
+            <p>No cover image selected yet.</p>
+          </div>
+        )}
+
+        <div className="field-group">
+          <div className="form-label-row">
+            <label className="field-label">Gallery Images</label>
+            <span>{modal?.galleryImages?.length || 0} selected</span>
+          </div>
+
+          <label className="custom-file-upload">
+            <div className="custom-file-upload-left">
+              <span className="upload-icon">🖼️</span>
+              <div>
+                <strong>Choose gallery images</strong>
+                <small>You can select multiple JPG, PNG, or WEBP files.</small>
+              </div>
+            </div>
+
+            <span className="upload-action">Browse</span>
+
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleGalleryImagesChange}
+            />
+          </label>
+        </div>
+
+        {Array.isArray(modal?.images) && modal.images.length > 0 && (
+          <div className="image-preview enhanced-image-preview">
+            <p>Existing gallery images:</p>
+
+            <div className="service-gallery-preview-grid">
+              {modal.images.map((imageUrl, index) => (
+                <div key={imageUrl} className="service-gallery-preview-item">
+                  <img
+                    src={imageUrl}
+                    alt="Service gallery"
+                    className="clickable-preview-image"
+                    onClick={() =>
+                      openImageViewer(
+                        [
+                          previewImage,
+                          ...(Array.isArray(modal.images) ? modal.images : []),
+                          ...galleryPreviews.map((preview) => preview.url),
+                        ].filter(Boolean),
+                        previewImage ? index + 1 : index,
+                      )
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={() => removeExistingGalleryImage(imageUrl)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {galleryPreviews.length > 0 && (
+          <div className="image-preview enhanced-image-preview">
+            <p>New selected gallery images:</p>
+
+            <div className="service-gallery-preview-grid">
+              {galleryPreviews.map((preview, index) => (
+                <div key={preview.url} className="service-gallery-preview-item">
+                  <img
+                    src={preview.url}
+                    alt={preview.name}
+                    className="clickable-preview-image"
+                    onClick={() => {
+                      const existingImages = Array.isArray(modal.images)
+                        ? modal.images
+                        : [];
+
+                      const allImages = [
+                        previewImage,
+                        ...existingImages,
+                        ...galleryPreviews.map((item) => item.url),
+                      ].filter(Boolean);
+
+                      const imageIndex =
+                        (previewImage ? 1 : 0) + existingImages.length + index;
+
+                      openImageViewer(allImages, imageIndex);
+                    }}
+                  />
+                  <small>{preview.name}</small>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -771,8 +1006,8 @@ const Services = () => {
                       {variant.estimate_min != null &&
                         variant.estimate_max != null && (
                           <small className="variant-estimate">
-                            Estimate: ₱{formatCurrency(variant.estimate_min)} - ₱
-                            {formatCurrency(variant.estimate_max)}
+                            Estimate: ₱{formatCurrency(variant.estimate_min)} -
+                            ₱{formatCurrency(variant.estimate_max)}
                           </small>
                         )}
                     </span>
@@ -900,7 +1135,9 @@ const Services = () => {
 
         <div className="estimate-block">
           <div className="estimate-block-header">
-            <label className="field-label estimate-title">Estimate Display</label>
+            <label className="field-label estimate-title">
+              Estimate Display
+            </label>
             <span className="estimate-badge">Optional</span>
           </div>
 
@@ -918,7 +1155,9 @@ const Services = () => {
                 step="0.01"
                 placeholder="e.g. 1500"
                 value={modal?.estimate_min ?? ""}
-                onChange={(e) => updateModalField("estimate_min", e.target.value)}
+                onChange={(e) =>
+                  updateModalField("estimate_min", e.target.value)
+                }
               />
             </div>
 
@@ -930,7 +1169,9 @@ const Services = () => {
                 step="0.01"
                 placeholder="e.g. 2000"
                 value={modal?.estimate_max ?? ""}
-                onChange={(e) => updateModalField("estimate_max", e.target.value)}
+                onChange={(e) =>
+                  updateModalField("estimate_max", e.target.value)
+                }
               />
             </div>
           </div>
@@ -1026,6 +1267,7 @@ const Services = () => {
                   onEdit={openEditServiceModal}
                   onManage={openManageModal}
                   onToggle={handleToggleService}
+                  onPreview={openImageViewer}
                 />
               ))}
             </div>
@@ -1040,6 +1282,54 @@ const Services = () => {
 
         {modal && (
           <ModalShell onClose={closeModal}>{renderModalContent()}</ModalShell>
+        )}
+
+        {imageViewer.open && (
+          <div className="image-viewer-overlay" onClick={closeImageViewer}>
+            <div
+              className="image-viewer-content"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="image-viewer-close"
+                onClick={closeImageViewer}
+              >
+                ✕
+              </button>
+
+              {imageViewer.images.length > 1 && (
+                <button
+                  type="button"
+                  className="image-viewer-nav image-viewer-prev"
+                  onClick={goToPrevImage}
+                >
+                  ‹
+                </button>
+              )}
+
+              <img
+                src={imageViewer.images[imageViewer.index]}
+                alt="Full Preview"
+              />
+
+              {imageViewer.images.length > 1 && (
+                <button
+                  type="button"
+                  className="image-viewer-nav image-viewer-next"
+                  onClick={goToNextImage}
+                >
+                  ›
+                </button>
+              )}
+
+              {imageViewer.images.length > 1 && (
+                <div className="image-viewer-counter">
+                  {imageViewer.index + 1} / {imageViewer.images.length}
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </AdminLayout>
