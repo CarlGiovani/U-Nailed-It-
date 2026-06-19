@@ -4,7 +4,7 @@ export const bookingApprovedTemplate = ({
   date = "",
   time = "",
   cancelLink = "#",
-  studioAddress = "H338+Q9V, 118 San Guillermo Ave, Pasig, 1600 Metro Manila",
+  studioAddress = "89-A P. Zamora Street, West Rembo, Taguig City, Metro Manila, Philippines",
   supportEmail = "unaileditbyalliyah@gmail.com",
 }) => {
   // ----- PHILIPPINES DATE & TIME NORMALIZATION -----
