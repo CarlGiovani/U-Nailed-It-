@@ -61,11 +61,11 @@ const emailShell = ({
   time = "",
   note = "",
   footerText = "Please arrive on time. We look forward to seeing you.",
-  studioAddress = "H338+Q9V, 118 San Guillermo Ave, Pasig, 1600 Metro Manila",
+  studioAddress = "89-A P. Zamora Street, West Rembo, Taguig City, Metro Manila, Philippines",
   supportEmail = "unaileditbyalliyah@gmail.com",
 }) => {
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-    studioAddress
+    studioAddress,
   )}`;
   const mailTo = `mailto:${supportEmail}?subject=Appointment Inquiry&body=Hello! I have a question about my upcoming appointment.`;
 
@@ -168,13 +168,14 @@ const bookingReminder24hTemplate = ({
 }) => {
   const normalizedDate = formatPhilippineDate(date);
   const normalizedTime = formatPhilippineTime(time);
-  
+
   return emailShell({
     eyebrow: "24 HOUR REMINDER",
     titlePink: "Appointment",
     titleDark: "Reminder",
     emoji: "💅",
-    intro: "This is a friendly reminder that your appointment is coming up within the next 24 hours.",
+    intro:
+      "This is a friendly reminder that your appointment is coming up within the next 24 hours.",
     name,
     service,
     date: normalizedDate,
@@ -194,13 +195,14 @@ const bookingReminderSameDayTemplate = ({
 }) => {
   const normalizedDate = formatPhilippineDate(date);
   const normalizedTime = formatPhilippineTime(time);
-  
+
   return emailShell({
     eyebrow: "TODAY'S APPOINTMENT",
     titlePink: "Your Appointment",
     titleDark: "Is Today",
     emoji: "✨",
-    intro: "This is a quick reminder that your appointment is scheduled for today.",
+    intro:
+      "This is a quick reminder that your appointment is scheduled for today.",
     name,
     service,
     date: normalizedDate,
@@ -234,7 +236,8 @@ export const send24hReminders = async () => {
 
   const { data: bookings, error } = await supabase
     .from("bookings")
-    .select(`
+    .select(
+      `
       id,
       customer_name,
       customer_email,
@@ -243,7 +246,8 @@ export const send24hReminders = async () => {
       reminder_24h_sent_at,
       status,
       services (id, name)
-    `)
+    `,
+    )
     .eq("status", "approved")
     .is("reminder_24h_sent_at", null)
     .not("customer_email", "is", null)
@@ -257,7 +261,7 @@ export const send24hReminders = async () => {
   for (const booking of bookings || []) {
     const appointmentDateTime = toManilaDateTime(
       booking.booking_date,
-      booking.booking_time
+      booking.booking_time,
     );
 
     if (appointmentDateTime > now && appointmentDateTime <= next24h) {
@@ -288,8 +292,8 @@ export const send24hReminders = async () => {
    SAME DAY REMINDER (sending logic)
 ========================= */
 export const sendSameDayReminders = async () => {
- const now = new Date();
-const next3h = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+  const now = new Date();
+  const next3h = new Date(now.getTime() + 3 * 60 * 60 * 1000);
 
   const todayInManila = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Manila",
@@ -300,7 +304,8 @@ const next3h = new Date(now.getTime() + 3 * 60 * 60 * 1000);
 
   const { data: bookings, error } = await supabase
     .from("bookings")
-    .select(`
+    .select(
+      `
       id,
       customer_name,
       customer_email,
@@ -309,7 +314,8 @@ const next3h = new Date(now.getTime() + 3 * 60 * 60 * 1000);
       reminder_same_day_sent_at,
       status,
       services (id, name)
-    `)
+    `,
+    )
     .eq("status", "approved")
     .eq("booking_date", todayInManila)
     .is("reminder_same_day_sent_at", null)
@@ -319,33 +325,33 @@ const next3h = new Date(now.getTime() + 3 * 60 * 60 * 1000);
 
   let sentCount = 0;
 
-for (const booking of bookings || []) {
-  const appointmentDateTime = toManilaDateTime(
-    booking.booking_date,
-    booking.booking_time
-  );
+  for (const booking of bookings || []) {
+    const appointmentDateTime = toManilaDateTime(
+      booking.booking_date,
+      booking.booking_time,
+    );
 
-  // SEND ONLY IF APPOINTMENT IS WITHIN NEXT 3 HOURS
-  if (appointmentDateTime > now && appointmentDateTime <= next3h) {
-    await sendEmail({
-      to: booking.customer_email,
-      subject: "Reminder: Your appointment is today",
-      html: bookingReminderSameDayTemplate({
-        name: booking.customer_name || "Customer",
-        service: booking.services?.name || "Your Service",
-        date: booking.booking_date,
-        time: booking.booking_time,
-      }),
-    });
+    // SEND ONLY IF APPOINTMENT IS WITHIN NEXT 3 HOURS
+    if (appointmentDateTime > now && appointmentDateTime <= next3h) {
+      await sendEmail({
+        to: booking.customer_email,
+        subject: "Reminder: Your appointment is today",
+        html: bookingReminderSameDayTemplate({
+          name: booking.customer_name || "Customer",
+          service: booking.services?.name || "Your Service",
+          date: booking.booking_date,
+          time: booking.booking_time,
+        }),
+      });
 
-    await supabase
-      .from("bookings")
-      .update({ reminder_same_day_sent_at: new Date().toISOString() })
-      .eq("id", booking.id);
+      await supabase
+        .from("bookings")
+        .update({ reminder_same_day_sent_at: new Date().toISOString() })
+        .eq("id", booking.id);
 
-    sentCount++;
+      sentCount++;
+    }
   }
-}
 
   return sentCount;
 };
