@@ -4,8 +4,11 @@ const Hero = () => {
   const navigate = useNavigate();
 
   const studioAddress =
-    "H338+Q9V, 118 San Guillermo Ave, Pasig, 1600 Metro Manila";
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(studioAddress)}`;
+    "89-A P. Zamora Street, West Rembo, Taguig City, Metro Manila, Philippines";
+
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+    studioAddress,
+  )}`;
 
   return (
     <section className="hero">

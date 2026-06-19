@@ -15,11 +15,23 @@ const Footer = memo(() => {
   /* Memoized static data → prevents re-creation every render */
   const socialLinks = useMemo(
     () => [
-      { icon: FaFacebookF, href: "https://web.facebook.com/UNAILEDitbyAlliyah", label: "Facebook" },
-      { icon: FaInstagram, href: "https://www.instagram.com/unaileditbyalliyah", label: "Instagram" },
-      { icon: FaTiktok, href: "https://www.tiktok.com/@unaileditbyalliyah", label: "TikTok" },
+      {
+        icon: FaFacebookF,
+        href: "https://web.facebook.com/UNAILEDitbyAlliyah",
+        label: "Facebook",
+      },
+      {
+        icon: FaInstagram,
+        href: "https://www.instagram.com/unaileditbyalliyah",
+        label: "Instagram",
+      },
+      {
+        icon: FaTiktok,
+        href: "https://www.tiktok.com/@unaileditbyalliyah",
+        label: "TikTok",
+      },
     ],
-    []
+    [],
   );
 
   const quickLinks = useMemo(
@@ -30,24 +42,26 @@ const Footer = memo(() => {
       { name: "Reviews", href: "/reviews" },
       { name: "Portfolio", href: "/portfolio" },
     ],
-    []
+    [],
   );
 
   const contactInfo = useMemo(
     () => [
-      { icon: FaMapMarkerAlt, text: "H338+Q9V, 118 San Guillermo Ave, Pasig, 1600 Metro Manila" },
+      {
+        icon: FaMapMarkerAlt,
+        text: "89-A P. Zamora Street, West Rembo, Taguig City, Metro Manila, Philippines",
+      },
       { icon: FaPhoneAlt, text: "(02) 8123-4567" },
       { icon: FaEnvelope, text: "unaileditbyalliyah@gmail.com" },
       { icon: FaClock, text: "Open depends on slot" },
     ],
-    []
+    [],
   );
 
   return (
     <footer className="site-footer">
       <div className="container">
         <div className="footer-content">
-
           {/* ABOUT */}
           <div className="footer-about">
             <div className="footer-brand">
